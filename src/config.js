@@ -137,7 +137,7 @@ export const CONFIG = Object.freeze({
     fogFar: 190,
     maxPixelRatio: 2,
     maxPixelRatioMobile: 1.5,
-    bloom: Object.freeze({ strength: 1.05, radius: 0.55, threshold: 0.12 }),
+    bloom: Object.freeze({ strength: 0.85, radius: 0.5, threshold: 0.2 }),
   }),
 
   // ---- effects ----------------------------------------------------------
