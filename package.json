@@ -1,0 +1,8 @@
+{
+  "name": "neon-runner-devtools",
+  "private": true,
+  "description": "Dev-only tooling (Playwright for headless play-testing). The game itself has no build step and no dependencies.",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

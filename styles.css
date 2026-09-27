@@ -1,0 +1,4 @@
+/* STUB — owned by Agent 4 (Game & UI). */
+html, body { margin: 0; height: 100%; overflow: hidden; background: #07001a; }
+#game { display: block; width: 100vw; height: 100vh; touch-action: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
