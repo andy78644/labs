@@ -12,7 +12,7 @@ python3 -m http.server 8000
 # open http://localhost:8000/
 ```
 
-Everything is in `index.html`. There is no build step. Three.js r0.186.1 loads from jsDelivr through an import map, and fonts (Barlow, Barlow Condensed, IBM Plex Mono) come from Google Fonts, so the first load needs a network connection. There are no asset files: every model, texture, shader and sound is generated in code.
+Everything is in `index.html`. There is no build step. Three.js r0.186.1 loads from jsDelivr through an import map, and fonts (Saira, used condensed and italic through its width axis, and JetBrains Mono) come from Google Fonts, so the first load needs a network connection. There are no asset files: every model, texture, shader and sound is generated in code.
 
 ## Features
 
@@ -40,7 +40,7 @@ Everything is in `index.html`. There is no build step. Three.js r0.186.1 loads f
   - heat-tinted exhaust with blackbody glow that tracks ICE power
   - brake-disc incandescence under braking
   - fuel volume
-  - drafting floor lines (dash-dot centre lines, a datum circle and a fine grid)
+  - a glossy pit-lane floor: a blurred planar reflection (three's `Reflector` with my own shader) plus painted pit-box lines, a lane line and a red/white kerb, fading into the dark
 
 **Interaction**
 - Drag to orbit, scroll or pinch to zoom, right-drag to pan. Hover a part to see its name. Click a part to open its lesson.
@@ -72,7 +72,7 @@ Everything is in `index.html`. There is no build step. Three.js r0.186.1 loads f
 
 **Keys:** 1–7 lessons · Q/R/G/O modes · Y rules year · X X-ray · E explode · F flow · L lap/dyno · ↑↓ rpm · Space (hold) lift · M sound · C cinematic · / hide UI · I language · H/? help · Esc close/reset.
 
-**URL parameters** (these were used for testing): `card=2&instant`, `xray`, `explode`, `mode=quali|race|recharge|overtake`, `era=2025`, `drive=dyno`, `rpm=12000`, `slow=200`, `flow=0`, `lang=zh`, `warm=20` (pre-simulate N seconds), `cam=x,y,z,tx,ty,tz`, `noao`, `lowq`. `window.PU` exposes the state and setters for automated tests.
+**URL parameters** (these were used for testing): `card=2&instant`, `xray`, `explode`, `mode=quali|race|recharge|overtake`, `era=2025`, `drive=dyno`, `rpm=12000`, `slow=200`, `flow=0`, `lang=zh`, `warm=20` (pre-simulate N seconds), `cam=x,y,z,tx,ty,tz`, `noao`, `norefl`, `lowq`. `window.PU` exposes the state and setters for automated tests.
 
 ## 2026 rule numbers used, and sources
 
@@ -115,8 +115,8 @@ Links:
 - **Qualifying** refills the battery at each lap line, standing in for the out-lap charge.
 - **Fuel cell drawn as a translucent bladder** so the fuel level and the Energy Store under it stay readable.
 - **The MGU-K is on the camera side** (+Z), so the default view shows the hybrid hardware.
-- **Look:** a light "shop manual" theme: drafting paper with a millimetre grid, ink rules, flat panels, and one racing-red accent for the interface. The page is laid out like a drawing sheet: a header with a chapter strip, a control sheet on the left, the lesson drawer on the right, a telemetry strip along the bottom, and a live title block in the drawing area.
-- **Colours are for data only:** teal-green = electric deploy, cobalt blue = harvest, orange = fuel, brick = exhaust, slate = intake air, brass = crank → wheels, violet = MGU-H.
+- **Look:** a dark "pit wall / TV graphics" theme. The backdrop is a 2×2 twill carbon-fibre weave drawn in code (the same tile is used by the CSS and, tone-compensated, by the 3D background). The UI is red, white and black: slanted/chamfered panels (clip-path, skew), bold italic condensed headings, red/white kerb stripes on the header and telemetry bar, and a few speed lines in the header. The layout keeps the earlier information architecture, restyled as a broadcast: header + chapter tabs, a pit-wall control column on the left, the lesson panel on the right (its cover page lists the lessons as a timing tower), a lower-third telemetry bar at the bottom and an info bug in the 3D area. Cinematic mode uses a broadcast lower-third caption.
+- **Colours have one job each:** lime = live telemetry (rpm, gear, shift lights, current lap); purple / green / yellow = sector times only; energy data on dark: aqua-teal = electric deploy, blue = harvest, orange = fuel, rose-red = exhaust, pale steel = intake air, gold = crank → wheels, violet = MGU-H. No official F1 logos, fonts, team names, liveries or sponsors.
 
 ## Development log
 
@@ -161,15 +161,30 @@ Fixes:
 - Fixed a latent bug where the harvested/deployed mini bars never filled.
 - Checked desktop (1440×900, 1280×800, 1024×768) and 390×844 mobile, EN and 繁中, 2025/2026, all views, cinematic, help and the interaction script: no console errors or warnings.
 
+**Round 5 (broadcast redesign)**
+- The owner felt the light theme lacked racing feel. Reworked it into a dark race-broadcast look: procedural carbon-fibre backdrop, red/white/black UI with slanted and chamfered panels, Saira (bold italic, condensed via the width axis) + JetBrains Mono, kerb-stripe accents, a timing-tower lesson list, a lower-third telemetry bar with 16 shift lights and a lime gear box, an info bug, a broadcast lower-third in cinematic mode and a "race control" style toast.
+- New feature that the look called for: **sector timing** in the lap simulation. The lap is split into thirds; each finished sector is purple (session best for these rules + mode), green (faster than last lap) or yellow (slower). The track map shows the sector splits and start line. A lap interrupted by a reset (rules change, Dyno) is no longer timed, which also fixes a latent bug where such a partial lap could be stored as the "best" lap.
+- 3D re-tuned for a dark studio: a code-built studio environment (overhead light strips, a white softbox, a red accent strip) for reflections, a soft key light plus cool-white and red rim lights, Neutral tone mapping, and a reflective pit-lane floor. The X-ray shells, combustion gas, energy conduits/packets and the fuel volume went back to additive blending (the normal blending was only needed on paper).
+- Problems found in the screenshots and fixed:
+  - The first floor reflection used per-pixel random rotation for its blur and looked speckled; switched to a fixed 12-tap spiral and a lighter grain.
+  - A white bloom bar sat on the bank-A cam cover. Isolating light, environment and bloom showed it was the key light's specular on the clear-coated carbon; made the carbon rougher, the key light softer and raised the bloom threshold to 1.25 so only really hot parts glow.
+  - The fuel cell read as a flat yellow block; dimmed the fuel volume and the tank's ghost tint.
+  - The X-ray battery cells glowed plain white because the white emissive ignored the per-cell colour. They now glow in their own charge colour (a shader patch multiplies the emissive by the instance colour). The first version failed to compile (`vColor` is a vec4), which the interaction test caught.
+  - The lesson number wrapped into "0 / 2" because of a grid layout; switched to flex.
+  - At 1024×768 the flow key overflowed the control column and the gear label collided with the gear box; both are hidden at that width.
+  - On mobile the bottom control rows were cut off at the right edge. They still scroll sideways, but now snap to groups and fade out at the right edge until scrolled to the end, so the cut reads as "more this way". The cinematic lower-third stretched across the phone width; it now sizes to its text.
+- Checked 1440×900, 1024×768 and 390×844 (mobile), EN and 繁中, 2025/2026, all four modes, X-ray, explode, flow, Dyno, lessons, cinematic, help and `tools/interact.mjs`: no console errors or warnings.
+
 **Known weaknesses**
 - The model is stylised. There's no chassis or wheels, and part proportions are approximate.
+- The reflective floor renders the scene a second time (at half resolution); it is skipped on touch devices, with `lowq` or with `norefl`.
 - Visuals were tuned only on Apple M1 (ANGLE Metal). Low-end phones will fall back to lower quality automatically, but this wasn't tested on real devices.
 - Audio was verified only as "creates and runs without errors"; nobody listened to it.
 - The speed taper and lap strategy are simplified.
 
 ## Files
 
-- `index.html`: the whole app (≈170 KB)
+- `index.html`: the whole app (≈200 KB)
 - `docs/screenshots/`:
   - `01-overview`
   - `02-exploded`

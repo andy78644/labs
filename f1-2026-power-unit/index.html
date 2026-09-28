@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ece8de">
+<meta name="theme-color" content="#0a0a0c">
 <title>The 50/50 Engine — inside the 2026 F1 power unit</title>
 <meta name="description" content="An interactive lab: spin, cut open and pull apart a procedurally built 2026-rules Formula 1 hybrid power unit, and follow its energy.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira:ital,wdth,wght@0,50..125,400..900;1,50..125,400..900&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
@@ -17,330 +17,374 @@
 </script>
 <style>
 /* ==========================================================================
-   Theme: "shop manual" — warm drafting paper, ink rules, one racing-red accent.
-   Energy colours are reserved for data (flows, bars, traces).
+   Theme: "pit wall" — race-broadcast graphics on a carbon-fibre backdrop.
+   UI base = red / white / black. Lime = live telemetry. Purple / green / yellow
+   = sector timing only. Energy colours are reserved for data.
    ========================================================================== */
 :root{
-  --paper:#ece8de; --sheet:#f7f5ef; --sheet2:#fbfaf6; --ink:#1c1f23; --ink2:#454a52; --mute:#767a80; --faint:#a3a5a6;
-  --rule:rgba(28,31,35,.16); --rule2:rgba(28,31,35,.32); --rule3:rgba(28,31,35,.62);
-  --red:#d3261b; --red2:#a81c13; --redtint:rgba(211,38,27,.08);
-  --elec:#0e9a78; --harv:#2d62c8; --fuel:#e06a12; --heat:#a33a1d; --air:#7d8fa8; --mech:#b08d3e; --mguh:#7a48c0;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --sans:Barlow,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --cond:"Barlow Condensed",Barlow,system-ui,sans-serif;
-  --hdr:46px; --strip:40px; --top:calc(var(--hdr) + var(--strip));
-  --side:236px; --drawer:372px; --tele:124px;
+  --bg:#0a0a0c; --panel:#111114; --panel2:#18181d; --panel3:#24242b;
+  --txt:#f4f4f2; --txt2:#c4c4ca; --mute:#8b8b95; --faint:#5a5a64;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.15); --line3:rgba(255,255,255,.32);
+  --red:#e3102a; --red2:#a30b1d; --redtint:rgba(227,16,42,.18);
+  --live:#d4ff33; --livetint:rgba(212,255,51,.13);
+  --s-p:#b84dff; --s-g:#2fdc4a; --s-y:#ffd21f;
+  --elec:#19e6c1; --harv:#4d7dff; --fuel:#ff8a1c; --heat:#ff4d6d; --air:#a3bcdc; --mech:#e2b54a; --mguh:#a97bff;
+  --kerb:repeating-linear-gradient(90deg,var(--red) 0 14px,#f2f2f2 14px 28px);
+  --carbon:none;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:Saira,"Arial Narrow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hdr:48px; --strip:36px; --top:calc(var(--hdr) + var(--strip));
+  --side:240px; --drawer:376px; --tele:140px; --cut:10px;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 14px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;font-synthesis:none}
+body{margin:0;background:var(--bg) var(--carbon);color:var(--txt);font:400 14px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;font-synthesis:none}
 button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
-button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--red);outline-offset:1px}
-kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px solid var(--rule2);border-bottom-width:2px;border-radius:2px;background:var(--sheet2)}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--live);outline-offset:1px}
+kbd{font:600 10px/1 var(--mono);color:var(--txt);padding:2px 5px;border:1px solid var(--line3);border-bottom-width:2px;background:var(--panel3)}
 #app{position:fixed;inset:0;overflow:hidden;user-select:none;-webkit-user-select:none}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #gl.drag{cursor:grabbing}
 #gl.hot{cursor:pointer}
-.panel{background:var(--sheet);border:0 solid var(--rule3)}
+.panel{background:var(--panel)}
 .ui{transition:opacity .35s,transform .35s}
 #app.noui .ui{opacity:0;pointer-events:none!important}
 #app.noui .ui *{pointer-events:none!important}
-.capt{font:600 11px/1 var(--cond);letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+/* broadcast caption: bold italic condensed caps */
+.capt{font:italic 700 12px/1 var(--sans);font-stretch:75%;letter-spacing:.06em;text-transform:uppercase;color:var(--txt)}
 .capt em{font:400 10px/1 var(--mono);letter-spacing:0;text-transform:none;font-style:normal;color:var(--faint)}
+.chamf{clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut))}
 
-/* ---------- drawing frame around the viewport ---------- */
-#frame{position:absolute;left:calc(var(--side) + 12px);right:calc(var(--drawer) + 12px);top:calc(var(--top) + 12px);bottom:calc(var(--tele) + 12px);pointer-events:none;border:1px solid var(--rule2)}
-#frame::before{content:"";position:absolute;inset:5px;border:1px solid var(--rule)}
-#frame .zx,#frame .zy{position:absolute;display:flex;justify-content:space-around;font:500 9px/1 var(--mono);color:var(--faint)}
-#frame .zx{left:5px;right:5px;top:-11px;height:9px}
-#frame .zx.b{top:auto;bottom:-11px}
-#frame .zy{top:5px;bottom:5px;left:-10px;width:9px;flex-direction:column;align-items:center}
-#frame .zy.r{left:auto;right:-10px}
-#frame i{position:absolute;width:14px;height:14px;border:0 solid var(--rule3)}
-#frame i:nth-of-type(1){left:-1px;top:-1px;border-left-width:2px;border-top-width:2px}
-#frame i:nth-of-type(2){right:-1px;top:-1px;border-right-width:2px;border-top-width:2px}
-#frame i:nth-of-type(3){left:-1px;bottom:-1px;border-left-width:2px;border-bottom-width:2px}
-#frame i:nth-of-type(4){right:-1px;bottom:-1px;border-right-width:2px;border-bottom-width:2px}
+/* ---------- viewfinder corners around the free 3D area ---------- */
+#frame{position:absolute;left:calc(var(--side) + 14px);right:calc(var(--drawer) + 14px);top:calc(var(--top) + 14px);bottom:calc(var(--tele) + 14px);pointer-events:none}
+#frame i{position:absolute;width:18px;height:18px;border:0 solid rgba(255,255,255,.28)}
+#frame i:nth-of-type(1){left:0;top:0;border-left-width:2px;border-top-width:2px}
+#frame i:nth-of-type(2){right:0;top:0;border-right-width:2px;border-top-width:2px}
+#frame i:nth-of-type(3){left:0;bottom:0;border-left-width:2px;border-bottom-width:2px}
+#frame i:nth-of-type(4){right:0;bottom:0;border-right-width:2px;border-bottom-width:2px}
 
-/* title block (bottom-right of the drawing area) */
-#tblock{position:absolute;right:calc(var(--drawer) + 24px);bottom:calc(var(--tele) + 24px);width:236px;background:var(--sheet2);border:1px solid var(--rule3);font:400 10px/1.2 var(--mono);color:var(--ink);pointer-events:none}
-#tblock .r1{display:flex;align-items:stretch;border-bottom:1px solid var(--rule2)}
-#tblock .r1 .no{padding:6px 8px;background:var(--ink);color:var(--sheet2);font:600 11px/1 var(--mono);letter-spacing:.04em;display:flex;align-items:center}
-#tblock .r1 .nm{padding:5px 8px;font:600 13px/1.05 var(--cond);letter-spacing:.02em;text-transform:uppercase;display:flex;align-items:center}
-#tblock .g{display:grid;grid-template-columns:1.1fr 1.2fr .8fr .8fr}
-#tblock .g div{padding:4px 7px 5px;border-right:1px solid var(--rule)}
-#tblock .g div:last-child{border-right:0}
-#tblock .g span{display:block;font:500 8.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
-#tblock .g b{display:block;margin-top:3px;font:600 11px/1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tblock #tb-mode{color:var(--red)}
+/* info bug (bottom-right of the 3D area): a strip of slanted broadcast tabs */
+#tblock{position:absolute;right:calc(var(--drawer) + 28px);bottom:calc(var(--tele) + 26px);display:flex;align-items:stretch;height:26px;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+#tblock .no{display:flex;align-items:center;padding:0 14px 0 10px;background:var(--red);color:#fff;font:italic 800 13px/1 var(--sans);font-stretch:75%;letter-spacing:.04em;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#tblock .nm{display:none}
+#tblock .g{display:flex;margin-left:-4px}
+#tblock .g div{display:flex;align-items:center;gap:6px;padding:0 14px 0 12px;margin-left:-4px;background:var(--panel2);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#tblock .g div:nth-child(2n){background:var(--panel3)}
+#tblock .g span{font:italic 600 9.5px/1 var(--sans);font-stretch:75%;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+#tblock .g b{font:600 11.5px/1 var(--mono);color:var(--txt);white-space:nowrap}
+#tblock #tb-mode{color:var(--live)}
 
-/* ---------- header ---------- */
-#hdr{position:absolute;left:0;right:0;top:0;height:var(--hdr);display:flex;align-items:center;gap:14px;padding:0 14px 0 0;background:var(--sheet);border-bottom:1px solid var(--rule3)}
-.mark{align-self:stretch;display:flex;align-items:center;gap:1px;padding:0 12px;background:var(--red);color:#fff;font:700 15px/1 var(--cond);letter-spacing:.04em}
-.mark b{font:600 15px/1 var(--mono);margin-left:3px;padding:3px 4px;background:#fff;color:var(--red)}
-.brand{display:flex;align-items:baseline;gap:12px;min-width:0;white-space:nowrap}
-.brand h1{margin:0;font:700 23px/1 var(--cond);letter-spacing:.005em;color:var(--ink)}
-.brand h1 small{font:500 17px/1 var(--sans);color:var(--ink2);margin-right:5px}
-.brand h1 .s{color:var(--red);margin:0 1px;font-weight:600}
-.kicker{font:500 10.5px/1 var(--mono);letter-spacing:.04em;color:var(--mute);padding-left:12px;border-left:1px solid var(--rule2);overflow:hidden;text-overflow:ellipsis}
-.hx{margin-left:auto;display:flex;align-items:center;gap:6px}
-.lang{display:flex;border:1px solid var(--rule3)}
-.lang button{border:0;background:none;padding:0 9px;height:26px;font:500 11px/1 var(--mono);color:var(--ink2)}
-.lang button+button{border-left:1px solid var(--rule3)}
-.lang button.on{background:var(--ink);color:var(--sheet2)}
-.ic{display:flex;gap:0;border:1px solid var(--rule3)}
-.ic button{width:30px;height:26px;border:0;background:none;display:grid;place-items:center;padding:0;color:var(--ink)}
-.ic button+button{border-left:1px solid var(--rule3)}
-.ic button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.ic button:hover{background:var(--redtint)}
-.ic button.on{background:var(--ink);color:var(--sheet2)}
+/* ---------- header: black bar, red slanted tab, kerb underline ---------- */
+#hdr{position:absolute;left:0;right:0;top:0;height:var(--hdr);display:flex;align-items:center;gap:16px;padding:0 12px 0 0;background:#050506;overflow:hidden}
+#hdr::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--kerb);opacity:.95}
+.speed{position:absolute;inset:0 0 3px 38%;pointer-events:none;overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent)}
+.speed i{position:absolute;height:1px;width:140px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22));animation:streak 3.8s linear infinite}
+.speed i:nth-child(1){top:11px;animation-delay:-.4s}
+.speed i:nth-child(2){top:22px;width:220px;animation-duration:5.2s;animation-delay:-2.1s}
+.speed i:nth-child(3){top:33px;width:90px;animation-duration:3.1s;animation-delay:-1.3s}
+@keyframes streak{from{left:-240px}to{left:100%}}
+.mark{position:relative;align-self:stretch;display:flex;align-items:center;gap:4px;padding:0 26px 3px 14px;background:var(--red);color:#fff;font:italic 800 19px/1 var(--sans);font-stretch:75%;letter-spacing:.02em;clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%)}
+.mark b{font:italic 700 13px/1 var(--mono);padding:3px 5px;background:#fff;color:#050506;transform:skewX(-10deg)}
+.brand{position:relative;display:flex;align-items:center;gap:14px;min-width:0;white-space:nowrap}
+.brand h1{margin:0;font:italic 800 25px/1 var(--sans);font-stretch:75%;letter-spacing:.01em;text-transform:uppercase;color:#fff}
+.brand h1 small{font:italic 500 16px/1 var(--sans);font-stretch:75%;color:var(--mute);margin-right:7px;letter-spacing:.04em}
+.brand h1 .s{color:var(--red);margin:0 1px}
+.kicker{font:500 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:4px 0 4px 14px;border-left:2px solid var(--red);overflow:hidden;text-overflow:ellipsis}
+.hx{position:relative;margin-left:auto;display:flex;align-items:center;gap:8px}
+.live{display:flex;align-items:center;gap:6px;font:italic 700 11px/1 var(--sans);font-stretch:75%;letter-spacing:.14em;color:var(--txt);padding:0 10px;height:24px;background:var(--panel2);transform:skewX(-12deg)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 1.6s steps(2,start) infinite}
+.live span{transform:skewX(12deg)}
+@keyframes blink{50%{opacity:.25}}
+.lang{display:flex;transform:skewX(-12deg);background:var(--panel2)}
+.lang button{border:0;background:none;padding:0 10px;height:26px;font:600 11px/1 var(--mono);color:var(--mute)}
+.lang button.on{background:#fff;color:#050506}
+.ic{display:flex;gap:3px}
+.ic button{width:32px;height:26px;border:0;background:var(--panel2);display:grid;place-items:center;padding:0;color:var(--txt);transform:skewX(-12deg)}
+.ic button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform:skewX(12deg)}
+.ic button:hover{background:var(--panel3)}
+.ic button.on{background:#fff;color:#050506}
 .ic #b-snd.on{background:var(--red);color:#fff}
 #b-snd #snd-w{display:none}
 #b-snd.on #snd-w{display:inline}
 
-/* chapter strip */
-#chapters{position:absolute;left:0;right:0;top:var(--hdr);height:var(--strip);display:flex;background:var(--sheet2);border-bottom:1px solid var(--rule3)}
-#chapters .lead{flex:none;width:var(--side);display:flex;align-items:center;padding:0 14px;border-right:1px solid var(--rule3)}
-#chapters .ch{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;border:0;border-right:1px solid var(--rule);background:none;padding:0 12px;text-align:left;position:relative}
-#chapters .ch:last-child{border-right:0}
-#chapters .ch b{flex:none;font:600 11px/1 var(--mono);color:var(--red)}
-#chapters .ch span{font:600 13.5px/1.1 var(--cond);letter-spacing:.01em;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#chapters .ch:hover{background:var(--redtint)}
-#chapters .ch.on{background:var(--sheet)}
-#chapters .ch.on::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--red)}
-#chapters .ch.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--sheet)}
-#chapters .ch.on span{color:var(--ink)}
-#chapters .ch.seen b::after{content:"✓";margin-left:3px;color:var(--mute);font-weight:400}
+/* ---------- chapter strip: slanted session tabs ---------- */
+#chapters{position:absolute;left:0;right:0;top:var(--hdr);height:var(--strip);display:flex;gap:0;background:#0d0d10;padding:0 6px 0 0;border-bottom:1px solid var(--line2)}
+#chapters .lead{flex:none;width:var(--side);display:flex;align-items:center;gap:8px;padding:0 14px}
+#chapters .lead::before{content:"";width:4px;height:14px;background:var(--red);transform:skewX(-14deg)}
+#chapters .ch{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;border:0;background:none;padding:0 14px 0 16px;margin-left:-6px;text-align:left;position:relative;clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);transition:background .15s}
+#chapters .ch::after{content:"";position:absolute;right:4px;top:9px;bottom:9px;width:1px;background:var(--line2);transform:skewX(-14deg)}
+#chapters .ch b{flex:none;font:700 11px/1 var(--mono);color:var(--red);padding:3px 4px;background:rgba(255,255,255,.05)}
+#chapters .ch span{font:italic 700 14px/1.1 var(--sans);font-stretch:75%;letter-spacing:.02em;text-transform:uppercase;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chapters .ch:hover{background:rgba(255,255,255,.05)}
+#chapters .ch.on{background:var(--red)}
+#chapters .ch.on::after{display:none}
+#chapters .ch.on b{background:#fff;color:var(--red)}
+#chapters .ch.on span{color:#fff}
+#chapters .ch.seen:not(.on) b{color:var(--live)}
 
-/* ---------- control sheet (left) ---------- */
-#dock{position:absolute;left:0;top:var(--top);bottom:var(--tele);width:var(--side);padding:12px 14px 14px;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--rule3);overflow:auto;scrollbar-width:none}
+/* ---------- pit-wall controls (left) ---------- */
+#dock{position:absolute;left:0;top:var(--top);bottom:var(--tele);width:var(--side);padding:14px 14px 14px;display:flex;flex-direction:column;gap:14px;overflow:auto;scrollbar-width:none;background:linear-gradient(90deg,var(--panel) 0 calc(100% - 1px),var(--line2) 0)}
 #dock::-webkit-scrollbar{display:none}
 .dr{display:flex;flex-direction:column;gap:14px}
-.grp{display:flex;flex-direction:column;gap:6px;min-width:0}
-.grp>.lb{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:4px;border-bottom:1px solid var(--rule2)}
-.grp>.lb span{font:600 11.5px/1 var(--cond);letter-spacing:.09em;text-transform:uppercase;color:var(--ink)}
-.grp>.lb em{font:400 10px/1 var(--mono);letter-spacing:0;text-transform:none;font-style:normal;color:var(--faint)}
+.grp{display:flex;flex-direction:column;gap:7px;min-width:0}
+.grp>.lb{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grp>.lb span{display:flex;align-items:center;gap:7px;font:italic 700 12px/1 var(--sans);font-stretch:75%;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
+.grp>.lb span::before{content:"";width:3px;height:11px;background:var(--red);transform:skewX(-14deg)}
+.grp>.lb em{font:500 9.5px/1 var(--mono);letter-spacing:.02em;font-style:normal;color:var(--faint)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.seg{display:flex;border:1px solid var(--rule3);background:var(--sheet2)}
-.seg button{flex:1;border:0;background:none;height:28px;padding:0 6px;font:500 13px/1 var(--sans);color:var(--ink2);white-space:nowrap;transition:background .15s,color .15s}
-.seg button+button{border-left:1px solid var(--rule2)}
-.seg button:hover{background:var(--redtint)}
-.seg button.on{background:var(--ink);color:var(--sheet2)}
-.seg.mode{display:grid;grid-template-columns:1fr 1fr}
-.seg.mode button{height:30px;text-align:left;padding:0 9px;border-left:0}
-.seg.mode button:nth-child(2n){border-left:1px solid var(--rule2)}
-.seg.mode button:nth-child(n+3){border-top:1px solid var(--rule2)}
-.seg.mode button.on{background:var(--ink);color:var(--sheet2)}
+.seg{display:flex;gap:3px;padding-left:4px}
+.seg button{flex:1;border:0;background:var(--panel3);height:28px;padding:0 6px;font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt2);white-space:nowrap;transform:skewX(-12deg);transition:background .15s,color .15s}
+.seg button:hover{background:#2e2e36;color:var(--txt)}
+.seg button.on{background:#fff;color:#050506}
+.seg.mode{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.seg.mode button{height:30px;text-align:left;padding:0 10px;position:relative}
+.seg.mode button::after{content:"";position:absolute;right:6px;top:50%;width:6px;height:6px;margin-top:-3px;background:var(--faint)}
+.seg.mode button.on::after{background:currentColor}
 .seg.mode button.on[data-v=quali]{background:var(--red);color:#fff}
+.seg.mode button.on[data-v=race]{background:#fff;color:#050506}
 .seg.mode button.on[data-v=recharge]{background:var(--harv);color:#fff}
-.seg.mode button.on[data-v=overtake]{background:var(--elec);color:#fff}
-.seg.era button,.seg#seg-slow button{font-family:var(--mono);font-size:12px}
-.tg{display:flex;flex-direction:column;border:1px solid var(--rule3);background:var(--sheet2)}
-.tg button{display:flex;align-items:center;gap:9px;height:30px;padding:0 9px;border:0;background:none;font:500 13px/1 var(--sans);color:var(--ink2);white-space:nowrap;text-align:left}
-.tg button+button{border-top:1px solid var(--rule2)}
-.tg button::before{content:"";flex:none;width:11px;height:11px;border:1.5px solid var(--ink2);background:var(--sheet2);box-shadow:inset 0 0 0 2px var(--sheet2)}
-.tg button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.seg.mode button.on[data-v=overtake]{background:var(--elec);color:#04120f}
+.seg.era button,.seg#seg-slow button{font:600 12px/1 var(--mono)}
+.tg{display:flex;flex-direction:column;gap:3px;padding-left:4px}
+.tg button{display:flex;align-items:center;gap:9px;height:30px;padding:0 10px;border:0;background:var(--panel2);font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt2);white-space:nowrap;text-align:left;transform:skewX(-12deg);border-left:3px solid var(--panel3)}
+.tg button::before{content:"";flex:none;width:8px;height:8px;background:var(--faint)}
+.tg button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
 .tg button .txt{flex:1}
-.tg button:hover{background:var(--redtint)}
-.tg button.on{color:var(--ink)}
-.tg button.on::before{background:var(--red);border-color:var(--red)}
+.tg button:hover{background:var(--panel3)}
+.tg button.on{color:#fff;border-left-color:var(--live);background:#1d1f16}
+.tg button.on::before{background:var(--live);box-shadow:0 0 8px var(--live)}
 .slider{grid-area:s;position:relative;height:42px;flex:1;min-width:120px;touch-action:none;cursor:pointer}
-.slider .tr{position:absolute;left:0;right:0;top:22px;height:2px;background:var(--ink)}
-.slider .fl{position:absolute;left:0;top:20px;height:6px;background:repeating-linear-gradient(90deg,var(--red) 0 2px,transparent 2px 4px);opacity:.55}
-.slider .kn{position:absolute;top:10px;width:0;height:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--red)}
-.slider .kn::after{content:"";position:absolute;left:-1px;top:-1px;width:2px;height:18px;background:var(--red)}
-.slider .tk{position:absolute;top:24px;width:1px;height:6px;background:var(--ink2)}
-.slider .mk{position:absolute;top:32px;font:400 9px/1 var(--mono);color:var(--mute);transform:translateX(-50%);white-space:nowrap}
+.slider .tr{position:absolute;left:0;right:0;top:19px;height:6px;background:var(--panel3);transform:skewX(-20deg)}
+.slider .fl{position:absolute;left:0;top:19px;height:6px;background:linear-gradient(90deg,#6c0a16,var(--red));transform:skewX(-20deg)}
+.slider .kn{position:absolute;top:12px;width:10px;height:20px;margin-left:-5px;background:#fff;transform:skewX(-14deg);box-shadow:0 0 0 2px #050506}
+.slider .tk{position:absolute;top:28px;width:1px;height:5px;background:var(--faint)}
+.slider .mk{position:absolute;top:35px;font:500 9px/1 var(--mono);color:var(--mute);transform:translateX(-50%);white-space:nowrap}
 .slider .tk+.mk{transform:none}
 .slider .mk.a{color:var(--fuel)}
 .slider .mk:last-child{transform:translateX(-100%)}
-.slider.auto .kn{border-top-color:var(--ink2)}
-.slider.auto .kn::after{background:var(--ink2)}
-.rpmv{grid-area:v;font:600 20px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.rpmv small{color:var(--mute);font-size:10px;font-weight:400;margin-left:3px;letter-spacing:0}
+.slider.auto .kn{background:var(--mute)}
+.slider.auto .fl{background:linear-gradient(90deg,#26262c,#4a4a53)}
+.rpmv{grid-area:v;font:700 21px/1 var(--mono);color:var(--live);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.rpmv small{color:var(--mute);font-size:10px;font-weight:500;margin-left:4px;letter-spacing:0}
 .slowhint{grid-area:h;justify-self:end;text-align:right;font:400 9.5px/1.25 var(--mono);color:var(--mute);font-style:normal;max-width:100px}
 .rpmrow{display:grid;grid-template-areas:"v h" "s s";align-items:end;gap:2px 8px}
 .dk-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
 .dk-foot .legend{flex-direction:column;gap:5px;font-size:10.5px}
-.dk-foot p{margin:0;padding-top:8px;border-top:1px solid var(--rule);font:400 10px/1.5 var(--mono);color:var(--mute)}
+.dk-foot p{margin:0;padding-top:8px;border-top:1px solid var(--line2);font:400 10px/1.5 var(--mono);color:var(--mute)}
 
-/* ---------- telemetry strip (bottom) ---------- */
-#tele{position:absolute;left:0;right:0;bottom:0;height:var(--tele);display:grid;grid-template-columns:var(--side) 1.05fr 1fr .95fr 1.1fr 1.55fr;border-top:1px solid var(--rule3)}
-#tele>.tc{min-width:0;overflow:hidden;padding:9px 12px 8px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
-#tele>.tc:first-child{border-right-color:var(--rule3)}
-#tele>.tc:last-child{border-right:0}
+/* ---------- lower-third telemetry (bottom) ---------- */
+#tele{position:absolute;left:0;right:0;bottom:0;height:var(--tele);display:grid;grid-template-columns:var(--side) 1.05fr 1fr .95fr 1.1fr 1.6fr;gap:2px;padding-top:4px;background:#050506}
+#tele::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--kerb)}
+#tele>.tc{min-width:0;overflow:hidden;padding:9px 12px 8px;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+#tele>.tc:first-child{background:#141418}
 .th{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.th em{font:600 9.5px/1 var(--mono);letter-spacing:.06em;font-style:normal;color:var(--sheet2);background:var(--ink);padding:3px 5px}
-.big{display:grid;grid-template-columns:1.35fr 1fr .45fr;gap:6px;align-items:end}
+.th .capt{display:flex;align-items:center;gap:6px}
+.th .capt::before{content:"";width:3px;height:10px;background:var(--red);transform:skewX(-14deg)}
+.th em{font:700 9.5px/1 var(--mono);letter-spacing:.06em;font-style:normal;color:#050506;background:var(--live);padding:3px 6px;transform:skewX(-12deg)}
+.big{display:grid;grid-template-columns:1.4fr 1fr .5fr;gap:6px;align-items:end}
 .big div{display:flex;flex-direction:column;gap:3px;min-width:0}
-.big i,.row i,.mini i,.soc i{font:500 9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-style:normal;white-space:nowrap}
-.big b{font:600 24px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.03em;white-space:nowrap}
-.big div+div b{font-size:17px}
-.big b small{font-size:9.5px;font-weight:400;color:var(--mute);margin-left:2px;letter-spacing:0}
-.rpmbar{position:relative;height:6px;background:repeating-linear-gradient(90deg,var(--rule2) 0 1px,transparent 1px 9.0909%);border-bottom:1px solid var(--rule3)}
-.rpmbar span{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink)}
-.rpmbar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--red)}
+.big i,.row i,.mini i,.soc i{font:italic 600 10px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.big b{font:700 25px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--live);letter-spacing:-.04em;white-space:nowrap}
+.big div+div b{font-size:18px;color:var(--txt)}
+.big div:last-child b{display:grid;place-items:center;width:30px;height:28px;margin-top:-6px;font:italic 800 24px/1 var(--sans);color:#050506;background:var(--live);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.big b small{font-size:9.5px;font-weight:500;color:var(--mute);margin-left:2px;letter-spacing:0}
+/* shift lights (replaces the rpm bar) */
+.leds{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;height:8px}
+.leds i{background:#1f1f25;transform:skewX(-20deg);transition:background .06s}
+.leds i.g{background:var(--live);box-shadow:0 0 6px rgba(212,255,51,.6)}
+.leds i.r{background:var(--red);box-shadow:0 0 6px rgba(227,16,42,.7)}
+.leds i.w{background:#fff;box-shadow:0 0 8px rgba(255,255,255,.8)}
+.leds i.k{outline:1px solid rgba(255,138,28,.6)}
 .row{display:grid;grid-template-columns:44px 1fr 62px;align-items:center;gap:7px}
-.row b{font:500 12px/1 var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
-.bar{position:relative;height:7px;background:rgba(28,31,35,.07);box-shadow:inset 0 0 0 1px var(--rule)}
+.row b{font:600 12px/1 var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--txt);white-space:nowrap}
+.bar{position:relative;height:7px;background:#1f1f25;transform:skewX(-20deg)}
 .bar>span{position:absolute;top:0;bottom:0;left:0;transition:background .3s}
 .bar.bi>span{left:50%}
-.bar.bi::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ink)}
-.bar .cap{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--red)}
+.bar.bi::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--txt2)}
+.bar .cap{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff}
 #r-ice>span{background:var(--fuel)}
-#r-fuel>span{background:repeating-linear-gradient(90deg,var(--fuel) 0 3px,#f19a4f 3px 5px)}
+#r-fuel>span{background:repeating-linear-gradient(90deg,var(--fuel) 0 3px,#b35a0c 3px 5px)}
 #r-turbo>span{background:var(--air)}
 #r-h>span{background:var(--mguh)}
 .hrow{display:none}
 .era25 .hrow{display:grid}
 .split{display:flex;flex-direction:column;gap:4px}
-.split .sb{display:flex;height:15px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--rule2)}
-.split .sb span{display:flex;align-items:center;justify-content:center;font:600 9.5px/1 var(--mono);color:#fff;transition:flex-basis .5s cubic-bezier(.2,.8,.2,1);white-space:nowrap;overflow:hidden}
+.split .sb{display:flex;height:16px;overflow:hidden;gap:2px;transform:skewX(-14deg)}
+.split .sb span{display:flex;align-items:center;justify-content:center;font:700 9.5px/1 var(--mono);color:#050506;transition:flex-basis .5s cubic-bezier(.2,.8,.2,1);white-space:nowrap;overflow:hidden}
 .split .sb .a{background:var(--fuel)} .split .sb .b{background:var(--elec)} .split .sb .c{background:var(--mguh)}
-.split .lg{display:flex;justify-content:space-between;font:400 10px/1.2 var(--mono);color:var(--ink2)}
+.split .lg{display:flex;justify-content:space-between;font:500 10px/1.2 var(--mono);color:var(--txt2)}
 .soc{display:grid;grid-template-columns:44px 1fr 84px;gap:7px;align-items:center}
-.batt{position:relative;height:15px;border:1.5px solid var(--ink);padding:2px;margin-right:4px}
-.batt::after{content:"";position:absolute;right:-5px;top:3px;width:3px;height:6px;background:var(--ink)}
+.batt{position:relative;height:15px;border:1.5px solid var(--txt2);padding:2px;margin-right:4px}
+.batt::after{content:"";position:absolute;right:-5px;top:3px;width:3px;height:6px;background:var(--txt2)}
 .batt span{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--elec) 0 6px,transparent 6px 8px);transition:background .3s}
 .batt.low span{background:repeating-linear-gradient(90deg,var(--red) 0 6px,transparent 6px 8px)}
-.soc b{font:500 12px/1 var(--mono);text-align:right;color:var(--ink);white-space:nowrap}
+.soc b{font:600 12px/1 var(--mono);text-align:right;color:var(--txt);white-space:nowrap}
 .soc b small{color:var(--mute);font-size:9.5px}
-.lapmj{display:flex;flex-direction:column;gap:6px}
+.lapmj{display:flex;flex-direction:column;gap:7px}
 .mini{display:flex;flex-direction:column;gap:4px;white-space:nowrap}
 .mini>div:first-child{display:flex;flex-direction:column;gap:3px}
-.mini b{font:600 15px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
-.mini b small{font-size:9.5px;font-weight:400;color:var(--mute)}
+.mini b{font:700 16px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums}
+.mini b small{font-size:9.5px;font-weight:500;color:var(--mute)}
 .mini .bar{height:5px}
 #m-harv .bar>span{background:var(--harv)} #m-dep .bar>span{background:var(--elec)}
-.status{display:flex;flex-wrap:wrap;gap:4px;max-height:40px;overflow:hidden}
-.chip{font:500 9.5px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:3px 5px;border:1px solid var(--rule2);color:var(--ink2);white-space:nowrap;background:var(--sheet2)}
-.chip.on-e{border-color:var(--elec);color:#fff;background:var(--elec)}
-.chip.on-h{border-color:var(--harv);color:#fff;background:var(--harv)}
-.chip.on-w{border-color:var(--red);color:#fff;background:var(--red)}
-.chip.on-a{border-color:var(--fuel);color:var(--fuel);background:var(--sheet2)}
-#trace{width:100%;height:0;flex:1 1 0;min-height:0;display:block;background:var(--sheet2);border:1px solid var(--rule2)}
-.lapline{display:flex;justify-content:space-between;gap:8px;font:400 10.5px/1 var(--mono);color:var(--mute)}
-.lapline b{color:var(--ink);font-weight:600}
+.status{display:flex;flex-wrap:wrap;gap:4px;max-height:42px;overflow:hidden;padding-left:3px}
+.chip{font:italic 700 10px/1 var(--sans);font-stretch:75%;letter-spacing:.07em;text-transform:uppercase;padding:4px 7px;color:var(--txt2);white-space:nowrap;background:var(--panel3);transform:skewX(-12deg)}
+.chip.on-e{color:#04120f;background:var(--elec)}
+.chip.on-h{color:#fff;background:var(--harv)}
+.chip.on-w{color:#fff;background:var(--red)}
+.chip.on-a{color:#140a00;background:var(--fuel)}
+#trace{width:100%;height:0;flex:1 1 0;min-height:0;display:block;background:#0b0b0e}
+/* sector timing: purple = session best, green = faster than last lap, yellow = slower */
+.secs{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.secs div{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px 3px 8px;background:var(--panel3);transform:skewX(-12deg);min-width:0}
+.secs i{font:italic 700 10px/1 var(--sans);font-stretch:75%;letter-spacing:.06em;color:var(--mute);font-style:italic}
+.secs b{font:600 11.5px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+.secs div.p{background:var(--s-p)} .secs div.g{background:var(--s-g)} .secs div.y{background:var(--s-y)}
+.secs div.p i,.secs div.p b{color:#fff}
+.secs div.g i,.secs div.g b,.secs div.y i,.secs div.y b{color:#08140a}
+.secs div.y i,.secs div.y b{color:#1a1400}
+.secs div.run{box-shadow:inset 0 -2px 0 var(--live)}
+.secs div.old b{color:var(--mute)}
+.lapline{display:flex;justify-content:space-between;gap:8px;font:500 10.5px/1 var(--mono);color:var(--mute);text-transform:uppercase}
+.lapline b{color:var(--txt);font-weight:700}
+.lapline #t-lapt{color:var(--live)}
 
-/* ---------- lesson drawer (right) ---------- */
-#cards{position:absolute;right:0;top:var(--top);bottom:var(--tele);width:var(--drawer);display:flex;flex-direction:column;border-left:1px solid var(--rule3)}
-#cards .dh{flex:none;display:flex;align-items:center;justify-content:space-between;height:34px;padding:0 8px 0 16px;border-bottom:1px solid var(--rule2)}
-#cards .dh .nav{display:flex;border:1px solid var(--rule3)}
-#cards .dh .nav button{border:0;background:none;width:28px;height:22px;padding:0;font:500 13px/1 var(--mono);color:var(--ink)}
-#cards .dh .nav button+button{border-left:1px solid var(--rule3)}
-#cards .dh .nav button:hover{background:var(--redtint)}
-#cards .dh .pos{font:500 10.5px/1 var(--mono);color:var(--mute);margin-right:8px}
-#intro{flex:1;overflow:auto;padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px}
-#intro .big1{font:700 32px/1 var(--cond);letter-spacing:-.005em;color:var(--ink);margin:0}
+/* ---------- lesson panel (right) ---------- */
+#cards{position:absolute;right:0;top:var(--top);bottom:var(--tele);width:var(--drawer);display:flex;flex-direction:column;background:linear-gradient(90deg,var(--line2) 0 1px,var(--panel) 0)}
+#cards .dh{flex:none;display:flex;align-items:center;justify-content:space-between;height:36px;padding:0 10px 0 16px;background:#0d0d10}
+#cards .dh .capt{display:flex;align-items:center;gap:7px}
+#cards .dh .capt::before{content:"";width:3px;height:11px;background:var(--red);transform:skewX(-14deg)}
+#cards .dh .nav{display:flex;gap:3px}
+#cards .dh .nav button{border:0;background:var(--panel3);width:28px;height:22px;padding:0;font:600 13px/1 var(--mono);color:var(--txt);transform:skewX(-12deg)}
+#cards .dh .nav button:hover{background:var(--red)}
+#cards .dh .pos{font:600 11px/1 var(--mono);color:var(--mute);margin-right:10px}
+#intro{flex:1;overflow:auto;padding:18px 16px 16px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--panel3) transparent}
+#intro .big1{margin:0;font:italic 800 38px/.95 var(--sans);font-stretch:75%;letter-spacing:.005em;text-transform:uppercase;color:#fff}
 #intro .big1 .s{color:var(--red)}
-#intro p{margin:0;font-size:14px;line-height:1.55;color:var(--ink2)}
-#intro ol{list-style:none;margin:4px 0 0;padding:0;border-top:1px solid var(--rule2)}
-#intro li button{display:flex;gap:10px;align-items:baseline;width:100%;border:0;border-bottom:1px solid var(--rule);background:none;padding:8px 2px;text-align:left;font:500 14px/1.25 var(--sans);color:var(--ink)}
-#intro li button b{font:600 11px/1 var(--mono);color:var(--red);flex:none;width:18px}
-#intro li button:hover{background:var(--redtint)}
+#intro .big1 span:first-child{display:block;font-size:17px;font-weight:600;color:var(--mute);letter-spacing:.06em;margin-bottom:4px}
+#intro p{margin:0;font-size:14px;line-height:1.55;color:var(--txt2)}
+/* timing tower: lessons as a running order */
+.tower{display:flex;flex-direction:column;gap:2px}
+.tower .hd{display:grid;grid-template-columns:34px 1fr 44px;gap:8px;padding:0 6px 4px 4px;font:italic 600 9.5px/1 var(--sans);font-stretch:75%;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+#intro ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+#intro li button{display:grid;grid-template-columns:30px 4px 1fr 44px;align-items:center;gap:8px;width:100%;height:34px;border:0;background:var(--panel2);padding:0 8px 0 0;text-align:left;font:italic 700 15px/1.05 var(--sans);font-stretch:75%;text-transform:uppercase;letter-spacing:.02em;color:var(--txt);transition:background .15s}
+#intro li button b{height:100%;display:grid;place-items:center;font:700 13px/1 var(--mono);font-style:normal;color:#050506;background:#fff}
+#intro li button u{height:18px;text-decoration:none;transform:skewX(-14deg)}
+#intro li button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#intro li button em{justify-self:end;font:600 10px/1 var(--mono);font-style:normal;color:var(--faint);text-transform:uppercase}
+#intro li button.seen em{color:var(--live)}
+#intro li button:hover{background:var(--panel3)}
+#intro li button:hover b{background:var(--red);color:#fff}
 #intro .note{font:400 10.5px/1.5 var(--mono);color:var(--mute)}
 #app.has-card #intro{display:none}
-#cardlist{list-style:none;margin:0;padding:0;flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--rule2) transparent}
+#cardlist{list-style:none;margin:0;padding:0;flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--panel3) transparent}
 #app:not(.has-card) #cardlist{display:none}
 .card{display:none}
 .card.on{display:block}
-.card>button{display:flex;align-items:flex-start;gap:12px;width:100%;border:0;background:none;padding:16px 18px 10px;text-align:left}
-.card .n{flex:none;font:700 34px/.85 var(--cond);color:var(--red);letter-spacing:-.02em}
+.card>button{display:flex;align-items:stretch;gap:12px;width:100%;border:0;background:linear-gradient(180deg,#16161b,var(--panel));padding:16px 16px 12px;text-align:left;position:relative}
+.card>button::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:2px;background:linear-gradient(90deg,var(--red) 0 48px,var(--line2) 48px)}
+.card .n{flex:none;display:flex;align-items:center;justify-content:center;min-width:52px;padding:0 10px 0 6px;font:italic 800 34px/1 var(--sans);font-stretch:75%;color:#fff;background:var(--red);clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%);letter-spacing:-.02em}
 .card .n::before{content:"0"}
-.card .t{flex:1;font:700 22px/1.08 var(--cond);letter-spacing:.005em;color:var(--ink);padding-top:1px}
+.card .t{flex:1;align-self:center;font:italic 800 23px/1.02 var(--sans);font-stretch:75%;letter-spacing:.01em;text-transform:uppercase;color:#fff}
 .card .body{display:block}
-.card .inner{padding:4px 18px 18px;font-size:14px;line-height:1.58;color:var(--ink2)}
+.card .inner{padding:12px 16px 18px;font-size:14px;line-height:1.58;color:var(--txt2)}
 .card .inner p{margin:0 0 10px}
-.card .inner b{color:var(--ink);font-weight:600}
+.card .inner b{color:#fff;font-weight:600}
 .card .inner .c,.card .inner .a,.card .inner .g,.card .inner .v,.card .inner .r{font-weight:600}
-.card .inner .c{color:var(--elec)} .card .inner .a{color:var(--fuel)} .card .inner .g{color:var(--harv)} .card .inner .v{color:var(--mguh)} .card .inner .r{color:var(--red)}
-.card .inner .look{display:flex;gap:9px;align-items:flex-start;margin-top:8px;padding:9px 11px;background:var(--sheet2);border:1px solid var(--rule2);border-left:3px solid var(--red);font-size:13px;line-height:1.5;color:var(--ink)}
-.card .inner .look svg{flex:none;width:14px;height:14px;margin-top:2px;fill:none;stroke:var(--red);stroke-width:2}
-.cbtns{display:flex;flex-wrap:wrap;gap:0;margin:10px 0 4px;border:1px solid var(--rule3);width:max-content;max-width:100%}
-.cbtns button{border:0;background:var(--sheet2);padding:6px 10px;font:500 12.5px/1 var(--sans);color:var(--ink)}
-.cbtns button+button{border-left:1px solid var(--rule2)}
-.cbtns button:hover{background:var(--redtint)}
-.cbtns button.on{background:var(--ink);color:var(--sheet2)}
-.fire{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin:10px 0 6px}
-.fire div{display:flex;flex-direction:column;align-items:center;gap:4px;font:500 9.5px/1 var(--mono);color:var(--ink2)}
-.fire span{display:block;width:100%;height:26px;background:#fff;border:1px solid var(--rule2);transition:background .05s}
-.legend{display:flex;flex-wrap:wrap;gap:5px 12px;font:400 10.5px/1 var(--mono);color:var(--ink2)}
-.legend i{display:inline-block;width:12px;height:4px;margin-right:5px;vertical-align:2px}
-.cmp{display:grid;grid-template-columns:38px 1fr;gap:5px 8px;align-items:center;margin:10px 0 4px;font:500 10.5px/1 var(--mono);color:var(--ink2)}
-.cmp .sb{display:flex;height:17px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--rule2)}
-.cmp .sb span{display:flex;align-items:center;padding-left:6px;font:600 9.5px/1 var(--mono);color:#fff;white-space:nowrap;overflow:hidden}
+.card .inner .c{color:var(--elec)} .card .inner .a{color:var(--fuel)} .card .inner .g{color:var(--harv)} .card .inner .v{color:var(--mguh)} .card .inner .r{color:var(--heat)}
+.card .inner .look{display:flex;gap:9px;align-items:flex-start;margin-top:10px;padding:9px 11px;background:var(--panel2);border-left:3px solid var(--live);font-size:13px;line-height:1.5;color:var(--txt)}
+.card .inner .look svg{flex:none;width:14px;height:14px;margin-top:2px;fill:none;stroke:var(--live);stroke-width:2}
+.cbtns{display:flex;flex-wrap:wrap;gap:3px;margin:10px 0 4px 4px}
+.cbtns button{border:0;background:var(--panel3);padding:7px 11px;font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt);transform:skewX(-12deg)}
+.cbtns button:hover{background:#34343c}
+.cbtns button.on{background:#fff;color:#050506}
+.fire{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:10px 0 6px}
+.fire div{display:flex;flex-direction:column;align-items:center;gap:4px;font:600 9.5px/1 var(--mono);color:var(--txt2)}
+.fire span{display:block;width:100%;height:26px;background:#1f1f25;transform:skewX(-12deg);transition:background .05s}
+.legend{display:flex;flex-wrap:wrap;gap:5px 12px;font:500 10.5px/1 var(--mono);color:var(--txt2)}
+.legend i{display:inline-block;width:12px;height:4px;margin-right:6px;vertical-align:2px;transform:skewX(-20deg)}
+.cmp{display:grid;grid-template-columns:38px 1fr;gap:5px 8px;align-items:center;margin:10px 0 4px;font:600 10.5px/1 var(--mono);color:var(--txt2)}
+.cmp .sb{display:flex;gap:2px;height:18px;overflow:hidden;transform:skewX(-12deg)}
+.cmp .sb span{display:flex;align-items:center;padding-left:6px;font:700 9.5px/1 var(--mono);color:#050506;white-space:nowrap;overflow:hidden}
 .cmp .sb .a{background:var(--fuel)} .cmp .sb .b{background:var(--elec)}
-#ffchart{display:block;width:100%;height:96px;margin:8px 0 4px;background:var(--sheet2);border:1px solid var(--rule)}
-#cmdesc{font-size:13px!important;color:var(--ink)!important}
+#ffchart{display:block;width:100%;height:96px;margin:8px 0 4px;background:#0b0b0e}
+#cmdesc{font-size:13px!important;color:var(--txt)!important}
 
 /* ---------- labels / tooltips ---------- */
 #leaders{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-#leaders line{stroke:var(--ink);stroke-width:1}
-#leaders circle{fill:var(--sheet2);stroke:var(--ink);stroke-width:1.2}
+#leaders line{stroke:rgba(255,255,255,.7);stroke-width:1}
+#leaders circle{fill:var(--live);stroke:#050506;stroke-width:1}
 #labels{position:absolute;inset:0;pointer-events:none}
-.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:4px 8px 5px;background:var(--sheet2);border:1px solid var(--ink);font:600 12.5px/1.1 var(--cond);letter-spacing:.02em;color:var(--ink);white-space:nowrap;opacity:0;transition:opacity .25s;will-change:transform}
-.lbl small{display:block;font:400 9.5px/1.2 var(--mono);letter-spacing:0;color:var(--mute);margin-top:2px}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:4px 9px 5px 10px;background:rgba(8,8,10,.92);border-left:3px solid var(--red);font:italic 700 13px/1.1 var(--sans);font-stretch:75%;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;opacity:0;transition:opacity .25s;will-change:transform}
+.lbl small{display:block;font:400 9.5px/1.2 var(--mono);font-style:normal;letter-spacing:0;text-transform:none;color:var(--mute);margin-top:2px}
 .lbl.on{opacity:1}
-.lbl.hi{border-color:var(--red);box-shadow:3px 3px 0 var(--red)}
-.lbl.stroke{padding:3px 5px;font:600 9.5px/1 var(--mono);letter-spacing:.04em;transform:translate(-50%,-50%);border-width:1.5px}
-#tip{position:absolute;z-index:20;pointer-events:none;padding:6px 10px 6px 12px;background:var(--sheet2);border:1px solid var(--ink);border-left:3px solid var(--red);font:600 13px/1.15 var(--cond);letter-spacing:.02em;color:var(--ink);white-space:nowrap;opacity:0;transform:translate(14px,14px);transition:opacity .12s}
-#tip small{display:block;font:400 10px/1.3 var(--mono);letter-spacing:0;color:var(--mute);margin-top:2px}
+.lbl.hi{border-left-color:var(--live);box-shadow:0 0 0 1px var(--live)}
+.lbl.stroke{padding:3px 6px;font:700 9.5px/1 var(--mono);font-style:normal;letter-spacing:.04em;transform:translate(-50%,-50%);border:1.5px solid;background:rgba(8,8,10,.85)}
+#tip{position:absolute;z-index:20;pointer-events:none;padding:6px 10px 6px 12px;background:rgba(8,8,10,.95);border-left:3px solid var(--red);font:italic 700 14px/1.15 var(--sans);font-stretch:75%;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;opacity:0;transform:translate(14px,14px);transition:opacity .12s}
+#tip small{display:block;font:400 10px/1.3 var(--mono);font-style:normal;text-transform:none;letter-spacing:0;color:var(--mute);margin-top:2px}
 #tip.on{opacity:1}
-#toast{position:absolute;left:50%;top:calc(var(--top) + 22px);transform:translate(-50%,-8px);padding:7px 12px;background:var(--ink);color:var(--sheet2);font:500 13px/1.3 var(--sans);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;z-index:30;border-left:3px solid var(--red)}
+#toast{position:absolute;left:50%;top:calc(var(--top) + 22px);transform:translate(-50%,-8px);display:flex;align-items:stretch;background:#050506;color:#fff;font:500 13px/1.3 var(--sans);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;z-index:30;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+#toast::before{content:"";flex:none;width:18px;background:var(--live);clip-path:polygon(0 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+#toast>span{padding:8px 14px 8px 10px}
 #toast.on{opacity:1;transform:translate(-50%,0)}
-#toast kbd{background:transparent;color:var(--sheet2);border-color:rgba(255,255,255,.4)}
+#toast kbd{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
 
 /* ---------- help ---------- */
-#help{position:absolute;inset:0;display:grid;place-items:center;background:rgba(236,232,222,.72);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s}
+#help{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.72);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s}
 #help.on{opacity:1;pointer-events:auto}
-.help{width:min(560px,calc(100vw - 32px));max-height:calc(100% - 40px);overflow:auto;padding:18px 20px;border:1px solid var(--ink)!important;box-shadow:6px 6px 0 rgba(28,31,35,.14)}
-.help h2{margin:0 0 4px;font:700 24px/1 var(--cond);padding-bottom:8px;border-bottom:2px solid var(--ink)}
-.help p{margin:10px 0 12px;color:var(--ink2);font-size:13.5px}
-.help dl{display:grid;grid-template-columns:auto 1fr;gap:0;margin:0;font-size:13.5px;align-items:stretch;border-top:1px solid var(--rule2)}
-.help dt,.help dd{padding:6px 0;border-bottom:1px solid var(--rule)}
+.help{width:min(560px,calc(100vw - 32px));max-height:calc(100% - 40px);overflow:auto;padding:0 20px 18px;background:var(--panel2)!important;border-top:4px solid transparent;border-image:var(--kerb) 1}
+.help h2{margin:0 -20px 4px;padding:12px 20px;font:italic 800 26px/1 var(--sans);font-stretch:75%;text-transform:uppercase;background:#050506}
+.help p{margin:12px 0;color:var(--txt2);font-size:13.5px}
+.help dl{display:grid;grid-template-columns:auto 1fr;gap:0;margin:0;font-size:13.5px;align-items:stretch}
+.help dt,.help dd{padding:6px 0;border-bottom:1px solid var(--line)}
 .help dt{display:flex;gap:4px;justify-content:flex-end;align-items:center;padding-right:14px}
-.help dd{margin:0;color:var(--ink2)}
-.help .x{float:right;border:1px solid var(--rule3);background:var(--sheet2);width:28px;height:28px}
+.help dd{margin:0;color:var(--txt2)}
+.help .x{float:right;margin:10px -8px 0 0;position:relative;z-index:1;border:0;background:var(--red);color:#fff;width:30px;height:28px;transform:skewX(-12deg)}
 
-/* ---------- cinematic ---------- */
-.lb-bar{position:absolute;left:0;right:0;height:0;background:var(--ink);z-index:15;transition:height .8s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+/* ---------- cinematic: letterbox + broadcast lower third ---------- */
+.lb-bar{position:absolute;left:0;right:0;height:0;background:#000;z-index:15;transition:height .8s cubic-bezier(.2,.8,.2,1);pointer-events:none}
 #lbt{top:0} #lbb{bottom:0}
 #app.cine .lb-bar{height:9vh}
-#caption{position:absolute;left:6vw;bottom:calc(9vh + 28px);z-index:16;pointer-events:none;opacity:0;transition:opacity .6s;padding:10px 16px 12px 14px;background:var(--sheet2);border-left:4px solid var(--red)}
-#caption b{display:block;font:700 30px/1 var(--cond);letter-spacing:.01em;color:var(--ink)}
-#caption span{display:block;margin-top:6px;font:400 12px/1.3 var(--mono);color:var(--ink2)}
-#caption i{display:none}
-#app.cine #caption.on{opacity:1}
+#caption{position:absolute;left:6vw;bottom:calc(9vh + 30px);z-index:16;pointer-events:none;opacity:0;transform:translateX(-24px);transition:opacity .5s,transform .5s cubic-bezier(.2,.8,.2,1);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;filter:drop-shadow(0 6px 16px rgba(0,0,0,.55))}
+#caption i{display:block;grid-row:1/3;width:22px;background:var(--red);clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+#caption b{display:block;padding:9px 30px 8px 14px;margin-left:-6px;font:italic 800 32px/1 var(--sans);font-stretch:75%;text-transform:uppercase;letter-spacing:.01em;color:#050506;background:#fff;clip-path:polygon(9px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+#caption span{display:block;justify-self:start;margin-left:-6px;padding:6px 20px 6px 16px;font:500 12px/1.2 var(--mono);color:#fff;background:#050506;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#app.cine #caption.on{opacity:1;transform:none}
 #app.cine .ui,#app.noui #frame,#app.cine #frame{opacity:0;pointer-events:none}
 #app.cine .ui *{pointer-events:none!important}
 
-#loader{position:absolute;inset:0;display:grid;place-items:center;z-index:50;background:var(--paper);transition:opacity .6s}
+#loader{position:absolute;inset:0;display:grid;place-items:center;z-index:50;background:var(--bg) var(--carbon);transition:opacity .6s}
 #loader.done{opacity:0;pointer-events:none}
-#loader div{font:500 11px/1 var(--mono);letter-spacing:.14em;color:var(--ink2);text-transform:uppercase}
-#loader div::after{content:"";display:block;margin:12px auto 0;width:140px;height:2px;background:linear-gradient(90deg,var(--red) 0 30%,var(--rule) 30%);background-size:200% 100%;animation:ld 1.2s linear infinite}
-@keyframes ld{to{background-position:-200% 0}}
-#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:24px;color:var(--ink2)}
+#loader div{font:italic 700 13px/1 var(--sans);font-stretch:75%;letter-spacing:.2em;color:#fff;text-transform:uppercase}
+#loader div::after{content:"";display:block;margin:14px auto 0;width:180px;height:4px;background:var(--kerb);background-size:28px 100%;animation:ld .6s linear infinite}
+@keyframes ld{to{background-position:28px 0}}
+#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:24px;color:var(--txt2)}
 
 /* ---------- mobile bits (hidden on desktop) ---------- */
 #mchips{display:none}
 #mnav{display:none}
 
 @media (max-width:1280px){
-  :root{--side:218px;--drawer:336px}
+  :root{--side:222px;--drawer:340px}
   .kicker{display:none}
-  #chapters .ch{padding:0 9px;gap:6px}
-  #chapters .ch span{font-size:12.5px}
-  #tele{grid-template-columns:var(--side) 1fr 1fr .9fr 1.05fr 1.3fr}
+  #chapters .ch{padding:0 11px 0 14px;gap:6px}
+  #chapters .ch span{font-size:13px}
+  #tele{grid-template-columns:var(--side) 1fr 1fr .9fr 1.05fr 1.4fr}
 }
 @media (max-width:1060px) and (min-width:761px){
-  :root{--drawer:300px;--side:200px}
+  :root{--drawer:304px;--side:204px}
+  .live{display:none}
   #chapters .ch span{display:none}
   #chapters .ch{justify-content:center}
   #tblock{display:none}
-  #tele{grid-template-columns:var(--side) 1fr 1fr 1fr 1.2fr}
+  #tele{grid-template-columns:var(--side) 1fr 1fr 1fr 1.3fr}
   #tele>.tc.t-e{display:none}
   .card .inner{font-size:13px}
-  .big b{font-size:19px} .big div+div b{font-size:14px}
+  .big b{font-size:20px} .big div+div b{font-size:15px}
+  .secs div{padding:3px 5px 3px 6px}
+  .secs i{display:none}
+  .dk-foot{display:none}
+  .big div:last-child i{visibility:hidden}
   .lapline{font-size:9.5px;flex-wrap:wrap;gap:2px 8px}
 }
 @media (max-height:880px) and (min-width:761px){
@@ -349,7 +393,7 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
   #dock{gap:12px} .dr{gap:12px}
 }
 @media (max-height:760px) and (min-width:761px){
-  :root{--tele:112px}
+  :root{--tele:128px}
   #tblock{display:none}
   .tg button,.seg.mode button{height:27px}
   #dock{gap:10px}
@@ -359,74 +403,77 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
 @media (max-width:760px){
   :root{--hdr:44px}
   body{font-size:13px}
-  #frame,#tblock,#chapters,#intro,#cards .dh,.kicker,.hx .lang,#b-help,#b-hide,.dk-foot{display:none!important}
-  #hdr{height:calc(var(--hdr) + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);gap:10px;padding-right:10px}
-  .mark{padding:0 9px;font-size:13px}
-  .mark b{font-size:13px}
-  .brand h1{font-size:19px}
-  .brand h1 small{font-size:14px}
+  #frame,#tblock,#chapters,#intro,#cards .dh,.kicker,.live,.speed,.hx .lang,#b-help,#b-hide,.dk-foot{display:none!important}
+  #hdr{height:calc(var(--hdr) + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);gap:10px;padding-right:8px}
+  .mark{padding:0 20px 3px 10px;font-size:16px}
+  .mark b{font-size:11px}
+  .brand h1{font-size:20px}
+  .brand h1 small{font-size:13px}
   #tele{display:none}
-  #mchips{display:flex;position:absolute;left:0;right:0;top:calc(var(--hdr) + env(safe-area-inset-top));gap:0;overflow-x:auto;scrollbar-width:none;pointer-events:auto;background:var(--sheet2);border-bottom:1px solid var(--rule3)}
+  #mchips{display:flex;position:absolute;left:0;right:0;top:calc(var(--hdr) + env(safe-area-inset-top));gap:2px;overflow-x:auto;scrollbar-width:none;pointer-events:auto;background:#050506;padding:0 0 2px}
   #mchips::-webkit-scrollbar{display:none}
-  #mchips div{flex:none;padding:5px 9px 6px;border-right:1px solid var(--rule)}
-  #mchips i{display:block;font:500 8px/1 var(--mono);letter-spacing:.08em;color:var(--mute);font-style:normal;text-transform:uppercase}
-  #mchips b{display:block;margin-top:3px;font:600 13px/1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #mchips div{flex:none;padding:5px 10px 6px;background:var(--panel)}
+  #mchips div:first-child{border-left:3px solid var(--red)}
+  #mchips i{display:block;font:italic 600 9px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;color:var(--mute);font-style:italic;text-transform:uppercase}
+  #mchips b{display:block;margin-top:3px;font:700 13px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #mchips #mc-rpm{color:var(--live)}
   #mchips b.c{color:var(--elec)} #mchips b.g{color:var(--harv)}
-  #cards{left:8px;right:8px;top:auto;bottom:calc(112px + env(safe-area-inset-bottom));width:auto;border:0;background:none;pointer-events:none}
+  #cards{left:8px;right:8px;top:auto;bottom:calc(112px + env(safe-area-inset-bottom));width:auto;background:none;pointer-events:none}
   #cardlist{display:block!important;flex:none;overflow:hidden;pointer-events:auto}
   #app:not(.has-card) #cardlist{display:none!important}
-  .card.on{background:var(--sheet);border:1px solid var(--rule3);border-top:3px solid var(--red)}
-  .card>button{padding:9px 12px 6px;gap:9px;align-items:center}
-  .card .n{font-size:24px}
-  .card .t{font-size:17px}
-  .card .inner{padding:2px 12px 10px;font-size:13px;line-height:1.5;max-height:22vh;overflow:auto}
-  #mnav{display:flex;align-items:center;gap:0;justify-content:center;margin:6px auto 0;pointer-events:auto;border:1px solid var(--rule3);background:var(--sheet2);width:max-content}
-  #mnav button{border:0;background:none;width:30px;height:28px;font:500 12px/1 var(--mono);color:var(--ink);padding:0}
-  #mnav button+button{border-left:1px solid var(--rule2)}
+  .card.on{background:rgba(17,17,20,.96);border-top:3px solid var(--red)}
+  .card>button{padding:9px 12px 8px;gap:10px;align-items:center;background:none}
+  .card>button::after{left:12px;right:12px}
+  .card .n{font-size:24px;min-width:40px;height:30px}
+  .card .t{font-size:18px}
+  .card .inner{padding:8px 12px 10px;font-size:13px;line-height:1.5;max-height:22vh;overflow:auto}
+  #mnav{display:flex;align-items:center;gap:3px;justify-content:center;margin:6px auto 0;pointer-events:auto;width:max-content;padding:3px;background:rgba(5,5,6,.9)}
+  #mnav button{border:0;background:var(--panel3);width:30px;height:28px;font:600 12px/1 var(--mono);color:var(--txt);padding:0;transform:skewX(-12deg)}
   #mnav button.on{background:var(--red);color:#fff}
-  #mnav .lang2{width:auto;padding:0 9px}
-  #dock{left:0;right:0;top:auto;bottom:0;width:auto;padding:7px 8px calc(8px + env(safe-area-inset-bottom));gap:7px;border-right:0;border-top:1px solid var(--rule3);overflow:visible}
-  .dr{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px;align-items:center}
+  #mnav .lang2{width:auto;padding:0 10px;background:#fff;color:#050506}
+  #dock{left:0;right:0;top:auto;bottom:0;width:auto;padding:9px 8px calc(8px + env(safe-area-inset-bottom));gap:7px;overflow:visible;background:#0d0d10}
+  #dock::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--kerb)}
+  .dr{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:10px;align-items:center;padding:0 34px 0 4px;scroll-snap-type:x proximity;scroll-padding-left:4px;
+      -webkit-mask:linear-gradient(90deg,#000 calc(100% - 40px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 40px),transparent)}
+  .dr.end{-webkit-mask:none;mask:none}
+  .dr>*{scroll-snap-align:start}
   .dr>.grp,.dr>.pair{flex:none}
-  .pair{display:flex;gap:8px}
+  .pair{display:flex;gap:10px}
   .dr::-webkit-scrollbar{display:none}
   .grp>.lb{display:none}
   .seg.mode{display:flex}
-  .seg.mode button{border-top:0!important;border-left:1px solid var(--rule2)!important;text-align:center}
-  .seg.mode button:first-child{border-left:0!important}
-  .seg button,.seg.mode button{height:32px;padding:0 10px;font-size:12.5px;flex:none}
+  .seg.mode button{text-align:center;padding:0 10px}
+  .seg.mode button::after{display:none}
+  .seg button,.seg.mode button{height:32px;padding:0 11px;font-size:13px;flex:none}
   .tg{flex-direction:row}
   .tg button{height:32px}
-  .tg button+button{border-top:0;border-left:1px solid var(--rule2)}
   .tg button svg{display:none}
   .grp.rpmg{width:236px}
   .rpmrow{display:flex;flex-direction:row;align-items:center;gap:8px}
   .slider{height:32px}
-  .slider .tr{top:18px} .slider .fl{top:16px} .slider .kn{top:6px} .slider .tk{top:20px}
+  .slider .tr{top:13px} .slider .fl{top:13px} .slider .kn{top:6px} .slider .tk{top:22px}
   .slider .mk,.slowhint{display:none}
   .rpmv{font-size:14px;min-width:70px;text-align:right}
+  #caption{left:12px;right:auto;max-width:calc(100vw - 24px)}
   #caption b{font-size:22px}
-  #toast{top:calc(var(--hdr) + 52px + env(safe-area-inset-top));white-space:normal;max-width:calc(100vw - 24px);text-align:center}
+  #toast{top:calc(var(--hdr) + 52px + env(safe-area-inset-top));white-space:normal;max-width:calc(100vw - 24px);text-align:left}
 }
 @media (prefers-reduced-motion:reduce){
   .ui{transition:none}
+  .speed,.live i{animation:none!important}
+  .speed{display:none}
 }
 </style>
 </head>
 <body>
 <div id="app" class="era26">
   <canvas id="gl" aria-label="3D model of a 2026 Formula 1 power unit"></canvas>
-  <div id="frame" aria-hidden="true"><i></i><i></i><i></i><i></i>
-    <div class="zx"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-    <div class="zx b"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-    <div class="zy"><span>A</span><span>B</span><span>C</span><span>D</span></div>
-    <div class="zy r"><span>A</span><span>B</span><span>C</span><span>D</span></div>
-  </div>
+  <div id="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <svg id="leaders"></svg>
   <div id="labels"></div>
 
   <div id="tblock" class="ui" aria-hidden="true">
-    <div class="r1"><span class="no">PU-26</span><span class="nm" data-i="tbName">50/50 hybrid power unit</span></div>
+    <span class="no">PU-26</span><span class="nm" data-i="tbName">50/50 hybrid power unit</span>
     <div class="g">
       <div><span data-i="view">View</span><b id="tb-view">—</b></div>
       <div><span data-i="mode">Mode</span><b id="tb-mode">—</b></div>
@@ -435,13 +482,15 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
     </div>
   </div>
 
-  <header id="hdr" class="panel ui">
+  <header id="hdr" class="ui">
+    <div class="speed" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="mark" aria-hidden="true">PU<b>26</b></div>
     <div class="brand">
       <h1><small data-i="h1a">Inside the</small>50<span class="s">/</span>50 <span data-i="h1b">engine</span></h1>
       <span class="kicker" data-i="kicker">Formula 1 · 2026 rules · interactive lab</span>
     </div>
     <div class="hx">
+      <div class="live" aria-hidden="true"><i></i><span id="live-src">LAP SIM</span></div>
       <div class="lang" role="group" aria-label="Language"><button data-lang="en" class="on">EN</button><button data-lang="zh">中文</button></div>
       <div class="ic">
         <button id="b-snd" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="snd-x" d="M16 9l5 6M21 9l-5 6"/><path id="snd-w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
@@ -499,7 +548,7 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
       <p data-i="dkFoot">Drag to orbit · scroll to zoom · click a part to open its chapter · press ? for all keys</p></div>
   </nav>
 
-  <section id="tele" class="panel ui" aria-label="Telemetry">
+  <section id="tele" class="ui" aria-label="Telemetry">
     <div class="tc t-a">
       <div class="th"><span class="capt" data-i="telemetry">Telemetry</span><em id="t-src">LAP SIM</em></div>
       <div class="big">
@@ -507,7 +556,7 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
         <div><i data-i="speed">Speed</i><b id="t-v">0<small>km/h</small></b></div>
         <div><i data-i="gear">Gear</i><b id="t-gear">–</b></div>
       </div>
-      <div class="rpmbar"><span id="t-rpmbar"></span><em style="left:59.1%"></em></div>
+      <div class="leds" id="t-leds" aria-hidden="true"></div>
     </div>
     <div class="tc t-b">
       <div class="th"><span class="capt" data-i="c_power">Power</span></div>
@@ -538,6 +587,7 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
     </div>
     <div class="tc t-f">
       <canvas id="trace"></canvas>
+      <div class="secs" id="t-secs"><div><i>S1</i><b>—</b></div><div><i>S2</i><b>—</b></div><div><i>S3</i><b>—</b></div></div>
       <div class="lapline"><span><span data-i="lap">Lap</span> <b id="t-lapt">0:00.0</b></span><span><span data-i="last">Last</span> <b id="t-last">—</b></span><span><span data-i="best">Best</span> <b id="t-best">—</b></span></div>
     </div>
   </section>
@@ -550,7 +600,7 @@ kbd{font:500 10px/1 var(--mono);color:var(--ink2);padding:2px 4px;border:1px sol
     <div id="intro">
       <h2 class="big1"><span data-i="h1a">Inside the</span> 50<span class="s">/</span>50 <span data-i="h1b">engine</span></h2>
       <p data-i="sub">A 1.6-litre V6 and a 350 kW electric motor now share the work almost equally. Spin it, cut it open, pull it apart — and follow the energy.</p>
-      <ol id="toc"></ol>
+      <div class="tower"><div class="hd"><span data-i="towerNo">No.</span><span data-i="towerLesson">Lesson</span><span data-i="towerStatus">Status</span></div><ol id="toc"></ol></div>
       <div class="note" data-i="introNote">Numbers follow the FIA 2026 power-unit regulations; the simulation is illustrative.</div>
     </div>
     <ol id="cardlist"></ol>
@@ -589,6 +639,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -654,16 +705,20 @@ const LOWQ = IS_TOUCH || QS.has('lowq');
 const DPR = Math.min(devicePixelRatio || 1, LOWQ ? 1.5 : 2);
 renderer.setPixelRatio(DPR);
 renderer.setSize(innerWidth, innerHeight, false);
-renderer.toneMapping = THREE.NeutralToneMapping;   // keeps the paper and data colours honest
-renderer.toneMappingExposure = 1.0;
+renderer.toneMapping = THREE.NeutralToneMapping;   // keeps the energy colours honest on dark
+renderer.toneMappingExposure = 1.08;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
 const scene = new THREE.Scene();
-/* The page is a sheet of drafting paper. The scene background is a screen-space texture
-   (paper + millimetre grid) whose colours are pre-compensated for the tone mapper, so the
-   paper behind the model matches the CSS paper exactly. */
+/* Colours shared with the CSS (single source of truth: the :root custom properties) */
+const ROOT_CSS = getComputedStyle(document.documentElement);
+const PAL = new Proxy({}, { get: (_, k) => ROOT_CSS.getPropertyValue('--' + String(k)).trim() || '#ffffff' });
+
+/* The backdrop is dark carbon fibre: a 2×2 twill tile drawn in code. The same tile is used
+   by the CSS panels; the 3D background is a screen-space version whose colours are
+   pre-compensated for the tone mapper, so both read as the same material. */
 function neutralTM(c) { // JS copy of three's NeutralToneMapping (linear in → linear out)
   let [r, g, b] = c; const x = Math.min(r, g, b), off = x < 0.08 ? x - 6.25 * x * x : 0.04;
   r -= off; g -= off; b -= off; const peak = Math.max(r, g, b); if (peak < 0.76) return [r, g, b];
@@ -675,26 +730,46 @@ function preTone(hex) { // find the linear input that displays as `hex`
   for (let i = 0; i < 40; i++) { const y = neutralTM(x); for (let k = 0; k < 3; k++) x[k] = clamp(x[k] + (want[k] - y[k]), 0, 1); }
   return new THREE.Color(x[0], x[1], x[2]);
 }
-const PAPER = '#ece8de', BG = preTone(PAPER);
-const bgHex = c => '#' + c.getHexString(); // getHexString() converts linear → sRGB
-const BG_CSS = bgHex(BG), GRID_MINOR = bgHex(preTone('#e3ded2')), GRID_MAJOR = bgHex(preTone('#d8d2c4'));
+// per-channel LUT: displayed sRGB byte → sRGB byte to feed the tone mapper (near-neutral colours)
+const TONE_LUT = (() => {
+  const lut = new Uint8ClampedArray(256), toL = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
+    toS = c => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  for (let v = 0; v < 256; v++) { const o = toL(v / 255), x = o < 0.04 ? Math.sqrt(o / 6.25) : o + 0.04; lut[v] = Math.round(toS(Math.min(1, x)) * 255); }
+  return lut;
+})();
+function carbonTile(px, exposure = 1) { // 2×2 twill, px = size of one tow
+  const n = 4, c = document.createElement('canvas'); c.width = c.height = px * n; const g = c.getContext('2d');
+  g.fillStyle = '#08080a'; g.fillRect(0, 0, px * n, px * n);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const along = ((i + j) >> 1) % 2 === 0, x = i * px, y = j * px;
+    const grd = along ? g.createLinearGradient(x, y, x, y + px) : g.createLinearGradient(x, y, x + px, y);
+    const hi = Math.round((along ? 26 : 20) * exposure), lo = Math.round(11 * exposure);
+    grd.addColorStop(0, `rgb(${lo},${lo},${lo + 1})`); grd.addColorStop(0.5, `rgb(${hi},${hi},${hi + 2})`); grd.addColorStop(1, `rgb(${lo},${lo},${lo + 1})`);
+    g.fillStyle = grd; g.fillRect(x + 0.5, y + 0.5, px - 1, px - 1);
+  }
+  return c;
+}
+try { document.documentElement.style.setProperty('--carbon', `url(${carbonTile(5).toDataURL()})`); } catch (e) { /* CSS falls back to flat black */ }
+const BG_HEX = '#0a0a0c', BG = preTone(BG_HEX);
 let bgTex = null;
-function paperBackground(w, h) {
+function carbonBackground(w, h) {
   const d = Math.min(devicePixelRatio || 1, 2), W = Math.round(w * d), H = Math.round(h * d);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
-  g.fillStyle = BG_CSS; g.fillRect(0, 0, W, H);
-  const s = 8 * d; // 8 px minor, 40 px major squares
-  for (const [col, step, lw] of [[GRID_MINOR, s, 1], [GRID_MAJOR, s * 5, Math.max(1, d)]]) {
-    g.fillStyle = col;
-    for (let x = (W / 2) % step; x < W; x += step) g.fillRect(Math.round(x), 0, lw, H);
-    for (let y = (H / 2) % step; y < H; y += step) g.fillRect(0, Math.round(y), W, lw);
-  }
+  g.fillStyle = g.createPattern(carbonTile(Math.round(5 * d), 1.12), 'repeat'); g.fillRect(0, 0, W, H);
+  // overhead garage light: a soft, wide band that falls off towards the floor (no vignette)
+  const top = g.createLinearGradient(0, 0, 0, H);
+  top.addColorStop(0, 'rgba(255,255,255,0.035)'); top.addColorStop(0.35, 'rgba(255,255,255,0.012)'); top.addColorStop(0.7, 'rgba(0,0,0,0.25)'); top.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = top; g.fillRect(0, 0, W, H);
+  // compensate the tone mapper so the weave keeps its contrast
+  const img = g.getImageData(0, 0, W, H), px = img.data;
+  for (let i = 0; i < px.length; i += 4) { px[i] = TONE_LUT[px[i]]; px[i + 1] = TONE_LUT[px[i + 1]]; px[i + 2] = TONE_LUT[px[i + 2]]; }
+  g.putImageData(img, 0, 0);
   if (bgTex) bgTex.dispose();
   bgTex = new THREE.CanvasTexture(c); bgTex.colorSpace = THREE.SRGBColorSpace; bgTex.minFilter = bgTex.magFilter = THREE.NearestFilter; bgTex.generateMipmaps = false;
   scene.background = bgTex;
 }
 scene.background = BG;
-scene.fog = new THREE.Fog(BG, 30, 70);
+scene.fog = new THREE.Fog(preTone('#060607'), 26, 58);
 
 const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.1, 200);
 const HOME = { pos: V3(6.4, 5.4, 17.6), tgt: V3(0.15, 0.55, 0) };
@@ -712,13 +787,31 @@ controls.zoomSpeed = 0.9;
 controls.update();
 
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;
-scene.environmentIntensity = 0.8;
+/* Studio environment for reflections: a black garage box with long overhead light strips,
+   a white softbox on one side and a red accent strip behind — built in code, baked by PMREM. */
+function studioEnvironment() {
+  const env = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(40, 16, 40), new THREE.MeshBasicMaterial({ color: 0x050506, side: THREE.BackSide }));
+  room.position.y = 6; env.add(room);
+  const floorE = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0d0d0f }));
+  floorE.position.y = -1.9; env.add(floorE);
+  const strip = (w, h, rgb, gain, pos, look) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(rgb).multiplyScalar(gain), side: THREE.DoubleSide }));
+    m.position.copy(pos); m.lookAt(look); env.add(m);
+  };
+  for (const z of [-4.5, 0, 4.5]) strip(22, 0.7, 0xffffff, 1.5, V3(0, 13.5, z), V3(0, 0, z));        // overhead strips
+  strip(3, 9, 0xfff3e6, 3.0, V3(-17, 5, 8), V3(0, 3, 0));                                               // key softbox
+  strip(1.2, 10, 0xe8eeff, 2.6, V3(15, 5, -12), V3(0, 3, 0));                                           // cool rim
+  strip(14, 0.6, 0xff1a2e, 3.2, V3(-4, 3.2, -19), V3(-4, 3.2, 0));                                      // red accent strip
+  return pmrem.fromScene(env, 0.02).texture;
+}
+scene.environment = studioEnvironment();
+scene.environmentIntensity = 0.9;
 
-/* lights */
-const hemi = new THREE.HemisphereLight(0xfbf7ee, 0x8a7f6c, 0.95);
+/* lights: dark studio — one soft key, two rim lights (cool white + racing red), little fill */
+const hemi = new THREE.HemisphereLight(0x9aa0aa, 0x0a0a0c, 0.35);
 scene.add(hemi);
-const key = new THREE.DirectionalLight(0xfff6ea, 2.5);
+const key = new THREE.DirectionalLight(0xfff4e8, 2.3);
 key.position.set(-7, 13, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(LOWQ ? 1024 : 2048, LOWQ ? 1024 : 2048);
@@ -726,10 +819,13 @@ key.shadow.camera.left = -9; key.shadow.camera.right = 9; key.shadow.camera.top 
 key.shadow.camera.near = 2; key.shadow.camera.far = 40;
 key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02; key.shadow.radius = 4;
 scene.add(key);
-const rim = new THREE.DirectionalLight(0xe8ecf2, 1.3);
-rim.position.set(9, 5, -9);
+const rim = new THREE.DirectionalLight(0xdfe7ff, 2.6);
+rim.position.set(9, 6, -9);
 scene.add(rim);
-const warm = new THREE.DirectionalLight(0xffe2c4, 0.55);
+const rimRed = new THREE.DirectionalLight(0xff2438, 2.2);
+rimRed.position.set(-10, 3.5, -7);
+scene.add(rimRed);
+const warm = new THREE.DirectionalLight(0xffe0c8, 0.35);
 warm.position.set(6, -2, 7);
 scene.add(warm);
 const fireLight = new THREE.PointLight(0xff8a3a, 0, 3.2, 1.6); // follows the firing cylinder in X-ray
@@ -768,7 +864,7 @@ composer.addPass(new ShaderPass({
       float m = max(c.r, max(c.g, c.b)); if (m > 3.) c.rgb *= 3. / m;
       gl_FragColor = c; }`
 }));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 1.15); // only incandescence blooms on paper
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.42, 1.25); // threshold 1.25: only hot parts (HDR) bloom
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -826,7 +922,7 @@ const M = {
   steel: new THREE.MeshStandardMaterial({ color: '#c9ced6', metalness: 1, roughness: 0.34 }),
   ti: new THREE.MeshStandardMaterial({ color: '#9aa3ad', metalness: 1, roughness: 0.3, roughnessMap: brushed }),
   piston: new THREE.MeshStandardMaterial({ color: '#dfe3e8', metalness: 0.95, roughness: 0.26 }),
-  carbon: new THREE.MeshPhysicalMaterial({ color: '#ffffff', map: carbonMap, roughnessMap: carbonRough, metalness: 0.2, roughness: 0.5, clearcoat: 0.8, clearcoatRoughness: 0.28 }),
+  carbon: new THREE.MeshPhysicalMaterial({ color: '#ffffff', map: carbonMap, roughnessMap: carbonRough, metalness: 0.2, roughness: 0.62, clearcoat: 0.35, clearcoatRoughness: 0.42 }),
   gold: new THREE.MeshStandardMaterial({ color: '#d9a84e', metalness: 1, roughness: 0.38, roughnessMap: foilRough }),
   copper: new THREE.MeshStandardMaterial({ color: '#c46f37', metalness: 1, roughness: 0.3 }),
   hv: new THREE.MeshStandardMaterial({ color: '#ff6a12', metalness: 0.05, roughness: 0.48 }),
@@ -854,28 +950,26 @@ vec3 blackbody(float t){ // t 0..1 → dark red … white-yellow (artistic fit)
   return vec3(smoothstep(.0,.45,t)*1.3, smoothstep(.25,.8,t)*0.95, smoothstep(.6,1.,t)*0.8)*t; }
 `;
 
-/* X-ray shell drawn like a technical illustration: a faint wash of the part's tint
-   with an inked silhouette (fresnel) edge. Normal blending so it reads on paper. */
-const INK = new THREE.Color('#1c1f23'), HI_RED = new THREE.Color('#d3261b');
-function ghostMat(tint = '#7fdcff') {
-  const t = new THREE.Color(tint).lerp(INK, 0.55);
+/* X-ray shell: a hologram-like fresnel glow in the part's tint, added on top of the dark
+   scene (additive). Highlighted parts shift towards racing red. */
+const HI_RED = new THREE.Color(PAL.red);
+function ghostMat(tint = '#d8dde6') {
   return new THREE.ShaderMaterial({
-    uniforms: { uTint: { value: t }, uInk: { value: INK }, uRed: { value: HI_RED }, uHi: { value: 0 }, uFade: { value: 1 } },
+    uniforms: { uTint: { value: new THREE.Color(tint) }, uRed: { value: HI_RED }, uHi: { value: 0 }, uFade: { value: 1 } },
     vertexShader: /* glsl */`
       varying vec3 vN; varying vec3 vV; varying vec3 vW;
       void main(){ vec4 w = modelMatrix*vec4(position,1.); vW=w.xyz; vN=normalize(mat3(modelMatrix)*normal);
         vV=normalize(cameraPosition-w.xyz); gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uTint; uniform vec3 uInk; uniform vec3 uRed; uniform float uHi; uniform float uFade;
+      uniform vec3 uTint; uniform vec3 uRed; uniform float uHi; uniform float uFade;
       varying vec3 vN; varying vec3 vV; varying vec3 vW;
       void main(){ float f = 1.0-abs(dot(normalize(vN),normalize(vV)));
-        float rimv = pow(f,3.2);
-        vec3 c = mix(uTint, uInk, rimv*0.7);
-        c = mix(c, uRed, uHi*0.8);
-        float a = (0.035 + rimv*0.42 + uHi*.12)*uFade;
+        float rimv = pow(f,2.6);
+        vec3 c = mix(uTint, uRed*1.4, uHi*0.85)*(0.25 + rimv*0.95)*(1.0+uHi*1.2);
+        float a = (0.018 + rimv*0.2 + uHi*.08)*uFade;
         if (any(isnan(c)) || isnan(a)) { c = vec3(0.); a = 0.; }
-        gl_FragColor = vec4(c, clamp(a, 0., 1.)); }`,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending
+        gl_FragColor = vec4(c, a); }`,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
   });
 }
 
@@ -918,11 +1012,10 @@ function gasMat() {
           a = 0.35+0.15*t;
         }
         float f = pow(1.0-abs(dot(normalize(vN),normalize(vV))),1.5);
-        vec3 o = col*(0.7+f*.6)*1.6; if (any(isnan(o))) o = vec3(0.);
-        float al = clamp(a*(1.25+f*.6)*uVis, 0., .9);
-        gl_FragColor = vec4(o, al);
+        vec3 o = col*(0.7+f*.6)*a*1.8*uVis; if (any(isnan(o))) o = vec3(0.);
+        gl_FragColor = vec4(o, 1.);
       }`,
-    transparent: true, depthWrite: false, blending: THREE.NormalBlending
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   });
 }
 
@@ -937,29 +1030,26 @@ function conduitMat(color) {
         float p = pow(0.5+0.5*sin(s*6.2831), 6.0);
         float edge = 0.55+0.45*cos((vUv.y-0.5)*6.2831);
         float endfade = smoothstep(0.,.03,vUv.x)*smoothstep(1.,.97,vUv.x);
-        float a = uI*(0.72+0.28*p)*(0.7+0.3*edge)*endfade;
-        vec3 c = mix(uColor, uColor*0.6, p*0.6);
-        gl_FragColor = vec4(c, clamp(a*1.05, 0., 1.)); }`,
-    transparent: true, depthWrite: false, blending: THREE.NormalBlending
+        float a = uI*(0.12+0.88*p)*edge*endfade;
+        gl_FragColor = vec4(uColor*a*1.05, 1.); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   });
 }
 
 /* Energy packets — soft glowing points */
 function packetMat(color, through) {
   return new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color(color) }, uPx: { value: innerHeight * DPR }, uGain: { value: through ? 0.5 : 1.0 } },
+    uniforms: { uColor: { value: new THREE.Color(color) }, uPx: { value: innerHeight * DPR }, uGain: { value: through ? 0.14 : 0.45 } },
     vertexShader: /* glsl */`
       attribute float aA; attribute float aS; uniform float uPx; varying float vA;
       void main(){ vA=aA; vec4 mv = modelViewMatrix*vec4(position,1.);
-        gl_PointSize = aS*uPx*0.19/max(0.5,-mv.z); gl_Position = projectionMatrix*mv; }`,
+        gl_PointSize = aS*uPx*0.15/max(0.5,-mv.z); gl_Position = projectionMatrix*mv; }`,
     fragmentShader: /* glsl */`
       uniform vec3 uColor; uniform float uGain; varying float vA;
       void main(){ vec2 d = gl_PointCoord-.5; float r2 = dot(d,d);
-        float r = sqrt(r2), disc = smoothstep(.34,.28,r), halo = smoothstep(.5,.3,r)*.3;
-        float g = max(disc, halo); if (g<.01) discard;
-        vec3 c = mix(uColor*0.8, vec3(1.), smoothstep(.14,.0,r)*.6);
-        gl_FragColor = vec4(c, clamp(g*vA*uGain, 0., 1.)); }`,
-    transparent: true, depthWrite: false, depthTest: !through, blending: THREE.NormalBlending
+        float g = exp(-r2*55.)*1.2 + exp(-r2*12.)*.3; if (g<.01) discard;
+        gl_FragColor = vec4(mix(uColor, vec3(1.), exp(-r2*140.)*.6)*g*vA*uGain, 1.); }`,
+    transparent: true, depthWrite: false, depthTest: !through, blending: THREE.AdditiveBlending
   });
 }
 
@@ -997,26 +1087,50 @@ function discMat() {
   };
   return m;
 }
-/* Floor: drafting-table construction lines — dash-dot centre lines, a datum circle and
-   a fine grid, inked and fading out towards the paper */
-const floorMat = new THREE.ShaderMaterial({
-  uniforms: { uC: { value: new THREE.Color('#2a2d31') } },
-  vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+/* Floor: a glossy garage/pit-lane floor. Blurred planar reflection (Reflector) + painted
+   pit-box markings, kerb stripe and a fade into the dark. tDiffuse/textureMatrix/color are
+   the Reflector's uniforms; without a reflection (low quality) uRefl = 0. */
+const FloorShader = {
+  name: 'PitFloor',
+  uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, uRefl: { value: 1 },
+              uWhite: { value: new THREE.Color('#d9d9d6') }, uRed: { value: preTone(PAL.red) }, uBase: { value: new THREE.Color('#0b0b0d') } },
+  vertexShader: /* glsl */`
+    uniform mat4 textureMatrix; varying vec4 vUv; varying vec3 vW;
+    void main(){ vUv = textureMatrix*vec4(position,1.); vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz;
+      gl_Position = projectionMatrix*viewMatrix*w; }`,
   fragmentShader: /* glsl */`
-    uniform vec3 uC; varying vec3 vW;
-    float gridl(vec2 p, float s, float w){ vec2 g = abs(fract(p/s-.5)-.5)/fwidth(p/s); return 1.-min(min(g.x,g.y)/w,1.); }
-    float axis(float d, float along){ float l = 1.-min(abs(d)/fwidth(d)/1.1,1.);
-      float m = mod(along, 1.2); float dash = step(m, .78) + step(.9, m)*step(m, 1.02); return l*min(dash,1.); }
-    void main(){ vec2 p = vW.xz; float r = length(p*vec2(.8,1.));
-      float major = gridl(p, 2.5, 1.0)*.10;
-      float ring = (1.-min(abs(r-9.5)/fwidth(r)/1.2,1.))*.45;
-      float ctr = max(axis(p.y, p.x), axis(p.x, p.y))*.55;
-      float fade = smoothstep(17., 3., r);
-      float a = clamp((major+ring+ctr)*fade, 0., 1.);
-      gl_FragColor = vec4(uC, a); }`,
-  transparent: true, depthWrite: false, blending: THREE.NormalBlending,
-  extensions: { derivatives: true }
-});
+    uniform vec3 color; uniform sampler2D tDiffuse; uniform float uRefl; uniform vec3 uWhite, uRed, uBase;
+    varying vec4 vUv; varying vec3 vW;
+    float h21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
+    float lineX(float d, float w){ float f = fwidth(d); return 1.-smoothstep(w-f, w+f, abs(d)); }
+    void main(){
+      vec2 p = vW.xz; float r = length(p*vec2(.75,1.));
+      // pit-box: a painted rectangle with corner ticks, a dashed lane line and a red/white kerb far behind
+      float box = 0.;
+      vec2 q = abs(p - vec2(0.2, 0.)) - vec2(7.2, 4.2);
+      box += lineX(max(q.x, q.y), .045)*step(max(q.x,q.y), .2);
+      vec2 c = abs(p - vec2(0.2, 0.)) - vec2(6.6, 3.6);
+      box += (lineX(c.x, .03)*step(abs(c.y+.45),.45) + lineX(c.y, .03)*step(abs(c.x+.45),.45))*.8;
+      float dash = lineX(p.y + 6.6, .06)*step(.5, fract(p.x*.18));
+      float lane = lineX(p.y - 6.2, .09);
+      float kz = step(abs(p.y + 10.2), .45); float kerbSide = step(.5, fract(p.x*.42));
+      vec3 paint = uWhite*(box*.3 + dash*.22 + lane*.16);
+      vec3 kerb = mix(uWhite*.4, uRed*.7, kerbSide)*kz;
+      // blurred reflection: 8 taps, spread grows away from the model
+      vec3 refl = vec3(0.);
+      if (uRefl > 0.) {
+        vec2 uv = vUv.xy/vUv.w; float sp = 0.003 + 0.0016*r;
+        for (int i = 0; i < 12; i++) { float a = float(i)*2.39996; float rr = sqrt((float(i)+.5)/12.);
+          refl += texture2D(tDiffuse, uv + vec2(cos(a), sin(a))*sp*rr).rgb; }
+        refl *= 1./12.;
+      }
+      float grain = .92 + .16*h21(floor(p*24.));
+      vec3 col = uBase*grain + paint + kerb + refl*color*uRefl;
+      float fade = smoothstep(19., 5., r);
+      float a = fade;
+      if (any(isnan(col))) col = vec3(0.);
+      gl_FragColor = vec4(col, a); }`
+};
 
 /* ==========================================================================
    GEOMETRY — every part is built procedurally. Units: 1 = 100 mm.
@@ -1179,7 +1293,7 @@ const cylObjs = CYL.map((c, i) => {
 });
 
 /* ================= BLOCK ================= */
-const gBlock = part('block', { explode: V3(0, 1.3, 0), ghost: '#8fd0ff', label: 'block', card: 0 });
+const gBlock = part('block', { explode: V3(0, 1.3, 0), ghost: '#d8dde6', label: 'block', card: 0 });
 {
   const bp = (b, u, w) => { const p = bankPoint(b, 0, u, w); return [p.z, p.y]; };
   const prof = [[-0.62, -0.92], [0.62, -0.92], [0.98, -0.5], bp(1, 0.62, -innerSign(1) * 0.58), bp(1, DECK, -innerSign(1) * 0.58), bp(1, DECK, innerSign(1) * 0.58),
@@ -1200,7 +1314,7 @@ const camObjs = [];     // {mesh, b}
 const valveObjs = [];   // {mesh, c, type}
 for (let b = 0; b < 2; b++) {
   const inn = innerSign(b);
-  const gHead = part('head' + BANK[b].name, { explode: bankDir(b).multiplyScalar(1.5).add(V3(0, 1.3, 0)), ghost: '#8fd0ff', label: 'head', card: 1 });
+  const gHead = part('head' + BANK[b].name, { explode: bankDir(b).multiplyScalar(1.5).add(V3(0, 1.3, 0)), ghost: '#d8dde6', label: 'head', card: 1 });
   gHead.rotation.x = BANK[b].a * D2R;
   const x0 = -1.66 + BANK_DX[b], x1 = 1.66 + BANK_DX[b];
   const hp = [[-0.6, DECK], [0.6, DECK], [0.6, 2.22], [0.52, 2.3], [-0.52, 2.3], [-0.6, 2.22]];
@@ -1250,7 +1364,7 @@ for (let b = 0; b < 2; b++) {
     gCam.add(cam); camObjs.push({ mesh: cam, b });
   }
   // cam cover (carbon) + coil packs
-  const gCov = part('cover' + BANK[b].name, { explode: bankDir(b).multiplyScalar(3.1).add(V3(0, 1.3, 0)), ghost: '#8fd0ff', label: 'cover', card: 1 });
+  const gCov = part('cover' + BANK[b].name, { explode: bankDir(b).multiplyScalar(3.1).add(V3(0, 1.3, 0)), ghost: '#d8dde6', label: 'cover', card: 1 });
   gCov.rotation.x = BANK[b].a * D2R;
   const cp = [[0.53, 2.3], [0.53, 2.5]];
   for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI; cp.push([0.53 * Math.cos(a) * 0.98, 2.5 + 0.2 * Math.sin(a)]); }
@@ -1263,7 +1377,7 @@ for (let b = 0; b < 2; b++) {
 }
 
 /* ================= INTAKE: plenum + trumpets ================= */
-const gPlen = part('plenum', { explode: V3(0, 4.2, 0), ghost: '#7d8fa8', label: 'plenum', card: 2 });
+const gPlen = part('plenum', { explode: V3(0, 4.2, 0), ghost: PAL.air, label: 'plenum', card: 2 });
 {
   gPlen.add(mk(extrudeX(roundedRect(1.0, 0.56, 0.2, 0, 2.62), -1.55, 1.55, 0.05), M.carbon));
   CYL.forEach(c => {
@@ -1287,7 +1401,7 @@ function wheel(nBlades, r, len, mat, twist) {
   g.traverse(o => { if (o.isMesh) o.userData.keep = true; });
   return g;
 }
-const gComp = part('compressor', { explode: V3(0.6, 2.0, 0), ghost: '#7d8fa8', label: 'compressor', card: 2 });
+const gComp = part('compressor', { explode: V3(0.6, 2.0, 0), ghost: PAL.air, label: 'compressor', card: 2 });
 const compWheel = wheel(11, 0.34, 0.28, M.alu, 0.45); compWheel.position.set(TC, TY, 0); gComp.add(compWheel);
 {
   const vol = mk(new THREE.TorusGeometry(0.46, 0.2, 20, 48).rotateY(Math.PI / 2), M.alu); vol.position.set(TC + 0.05, TY, 0); gComp.add(vol);
@@ -1315,7 +1429,7 @@ const turbWheel = wheel(12, 0.3, 0.24, new THREE.MeshStandardMaterial({ color: '
   const cone = mk(cylX(0.27, 0.4, 32, 0.22), M.gold); cone.position.set(TT + 0.36, TY, 0); gTurb.add(cone);
 }
 /* air inlet duct from the roll-hoop airbox */
-const gInlet = part('inlet', { explode: V3(0.6, 3.2, 0), ghost: '#7d8fa8', label: 'inlet', card: 2 });
+const gInlet = part('inlet', { explode: V3(0.6, 3.2, 0), ghost: PAL.air, label: 'inlet', card: 2 });
 {
   const pts = [V3(0.2, 3.95, -0.1), V3(1.2, 3.85, -0.18), V3(1.95, 3.2, -0.3), V3(2.05, 2.2, -0.28), V3(2.1, 1.5, -0.05), V3(2.45, TY, 0)];
   gInlet.add(mk(tube(pts, 0.25, 64, 24), M.carbon));
@@ -1351,7 +1465,7 @@ for (let b = 0; b < 2; b++) {
 
 /* ================= MGU-K + gear drive ================= */
 const KX = -1.15, KY = -0.55, KZ = 1.42, GX = -2.08;
-const gK = part('mguk', { explode: V3(-0.5, -0.1, 2.5), ghost: '#0e9a78', label: 'mguk', card: 4 });
+const gK = part('mguk', { explode: V3(-0.5, -0.1, 2.5), ghost: PAL.elec, label: 'mguk', card: 4 });
 const kRotor = new THREE.Group();
 {
   gK.position.set(KX, KY, KZ);
@@ -1386,7 +1500,7 @@ gearCrank.position.set(GX, 0, 0); gearIdler.position.set(GX, IDLER.x, IDLER.y); 
 
 /* ================= ENERGY STORE, CONTROL ELECTRONICS, FUEL CELL ================= */
 const ESC = V3(-4.25, -0.9, 0);
-const gES = part('es', { explode: V3(-2.4, -0.1, 0), ghost: '#0e9a78', label: 'es', card: 4 });
+const gES = part('es', { explode: V3(-2.4, -0.1, 0), ghost: PAL.elec, label: 'es', card: 4 });
 const socSegs = [];
 let cellMesh;
 {
@@ -1394,19 +1508,21 @@ let cellMesh;
   const lid = mk(new RoundedBoxGeometry(2.5, 0.06, 1.7, 2, 0.02), M.darkAlu); lid.position.copy(ESC).add(V3(0, 0.32, 0)); gES.add(lid);
   // SoC indicator strip on the camera-facing side
   for (let i = 0; i < 12; i++) {
-    const seg = mk(new THREE.BoxGeometry(0.17, 0.08, 0.02), new THREE.MeshStandardMaterial({ color: '#0b1a22', emissive: '#0e9a78', emissiveIntensity: 0 }), { cast: false, keep: true });
+    const seg = mk(new THREE.BoxGeometry(0.17, 0.08, 0.02), new THREE.MeshStandardMaterial({ color: '#0b1a22', emissive: PAL.elec, emissiveIntensity: 0 }), { cast: false, keep: true });
     seg.position.set(ESC.x - 1.05 + i * 0.19, ESC.y + 0.06, ESC.z + 0.955); gES.add(seg); socSegs.push(seg);
   }
   const conn = mk(new RoundedBoxGeometry(0.3, 0.22, 0.2, 2, 0.04), M.hv); conn.position.set(ESC.x + 1.2, ESC.y + 0.12, 0.95); gES.add(conn);
   // cells (X-ray)
   const cg = new THREE.BoxGeometry(0.17, 0.4, 0.2);
-  cellMesh = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({ color: '#1a2330', metalness: 0.4, roughness: 0.4, emissive: '#ffffff', emissiveIntensity: 1 }), 12 * 7);
+  const cellMat = new THREE.MeshStandardMaterial({ color: '#15171b', metalness: 0.4, roughness: 0.4, emissive: '#ffffff', emissiveIntensity: 1.6 });
+  cellMat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= vColor.rgb;'); }; // cells glow in their own charge colour
+  cellMesh = new THREE.InstancedMesh(cg, cellMat, 12 * 7);
   let n = 0; const mtx = new THREE.Matrix4();
   for (let i = 0; i < 12; i++) for (let j = 0; j < 7; j++) { mtx.setPosition(ESC.x - 1.1 + i * 0.2, ESC.y, ESC.z - 0.72 + j * 0.24); cellMesh.setMatrixAt(n, mtx); cellMesh.setColorAt(n++, new THREE.Color(0)); }
   cellMesh.userData.keep = true; cellMesh.userData.xrayOnly = true; cellMesh.castShadow = false; gES.add(cellMesh);
 }
 const CEP = V3(-3.35, -0.05, 1.32);
-const gCE = part('ce', { explode: V3(-1.2, 0.8, 2.6), ghost: '#0e9a78', label: 'ce', card: 4 });
+const gCE = part('ce', { explode: V3(-1.2, 0.8, 2.6), ghost: PAL.elec, label: 'ce', card: 4 });
 {
   const box = mk(new RoundedBoxGeometry(1.3, 0.9, 0.42, 3, 0.05), M.darkAlu); box.position.copy(CEP); gCE.add(box);
   for (let i = 0; i < 11; i++) { const fin = mk(new THREE.BoxGeometry(0.035, 0.74, 0.14), M.alu); fin.position.set(CEP.x - 0.55 + i * 0.11, CEP.y, CEP.z + 0.26); gCE.add(fin); }
@@ -1414,7 +1530,7 @@ const gCE = part('ce', { explode: V3(-1.2, 0.8, 2.6), ghost: '#0e9a78', label: '
   for (let i = 0; i < 3; i++) { const c = mk(cylX(0.06, 0.14, 12), M.hv); c.position.set(CEP.x + 0.72, CEP.y - 0.2 + i * 0.16, CEP.z); gCE.add(c); }
 }
 const TANKC = V3(-4.3, 1.05, 0);
-const gTank = part('tank', { explode: V3(-2.6, 2.4, 0), ghost: '#e06a12', label: 'tank', card: 5 });
+const gTank = part('tank', { explode: V3(-2.6, 2.4, 0), ghost: '#a8540f', label: 'tank', card: 5 });
 let fuelMesh;
 {
   const t = mk(new RoundedBoxGeometry(3.2, 2.5, 2.1, 6, 0.4), new THREE.MeshPhysicalMaterial({ color: '#23262c', metalness: 0.1, roughness: 0.62, clearcoat: 0.4, clearcoatRoughness: 0.5, map: carbonMap }));
@@ -1428,10 +1544,10 @@ let fuelMesh;
       void main(){ float f=pow(1.-abs(dot(normalize(vN),normalize(vV))),2.);
         float n=fbm(vP*2.5+vec3(0.,uTime*.4,uTime*.2));
         float top=smoothstep(.55,.72,vP.y);
-        vec3 c=vec3(.93,.42,.07)*(0.75+0.35*n+top*.25);
-        float a=clamp((0.16+0.18*n+f*.3+top*.25)*(0.85+uFlow*.3),0.,.7); if (any(isnan(c))) c = vec3(0.);
-        gl_FragColor=vec4(c,a); }`,
-    transparent: true, depthWrite: false, blending: THREE.NormalBlending
+        vec3 c=vec3(1.,.55,.12)*(0.14+0.3*n+f*.35+top*.35)*(0.85+uFlow*.3);
+        c = min(c*.17, vec3(.24)); if (any(isnan(c))) c = vec3(0.);
+        gl_FragColor=vec4(c,1.); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   }));
   fuelMesh.position.copy(TANKC).add(V3(0, -0.45, 0)); fuelMesh.userData.noAO = true; fuelMesh.userData.keep = true; gTank.add(fuelMesh);
   gTank.add(mk(tube([TANKC.clone().add(V3(1.4, 0.7, 0.3)), V3(-2.3, 2.3, 0.35), V3(-1.75, 2.62, 0.2)], 0.035, 24, 8), M.steel));
@@ -1439,7 +1555,7 @@ let fuelMesh;
 
 /* ================= GEARBOX, AXLE, BRAKES ================= */
 const AXLE = V3(5.05, -0.25, 0);
-const gGB = part('gearbox', { explode: V3(2.2, -0.1, 0), ghost: '#9fb6d8', label: 'gearbox', card: 0 });
+const gGB = part('gearbox', { explode: V3(2.2, -0.1, 0), ghost: '#b9c3d3', label: 'gearbox', card: 0 });
 const discs = [];
 {
   const bell = mk(cylX(0.74, 0.7, 48, 0.6), M.cast); bell.position.set(2.1, -0.1, 0); gGB.add(bell);
@@ -1468,9 +1584,21 @@ const hCable = cable([V3(TH, TY - 0.3, 0.2), V3(TH - 0.3, 0.2, 0.9), V3(1.5, -0.
 hCable.userData.era = 2025;
 
 /* ================= floor ================= */
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80).rotateX(-Math.PI / 2), floorMat);
+let floor;
+if (!LOWQ && !QS.has('norefl')) {
+  const rs = Math.min(DPR, 1.5) * 0.5;
+  floor = new Reflector(new THREE.PlaneGeometry(80, 80), { shader: FloorShader, color: new THREE.Color(0.2, 0.2, 0.21),
+    textureWidth: Math.round(innerWidth * rs), textureHeight: Math.round(innerHeight * rs), clipBias: 0.003 });
+} else {
+  const m = new THREE.ShaderMaterial({ name: 'PitFloor', uniforms: THREE.UniformsUtils.clone(FloorShader.uniforms), vertexShader: FloorShader.vertexShader, fragmentShader: FloorShader.fragmentShader });
+  m.uniforms.tDiffuse.value = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); m.uniforms.tDiffuse.value.needsUpdate = true;
+  m.uniforms.textureMatrix.value = new THREE.Matrix4(); m.uniforms.color.value = new THREE.Color(0, 0, 0); m.uniforms.uRefl.value = 0;
+  floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), m);
+}
+floor.material.transparent = true; floor.material.extensions = { derivatives: true };
+floor.rotation.x = -Math.PI / 2;
 floor.position.y = FLOOR_Y; floor.userData.noAO = true; floor.renderOrder = -1; scene.add(floor);
-const shadowCatch = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.26, color: 0x2a2419 }));
+const shadowCatch = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.55, color: 0x000000 }));
 shadowCatch.position.y = FLOOR_Y + 0.002; shadowCatch.receiveShadow = true; scene.add(shadowCatch);
 
 /* ================= register materials per part (for highlight / X-ray) ================= */
@@ -1507,16 +1635,16 @@ const DRIVE_TAIL = s => [V3(1.8, 0, 0), V3(2.5, -0.15, 0), V3(4.3, -0.3, 0), V3(
 const K_CHAIN = [ESC.clone(), ES_OUT, V3(ESC.x + 1.4, ESC.y + 0.3, 1.25), V3(CEc.x + 0.2, CEc.y - 0.4, CEc.z), CEc.clone(), V3(CEc.x + 0.78, CEc.y, CEc.z),
   V3(-2.3, -0.1, KZ + 0.05), V3(KX - 0.3, KY + 0.3, KZ + 0.36), V3(KX, KY, KZ), V3(GX, KY, KZ), V3(GX, IDLER.x, IDLER.y), V3(GX, 0, 0), V3(-1.4, 0, 0)];
 const FLOW_DEFS = [
-  { id: 'fuel', color: '#e06a12', paths: [-1, 1].map(s => [TANKC.clone().add(V3(0.9, 0.2, 0)), TANKC.clone().add(V3(1.4, 0.7, 0.3)), V3(-2.3, 2.3, 0.35), V3(-1.6, 2.62, 0.1), V3(-0.5, 2.62, 0), V3(0.2, 2.1, s * 0.45), V3(0.1, 1.35, s * 0.9)]) },
-  { id: 'air', color: '#7d8fa8', paths: [[V3(-0.3, 3.95, -0.1), V3(0.2, 3.95, -0.1), V3(1.2, 3.85, -0.18), V3(1.95, 3.2, -0.3), V3(2.05, 2.2, -0.28), V3(2.1, 1.5, -0.05), V3(2.6, TY, 0), V3(TC + 0.05, TY + 0.55, 0.28), V3(TC - 0.05, TY + 1.05, 0.42), V3(2.35, 2.6, 0.3), V3(1.9, 2.62, 0), V3(0.6, 2.62, 0), V3(-0.3, 2.3, 0)]] },
-  { id: 'mech', color: '#b08d3e', paths: [-1, 1].map(s => [V3(-0.3, 1.25, s * 0.75), V3(-0.1, 0.4, s * 0.2), V3(0.4, 0.05, 0), ...DRIVE_TAIL(s)]) },
-  { id: 'deploy', color: '#0e9a78', paths: [-1, 1].map(s => [...K_CHAIN, ...DRIVE_TAIL(s)]) },
-  { id: 'harvB', color: '#2d62c8', paths: [-1, 1].map(s => [...DRIVE_TAIL(s)].reverse().concat([...K_CHAIN].reverse())) },
-  { id: 'harvI', color: '#2d62c8', paths: [[V3(0.2, 1.1, 0.7), V3(0, 0.25, 0.2), V3(-0.6, 0, 0), ...[...K_CHAIN].reverse().slice(1)]] },
-  { id: 'exh', color: '#a33a1d', paths: [0, 1].map(b => { const s = BANK[b].a > 0 ? 1 : -1; const port = bankPoint(b, 0.0, 2.02, -innerSign(b) * 0.64);
+  { id: 'fuel', color: PAL.fuel, paths: [-1, 1].map(s => [TANKC.clone().add(V3(0.9, 0.2, 0)), TANKC.clone().add(V3(1.4, 0.7, 0.3)), V3(-2.3, 2.3, 0.35), V3(-1.6, 2.62, 0.1), V3(-0.5, 2.62, 0), V3(0.2, 2.1, s * 0.45), V3(0.1, 1.35, s * 0.9)]) },
+  { id: 'air', color: PAL.air, paths: [[V3(-0.3, 3.95, -0.1), V3(0.2, 3.95, -0.1), V3(1.2, 3.85, -0.18), V3(1.95, 3.2, -0.3), V3(2.05, 2.2, -0.28), V3(2.1, 1.5, -0.05), V3(2.6, TY, 0), V3(TC + 0.05, TY + 0.55, 0.28), V3(TC - 0.05, TY + 1.05, 0.42), V3(2.35, 2.6, 0.3), V3(1.9, 2.62, 0), V3(0.6, 2.62, 0), V3(-0.3, 2.3, 0)]] },
+  { id: 'mech', color: PAL.mech, paths: [-1, 1].map(s => [V3(-0.3, 1.25, s * 0.75), V3(-0.1, 0.4, s * 0.2), V3(0.4, 0.05, 0), ...DRIVE_TAIL(s)]) },
+  { id: 'deploy', color: PAL.elec, paths: [-1, 1].map(s => [...K_CHAIN, ...DRIVE_TAIL(s)]) },
+  { id: 'harvB', color: PAL.harv, paths: [-1, 1].map(s => [...DRIVE_TAIL(s)].reverse().concat([...K_CHAIN].reverse())) },
+  { id: 'harvI', color: PAL.harv, paths: [[V3(0.2, 1.1, 0.7), V3(0, 0.25, 0.2), V3(-0.6, 0, 0), ...[...K_CHAIN].reverse().slice(1)]] },
+  { id: 'exh', color: PAL.heat, paths: [0, 1].map(b => { const s = BANK[b].a > 0 ? 1 : -1; const port = bankPoint(b, 0.0, 2.02, -innerSign(b) * 0.64);
       return [bankPoint(b, 0, 1.5, 0), port, port.clone().add(bankOut(b).multiplyScalar(0.3)), V3(0.35, 0.95, s * 1.74), V3(1.4, 0.8, s * 1.68), V3(2.05, 0.72, s * 1.62), V3(2.7, 0.78, s * 1.45), V3(3.45, 0.95, s * 0.95),
         V3(TT, TY - 0.33, s * 0.48), V3(TT + 0.5, TY, 0), V3(4.9, TY + 0.15, 0), V3(5.6, TY + 0.55, 0), V3(6.0, TY + 0.95, 0), V3(6.5, TY + 1.4, 0)]; }) },
-  { id: 'hH', color: '#7a48c0', era: 2025, paths: [[V3(TT, TY, 0), V3(TH, TY, 0), V3(TH, TY - 0.3, 0.2), V3(TH - 0.3, 0.2, 0.9), V3(1.5, -0.1, 1.9), V3(-1.8, 0.6, 1.9), V3(CEc.x + 0.55, CEc.y + 0.3, CEc.z + 0.1), CEc.clone(), V3(CEc.x + 0.2, CEc.y - 0.4, CEc.z), V3(ESC.x + 1.4, ESC.y + 0.3, 1.25), ES_OUT, ESC.clone()]] },
+  { id: 'hH', color: PAL.mguh, era: 2025, paths: [[V3(TT, TY, 0), V3(TH, TY, 0), V3(TH, TY - 0.3, 0.2), V3(TH - 0.3, 0.2, 0.9), V3(1.5, -0.1, 1.9), V3(-1.8, 0.6, 1.9), V3(CEc.x + 0.55, CEc.y + 0.3, CEc.z + 0.1), CEc.clone(), V3(CEc.x + 0.2, CEc.y - 0.4, CEc.z), V3(ESC.x + 1.4, ESC.y + 0.3, 1.25), ES_OUT, ESC.clone()]] },
 ];
 const flowGroup = new THREE.Group(); scene.add(flowGroup);
 const FLOWS = {};
@@ -1613,7 +1741,22 @@ const SIM = {
   hist: [], traceCur: new Float32Array(Math.ceil(TRACK.N / 5)), traceK: new Float32Array(Math.ceil(TRACK.N / 5)), tracePrev: null, dynoT: 0
 };
 SIM.traceCur.fill(-1);
-function resetLapCounters() { SIM.lapHarv = 0; SIM.lapDep = 0; SIM.lapT = 0; }
+/* Sector timing, broadcast style. Purple = best of the session (same rules + mode),
+   green = faster than this sector on the previous lap, yellow = slower. A lap interrupted by
+   a reset (rules change, Dyno) is not timed. */
+const SEC = { i: 0, start: 0, cur: [null, null, null], cls: ['', '', ''], last: [null, null, null], prev: [null, null, null], best: {}, dirty: false };
+function secClose() {
+  const j = SEC.i; if (j > 2) return;
+  const t = SIM.lapT - SEC.start, key = S.era + S.mode, best = SEC.best[key] || (SEC.best[key] = [Infinity, Infinity, Infinity]);
+  let cls = '';
+  if (!SEC.dirty) {
+    cls = t < best[j] - 1e-3 ? 'p' : SEC.prev[j] != null && t < SEC.prev[j] - 1e-3 ? 'g' : 'y';
+    best[j] = Math.min(best[j], t); SEC.prev[j] = t;
+  }
+  SEC.cur[j] = t; SEC.cls[j] = cls; SEC.start = SIM.lapT; SEC.i = j + 1;
+}
+function secNewLap() { SEC.last = SEC.cur.slice(); SEC.cur = [null, null, null]; SEC.cls = ['', '', '']; SEC.i = 0; SEC.start = 0; SEC.dirty = false; }
+function resetLapCounters() { SIM.lapHarv = 0; SIM.lapDep = 0; SIM.lapT = 0; SEC.start = 0; SEC.dirty = true; }
 
 function simStep(dt) {
   const R = RULES[S.era], era = S.era, mode = S.mode, win = R.socWin;
@@ -1719,13 +1862,17 @@ function simStep(dt) {
     SIM.lapT += dt;
     const ti = Math.floor((SIM.s % TRACK.N) / 5);
     SIM.traceCur[ti] = vk; SIM.traceK[ti] = k;
+    if (SIM.s < TRACK.N && Math.floor(SIM.s / (TRACK.N / 3)) > SEC.i) secClose();
     if (SIM.s >= TRACK.N) {
       SIM.s -= TRACK.N;
+      secClose();
       const key = S.era + S.mode;
-      SIM.last = { t: SIM.lapT, key };
-      if (!SIM.best[key] || SIM.lapT < SIM.best[key]) SIM.best[key] = SIM.lapT;
+      if (!SEC.dirty) {
+        SIM.last = { t: SIM.lapT, key };
+        if (!SIM.best[key] || SIM.lapT < SIM.best[key]) SIM.best[key] = SIM.lapT;
+      }
       SIM.tracePrev = { v: SIM.traceCur.slice(), k: SIM.traceK.slice() };
-      SIM.traceCur.fill(-1); resetLapCounters(); SIM.lapN++;
+      SIM.traceCur.fill(-1); resetLapCounters(); secNewLap(); SIM.lapN++;
       if (S.mode === 'quali') SIM.soc = R.socWin; // a qualifying lap starts with a battery charged on the out-lap
     }
   } else {
@@ -1828,7 +1975,7 @@ function audioUpdate() {
 /* ==========================================================================
    COPY — English + 繁體中文
    ========================================================================== */
-const STROKE_COL = ['#c98a00', '#b8321f', '#2d62c8', '#7a48c0'];
+const STROKE_COL = ['#ffc21f', '#ff5a3c', '#5b9bff', '#b98bff']; // power · exhaust · intake · compression
 const T = {
   en: {
     kicker: 'F1 · 2026 rules · interactive lab', h1a: 'Inside the', h1b: 'engine',
@@ -1859,6 +2006,7 @@ const T = {
     liftBtn: 'Hold to lift off', slowBtn: 'Slow-mo 1/200', xrayBtn: 'X-ray', see25: 'See 2025', see26: 'See 2026', peak: 'peak kW',
     order: 'Firing order', gapsWord: 'gaps', clickLesson: n => `click → lesson ${n}`,
     ffLimit: 'fuel energy limit', ffNow: 'now',
+    towerNo: 'No.', towerLesson: 'Lesson', towerStatus: 'Status', towerNew: 'new', towerSeen: 'done',
     cards: [
       { t: 'More than an engine', h: `
 <p>An F1 car is pushed by a <b>power unit</b>: a team of parts that turns fuel <i>and</i> electricity into speed.</p>
@@ -1939,6 +2087,7 @@ const T = {
     liftBtn: '按住＝鬆油門', slowBtn: '慢動作 1/200', xrayBtn: '透視', see25: '看 2025', see26: '看 2026', peak: '峰值 kW',
     order: '點火順序', gapsWord: '間隔', clickLesson: n => `點一下 → 第 ${n} 課`,
     ffLimit: '燃料能量上限', ffNow: '目前',
+    towerNo: '序', towerLesson: '章節', towerStatus: '狀態', towerNew: '未讀', towerSeen: '已讀',
     cards: [
       { t: '不只是引擎', h: `
 <p>推動 F1 賽車的是一整套<b>動力單元</b>：一組把燃料<i>和</i>電力都變成速度的零件。</p>
@@ -2020,6 +2169,8 @@ const CARD_ACT = [
    DOM: cards, help, i18n
    ========================================================================== */
 const cardList = $('#cardlist');
+const SEEN = new Set();                       // lessons opened this session (timing-tower status)
+const TOWER_COL = [PAL.red, PAL.heat, PAL.air, PAL.mguh, PAL.elec, PAL.fuel, PAL.live]; // each lesson's data colour
 function fireHTML() {
   return `<div class="fire" id="fire">${CYL.order.map(i => `<div><span data-c="${i}"></span>${CYL[i].name}</div>`).join('')}</div>
   <div class="legend">${L().strokes.map((s, i) => `<span><i style="background:${STROKE_COL[i]}"></i>${s.toLowerCase()}</span>`).join('')}</div>`;
@@ -2036,8 +2187,8 @@ function modesHTML() {
   return `<div class="cbtns" id="cmodes">${['quali', 'race', 'recharge', 'overtake'].map(m => `<button data-mode="${m}">${L()['m_' + m]}</button>`).join('')}</div><p id="cmdesc"></p>`;
 }
 function legendHTML() {
-  const e = S.lang === 'zh' ? [['#e06a12', '燃料能量'], ['#7d8fa8', '進氣'], ['#b08d3e', '曲軸 → 車輪'], ['#0e9a78', '電池 → MGU-K（部署）'], ['#2d62c8', 'MGU-K → 電池（回收）'], ['#a33a1d', '廢氣'], ['#7a48c0', 'MGU-H（2025）']]
-    : [['#e06a12', 'fuel energy'], ['#7d8fa8', 'intake air'], ['#b08d3e', 'crank → wheels'], ['#0e9a78', 'ES → MGU-K (deploy)'], ['#2d62c8', 'MGU-K → ES (harvest)'], ['#a33a1d', 'exhaust'], ['#7a48c0', 'MGU-H (2025)']];
+  const e = S.lang === 'zh' ? [[PAL.fuel, '燃料能量'], [PAL.air, '進氣'], [PAL.mech, '曲軸 → 車輪'], [PAL.elec, '電池 → MGU-K（部署）'], [PAL.harv, 'MGU-K → 電池（回收）'], [PAL.heat, '廢氣'], [PAL.mguh, 'MGU-H（2025）']]
+    : [[PAL.fuel, 'fuel energy'], [PAL.air, 'intake air'], [PAL.mech, 'crank → wheels'], [PAL.elec, 'ES → MGU-K (deploy)'], [PAL.harv, 'MGU-K → ES (harvest)'], [PAL.heat, 'exhaust'], [PAL.mguh, 'MGU-H (2025)']];
   return `<div class="legend" style="margin:6px 0 4px">${e.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>`;
 }
 function buildCards() {
@@ -2063,7 +2214,8 @@ function buildCards() {
   $('#flowkey').innerHTML = legendHTML().replace(' style="margin:6px 0 4px"', '');
   // chapter strip (desktop header) + table of contents on the cover sheet
   $('#chapters').innerHTML = `<div class="lead"><span class="capt">${l.lessons}</span></div>` + l.cards.map((c, i) => `<button class="ch${S.card === i ? ' on' : ''}" data-n="${i}" title="${c.t.replace(/"/g, '&quot;')}"><b>0${i + 1}</b><span>${c.t}</span></button>`).join('');
-  $('#toc').innerHTML = l.cards.map((c, i) => `<li><button data-n="${i}"><b>0${i + 1}</b><span>${c.t}</span></button></li>`).join('');
+  $('#toc').innerHTML = l.cards.map((c, i) => `<li><button data-n="${i}" class="${SEEN.has(i) ? 'seen' : ''}"><b>${i + 1}</b><u style="background:${TOWER_COL[i]}"></u><span>${c.t}</span><em>${SEEN.has(i) ? l.towerSeen : l.towerNew}</em></button></li>`).join('');
+  $$('#chapters .ch').forEach(b => b.classList.toggle('seen', SEEN.has(+b.dataset.n)));
   $$('#chapters .ch, #toc button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; setCard(S.card === n ? -1 : n); }));
   // mobile navigator
   $('#mnav').innerHTML = `<button data-n="-1" aria-label="previous">‹</button>${l.cards.map((c, i) => `<button data-n="${i}" class="${S.card === i ? 'on' : ''}">${i + 1}</button>`).join('')}<button data-n="+1" aria-label="next">›</button><button class="lang2" data-lang2>${S.lang === 'en' ? '中文' : 'EN'}</button>`;
@@ -2157,14 +2309,31 @@ function updateLabels() {
   }
   // stroke tags above each cylinder (X-ray)
   const showS = S.xray && S.explT < 0.2 && !S.noui && !S.cine && (S.card === 1 || S.card === -1);
+  const tags = [];
   for (const sl of strokeLbls) {
     if (!showS) { sl.el.classList.remove('on'); continue; }
     const c = sl.c, ph = phaseOf(c, S.theta), st = Math.floor(ph / 180);
     const w = PARTS.crank.g.localToWorld(bankPoint(c.b, c.x, 3.05, 0));
     const s = screenOf(w);
-    if (st !== sl.last) { sl.el.textContent = `${c.name} · ${L().strokes[st]}`; sl.el.style.borderColor = STROKE_COL[st]; sl.el.style.color = STROKE_COL[st]; sl.last = st; }
-    sl.el.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px) translate(-50%,-50%)`;
-    sl.el.classList.add('on'); sl.el.style.opacity = 1;
+    if (st !== sl.last) { sl.el.textContent = `${c.name} · ${L().strokes[st]}`; sl.el.style.borderColor = STROKE_COL[st]; sl.el.style.color = STROKE_COL[st]; sl.last = st; sl.w = 0; }
+    sl.el.classList.add('on');
+    if (!sl.w) { sl.w = sl.el.offsetWidth; sl.h = sl.el.offsetHeight; }
+    tags.push({ sl, x: s.x, y: s.y });
+  }
+  // relax overlaps between stroke tags (same approach as the part labels)
+  for (let pass = 0; pass < 8; pass++) for (let i = 0; i < tags.length; i++) for (let j = i + 1; j < tags.length; j++) {
+    const a = tags[i], b = tags[j];
+    const ox = (a.sl.w + b.sl.w) / 2 + 4 - Math.abs(a.x - b.x), oy = (a.sl.h + b.sl.h) / 2 + 3 - Math.abs(a.y - b.y);
+    if (ox > 0 && oy > 0) { if (oy < ox * 1.2) { const d = oy / 2 * (a.y < b.y ? -1 : 1); a.y += d; b.y -= d; } else { const d = ox / 2 * (a.x < b.x ? -1 : 1); a.x += d; b.x -= d; } }
+  }
+  // part labels stay put; stroke tags step out of their way
+  for (const t of tags) for (const it of items) {
+    const ox = (t.sl.w + it.o.w) / 2 + 4 - Math.abs(t.x - it.x), oy = (t.sl.h + it.o.h) / 2 + 3 - Math.abs(t.y - it.y);
+    if (ox > 0 && oy > 0) { if (oy < ox * 1.2) t.y += oy * (t.y < it.y ? -1 : 1); else t.x += ox * (t.x < it.x ? -1 : 1); }
+  }
+  for (const t of tags) {
+    t.sl.el.style.transform = `translate(${t.x.toFixed(1)}px,${t.y.toFixed(1)}px) translate(-50%,-50%)`;
+    t.sl.el.style.opacity = 1;
   }
 }
 
@@ -2172,7 +2341,7 @@ function updateLabels() {
    STATE SETTERS
    ========================================================================== */
 const toastEl = $('#toast'); let toastT = 0;
-function toast(html, ms = 2600) { toastEl.innerHTML = html; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), ms); }
+function toast(html, ms = 2600) { toastEl.innerHTML = `<span>${html}</span>`; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), ms); }
 function segSync() {
   $$('#seg-mode button').forEach(b => b.classList.toggle('on', b.dataset.v === S.mode));
   $$('#seg-era button').forEach(b => b.classList.toggle('on', +b.dataset.v === S.era));
@@ -2188,6 +2357,7 @@ function segSync() {
   $('#tb-mode').textContent = tl['m_' + S.mode]; $('#tb-rules').textContent = S.era; $('#tb-slow').textContent = '÷' + S.slow;
   $('#rpm').classList.toggle('auto', S.drive === 'lap');
   $('#t-src').textContent = S.drive === 'lap' ? (S.lang === 'zh' ? '單圈模擬' : 'LAP SIM') : (S.lang === 'zh' ? '測功機' : 'DYNO');
+  $('#live-src').textContent = $('#t-src').textContent;
   $('#slowhint').textContent = L().slowhint(S.slow);
   syncCardWidgets();
 }
@@ -2196,7 +2366,7 @@ function setEra(e, quiet) { if (S.era === e) return segSync(); S.era = e; if (SI
 function setDrive(d, quiet) {
   if (S.drive === d) return segSync();
   S.drive = d; resetLapCounters();
-  if (d === 'lap') { SIM.s = 0; SIM.v = 250 / 3.6; SIM.traceCur.fill(-1); } else { S.rpmSet = Math.round(SIM.rpm / 100) * 100; SIM.hist.length = 0; }
+  if (d === 'lap') { SIM.s = 0; SIM.v = 250 / 3.6; SIM.traceCur.fill(-1); secNewLap(); SEC.last = [null, null, null]; } else { S.rpmSet = Math.round(SIM.rpm / 100) * 100; SIM.hist.length = 0; }
   segSync(); if (!quiet) toast(d === 'dyno' ? L().toDyno : L().toLap);
 }
 function setXray(on) { S.xray = on; applyXray(); segSync(); }
@@ -2212,7 +2382,10 @@ function setCard(i) {
   $$('.card', cardList).forEach(c => { const on = +c.dataset.i === i; c.classList.toggle('on', on); c.querySelector('button').setAttribute('aria-expanded', on); });
   $$('#mnav button[data-n]').forEach(b => b.classList.toggle('on', +b.dataset.n === i && !/[+-]/.test(b.dataset.n)));
   $$('#chapters .ch').forEach(b => b.classList.toggle('on', +b.dataset.n === i));
-  if (i >= 0) $$('#chapters .ch')[i]?.classList.add('seen');
+  if (i >= 0 && !SEEN.has(i)) {
+    SEEN.add(i); $$('#chapters .ch')[i]?.classList.add('seen');
+    const tb = $$('#toc button')[i]; if (tb) { tb.classList.add('seen'); tb.querySelector('em').textContent = L().towerSeen; }
+  }
   $('#app').classList.toggle('has-card', i >= 0);
   $('#dpos').textContent = `${i >= 0 ? '0' + (i + 1) : '—'} / 07`;
   if (i < 0) { S.focus = null; return; }
@@ -2319,6 +2492,8 @@ $('#d-next').addEventListener('click', () => setCard(S.card >= 6 ? 0 : S.card + 
 function toggleUI() { S.noui = !S.noui; $('#app').classList.toggle('noui', S.noui); frameView(); if (S.noui) toast(L().uiHidden, 2400); }
 
 /* rpm slider */
+/* mobile dock rows scroll sideways; drop the right-edge fade once a row is scrolled to its end */
+$$('#dock .dr').forEach(r => { const f = () => r.classList.toggle('end', r.scrollLeft + r.clientWidth >= r.scrollWidth - 2); r.addEventListener('scroll', f, { passive: true }); addEventListener('resize', f); f(); });
 const RMIN = 4000, RMAX = 15000, slider = $('#rpm');
 (function sliderMarks() {
   for (let r = 4000; r <= 15000; r += 1000) { const t = document.createElement('div'); t.className = 'tk'; t.style.left = ((r - RMIN) / (RMAX - RMIN) * 100) + '%'; slider.appendChild(t); }
@@ -2415,46 +2590,57 @@ const fmt = (n, d = 0) => n.toLocaleString('en-US', { minimumFractionDigits: d, 
 const lapFmt = t => t == null ? '—' : `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 const trace = el('trace'), tctx = trace.getContext('2d');
 function sizeTrace() { const r = trace.getBoundingClientRect(); trace.width = Math.max(10, r.width * DPR); trace.height = Math.max(10, r.height * DPR); }
+const LED_N = 16, leds = el('t-leds');
+for (let i = 0; i < LED_N; i++) { const d = document.createElement('i'); if (i === Math.round(6500 / 11000 * LED_N)) d.className = 'k'; leds.appendChild(d); }
 function drawTrace() {
   const w = trace.width, h = trace.height, g = tctx, d = DPR;
   g.clearRect(0, 0, w, h);
   const mapW = h * 1.05, pad = 7 * d;
   const [x0, x1, z0, z1] = TRACK.box, sc = Math.min((mapW - 2 * pad) / (x1 - x0), (h - 2 * pad) / (z1 - z0));
   const mx = p => pad + (p.x - x0) * sc, my = p => pad + (p.z - z0) * sc;
+  const mono = `${9 * d}px "JetBrains Mono", monospace`;
   if (S.drive === 'lap') {
     // map coloured by what the MGU-K did on this lap
     g.lineWidth = 3 * d; g.lineCap = 'round';
     for (let i = 0; i < TRACK.N; i += 5) {
       const a = TRACK.pts[i], b = TRACK.pts[(i + 5) % TRACK.N], ti = Math.floor(i / 5);
       const kv = SIM.traceCur[ti] >= 0 ? SIM.traceK[ti] : (SIM.tracePrev ? SIM.tracePrev.k[ti] : 0);
-      g.strokeStyle = kv > 5 ? 'rgba(14,154,120,.95)' : kv < -5 ? 'rgba(45,98,200,.95)' : 'rgba(28,31,35,.22)';
+      g.strokeStyle = kv > 5 ? PAL.elec : kv < -5 ? PAL.harv : 'rgba(255,255,255,.2)';
       g.beginPath(); g.moveTo(mx(a), my(a)); g.lineTo(mx(b), my(b)); g.stroke();
     }
+    // sector splits (white) and the start/finish line (red)
+    for (let j = 0; j < 3; j++) {
+      const i = Math.floor(j * TRACK.N / 3), a = TRACK.pts[i], b = TRACK.pts[(i + 4) % TRACK.N];
+      const ang = Math.atan2(my(b) - my(a), mx(b) - mx(a)) + Math.PI / 2, L = 5 * d;
+      g.strokeStyle = j ? '#fff' : PAL.red; g.lineWidth = (j ? 1.5 : 2.5) * d; g.lineCap = 'butt';
+      g.beginPath(); g.moveTo(mx(a) - Math.cos(ang) * L, my(a) - Math.sin(ang) * L); g.lineTo(mx(a) + Math.cos(ang) * L, my(a) + Math.sin(ang) * L); g.stroke();
+    }
     const car = TRACK.pts[Math.floor(SIM.s) % TRACK.N];
-    g.fillStyle = '#d3261b'; g.beginPath(); g.arc(mx(car), my(car), 3.6 * d, 0, 7); g.fill();
-    g.strokeStyle = 'rgba(28,31,35,.7)'; g.lineWidth = 1 * d; g.beginPath(); g.arc(mx(car), my(car), 6.5 * d, 0, 7); g.stroke();
+    g.fillStyle = PAL.live; g.beginPath(); g.arc(mx(car), my(car), 3.6 * d, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(212,255,51,.45)'; g.lineWidth = 1 * d; g.beginPath(); g.arc(mx(car), my(car), 6.5 * d, 0, 7); g.stroke();
     // speed trace
     const tx = mapW + 6 * d, tw = w - tx - 4 * d, n = SIM.traceCur.length;
     const Y = v => h - 6 * d - (v / 360) * (h - 14 * d);
-    g.strokeStyle = 'rgba(28,31,35,.1)'; g.lineWidth = 1;
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
     for (const v of [100, 200, 300]) { g.beginPath(); g.moveTo(tx, Y(v)); g.lineTo(tx + tw, Y(v)); g.stroke(); }
-    g.fillStyle = 'rgba(28,31,35,.5)'; g.font = `${9 * d}px IBM Plex Mono, monospace`; g.fillText('300', tx + 2, Y(300) - 3 * d); g.fillText('km/h', tx + 2, Y(200) - 3 * d);
-    if (SIM.tracePrev) { g.strokeStyle = 'rgba(28,31,35,.28)'; g.lineWidth = 1.2 * d; g.beginPath(); for (let i = 0; i < n; i++) { const x = tx + i / n * tw, y = Y(SIM.tracePrev.v[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
-    g.lineWidth = 2 * d;
+    for (let j = 1; j < 3; j++) { const x = tx + j / 3 * tw; g.setLineDash([2 * d, 3 * d]); g.beginPath(); g.moveTo(x, 3 * d); g.lineTo(x, h - 3 * d); g.stroke(); g.setLineDash([]); }
+    g.fillStyle = 'rgba(255,255,255,.4)'; g.font = mono; g.fillText('300', tx + 2, Y(300) - 3 * d); g.fillText('km/h', tx + 2, Y(200) - 3 * d);
+    if (SIM.tracePrev) { g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1.2 * d; g.beginPath(); for (let i = 0; i < n; i++) { const x = tx + i / n * tw, y = Y(SIM.tracePrev.v[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+    g.lineWidth = 2 * d; g.lineCap = 'round';
     for (let i = 1; i < n; i++) {
       if (SIM.traceCur[i] < 0 || SIM.traceCur[i - 1] < 0) continue;
       const kv = SIM.traceK[i];
-      g.strokeStyle = kv > 5 ? '#0e9a78' : kv < -5 ? '#2d62c8' : 'rgba(28,31,35,.75)';
+      g.strokeStyle = kv > 5 ? PAL.elec : kv < -5 ? PAL.harv : '#f4f4f2';
       g.beginPath(); g.moveTo(tx + (i - 1) / n * tw, Y(SIM.traceCur[i - 1])); g.lineTo(tx + i / n * tw, Y(SIM.traceCur[i])); g.stroke();
     }
-    const cx = tx + (SIM.s % TRACK.N) / TRACK.N * tw; g.strokeStyle = 'rgba(28,31,35,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, 4 * d); g.lineTo(cx, h - 4 * d); g.stroke();
+    const cx = tx + (SIM.s % TRACK.N) / TRACK.N * tw; g.strokeStyle = PAL.live; g.globalAlpha = 0.6; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, 4 * d); g.lineTo(cx, h - 4 * d); g.stroke(); g.globalAlpha = 1;
   } else {
     // dyno: scrolling power history
     const H = SIM.hist, n = 240, Y = kw => h / 2 - kw / 700 * (h - 14 * d);
-    g.strokeStyle = 'rgba(28,31,35,.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
-    g.fillStyle = 'rgba(28,31,35,.55)'; g.font = `${9 * d}px IBM Plex Mono, monospace`; g.fillText('kW  +deploy / −harvest', 6 * d, 12 * d);
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.font = mono; g.fillText('kW  +deploy / −harvest', 6 * d, 12 * d);
     const line = (key, col) => { g.strokeStyle = col; g.lineWidth = 2 * d; g.beginPath(); H.forEach((p, i) => { const x = w - (H.length - i) / n * w, y = Y(p[key]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); };
-    line('ice', '#e06a12'); line('k', '#0e9a78'); if (S.era === 2025) line('h', '#7a48c0');
+    line('ice', PAL.fuel); line('k', PAL.elec); if (S.era === 2025) line('h', PAL.mguh);
   }
 }
 function drawFF(force) {
@@ -2463,17 +2649,18 @@ function drawFF(force) {
   if (force || !svg.dataset.built) {
     let p26 = '', p25 = '';
     for (let r = 4000; r <= 15000; r += 250) { p26 += `${x(r).toFixed(1)},${y(fuelCap(2026, r)).toFixed(1)} `; p25 += `${x(r).toFixed(1)},${y(fuelCap(2025, r)).toFixed(1)} `; }
-    svg.innerHTML = `<line x1="26" y1="${H - 16}" x2="${W - 8}" y2="${H - 16}" stroke="rgba(28,31,35,.15)"/>
-      <line x1="${x(10500)}" y1="6" x2="${x(10500)}" y2="${H - 16}" stroke="rgba(28,31,35,.12)" stroke-dasharray="3 3"/>
-      <polyline points="${p25}" fill="none" stroke="rgba(122,72,192,.55)" stroke-width="1.4" stroke-dasharray="4 3"/>
-      <polyline points="${p26}" fill="none" stroke="#e06a12" stroke-width="2"/>
-      <text x="${W - 8}" y="${y(3000) - 5}" text-anchor="end" fill="#e06a12" font-size="9" font-family="IBM Plex Mono">2026 · 3000 MJ/h</text>
-      <text x="${W - 8}" y="${y(4300) + 11}" text-anchor="end" fill="rgba(122,72,192,.8)" font-size="9" font-family="IBM Plex Mono">2025 · 100 kg/h ≈ 4300 MJ/h</text>
-      <text x="26" y="${H - 4}" fill="rgba(28,31,35,.55)" font-size="8.5" font-family="IBM Plex Mono">4k</text>
-      <text x="${x(10500)}" y="${H - 4}" text-anchor="middle" fill="rgba(28,31,35,.55)" font-size="8.5" font-family="IBM Plex Mono">10.5k rpm</text>
-      <text x="${W - 8}" y="${H - 4}" text-anchor="end" fill="rgba(28,31,35,.55)" font-size="8.5" font-family="IBM Plex Mono">15k</text>
-      <line id="ff-now" x1="0" x2="0" y1="6" y2="${H - 16}" stroke="rgba(28,31,35,.35)"/>
-      <circle id="ff-dot" r="4" fill="#fff" stroke="#e06a12" stroke-width="2"/>`;
+    const F = 'font-family="JetBrains Mono, monospace"';
+    svg.innerHTML = `<line x1="26" y1="${H - 16}" x2="${W - 8}" y2="${H - 16}" stroke="rgba(255,255,255,.18)"/>
+      <line x1="${x(10500)}" y1="6" x2="${x(10500)}" y2="${H - 16}" stroke="rgba(255,255,255,.14)" stroke-dasharray="3 3"/>
+      <polyline points="${p25}" fill="none" stroke="${PAL.mguh}" stroke-opacity=".7" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <polyline points="${p26}" fill="none" stroke="${PAL.fuel}" stroke-width="2"/>
+      <text x="${W - 8}" y="${y(3000) - 5}" text-anchor="end" fill="${PAL.fuel}" font-size="9" ${F}>2026 · 3000 MJ/h</text>
+      <text x="${W - 8}" y="${y(4300) + 11}" text-anchor="end" fill="${PAL.mguh}" font-size="9" ${F}>2025 · 100 kg/h ≈ 4300 MJ/h</text>
+      <text x="26" y="${H - 4}" fill="rgba(255,255,255,.5)" font-size="8.5" ${F}>4k</text>
+      <text x="${x(10500)}" y="${H - 4}" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="8.5" ${F}>10.5k rpm</text>
+      <text x="${W - 8}" y="${H - 4}" text-anchor="end" fill="rgba(255,255,255,.5)" font-size="8.5" ${F}>15k</text>
+      <line id="ff-now" x1="0" x2="0" y1="6" y2="${H - 16}" stroke="${PAL.live}" stroke-opacity=".5"/>
+      <circle id="ff-dot" r="4" fill="${PAL.live}" stroke="#050506" stroke-width="2"/>`;
     svg.dataset.built = 1;
   }
   const r = SIM.rpmS, d = svg.querySelector('#ff-dot'), l = svg.querySelector('#ff-now');
@@ -2484,7 +2671,8 @@ function updateTele() {
   const R = RULES[S.era], l = L();
   const rpm = SIM.rpmS;
   el('t-rpm').textContent = fmt(Math.round(rpm / 10) * 10);
-  el('t-rpmbar').style.width = ((rpm - 4000) / 11000 * 100).toFixed(1) + '%';
+  const lit = Math.round(clamp((rpm - 4000) / 11000, 0, 1) * LED_N);
+  if (lit !== updateTele.lit) { updateTele.lit = lit; [...leds.children].forEach((d, i) => { d.classList.toggle('g', i < lit && i < 9); d.classList.toggle('r', i < lit && i >= 9 && i < 13); d.classList.toggle('w', i < lit && i >= 13); }); }
   el('t-v').innerHTML = S.drive === 'lap' ? `${Math.round(SIM.v * 3.6)}<small>km/h</small>` : `—<small>km/h</small>`;
   el('t-gear').textContent = S.drive === 'lap' ? SIM.gear : 'N';
   bar('r-ice', SIM.ice / 600); el('t-ice').textContent = `${Math.round(SIM.ice)} kW`;
@@ -2521,6 +2709,17 @@ function updateTele() {
   const html = chips.map(([t, k]) => `<span class="chip ${k}">${t}</span>`).join('');
   if (html !== updateTele.last) { el('t-status').innerHTML = html; updateTele.last = html; }
   el('t-lapt').textContent = lapFmt(SIM.lapT);
+  const secEls = el('t-secs').children;
+  for (let j = 0; j < 3; j++) {
+    let txt = '—', cls = '';
+    if (S.drive === 'lap') {
+      if (SEC.cur[j] != null) { txt = SEC.cur[j].toFixed(3); cls = SEC.cls[j]; }
+      else if (j === SEC.i) { txt = (SIM.lapT - SEC.start).toFixed(1); cls = 'run'; }
+      else if (SEC.last[j] != null) { txt = SEC.last[j].toFixed(3); cls = 'old'; }
+    }
+    const b = secEls[j].lastElementChild; if (b.textContent !== txt) b.textContent = txt;
+    if (secEls[j].className !== cls) secEls[j].className = cls;
+  }
   const key = S.era + S.mode;
   el('t-last').textContent = S.drive === 'dyno' ? l.benchLap : (SIM.last && SIM.last.key === key ? lapFmt(SIM.last.t) : '—');
   el('t-best').textContent = S.drive === 'dyno' ? '—' : lapFmt(SIM.best[key]);
@@ -2548,7 +2747,7 @@ function updateTele() {
 /* ==========================================================================
    PER-FRAME SCENE UPDATE
    ========================================================================== */
-const HI = new THREE.Color('#d3261b'), _c = new THREE.Color();
+const HI = new THREE.Color(PAL.red), _c = new THREE.Color();
 for (const p of Object.values(PARTS)) for (const m of p.mats) { m.userData.e0 = m.emissive ? m.emissive.clone() : null; m.userData.ei0 = m.emissiveIntensity ?? 1; }
 const cellCol = new THREE.Color();
 let wheelAng = 0;
@@ -2601,10 +2800,10 @@ function updateScene(dt, time) {
   heatU.uTime.value = time;
   // SoC indicators on the Energy Store
   const socF = SIM.soc / RULES[S.era].socWin;
-  socSegs.forEach((s, i) => { const on = (i + 0.5) / socSegs.length < socF; s.material.emissiveIntensity = on ? (socF < 0.12 ? 0 : 2.2) : 0.05; s.material.emissive.set(socF < 0.12 ? '#a33a1d' : SIM.k < -1 ? '#2d62c8' : '#0e9a78'); if (socF < 0.12 && on) s.material.emissiveIntensity = 2.2; });
+  socSegs.forEach((s, i) => { const on = (i + 0.5) / socSegs.length < socF; s.material.emissiveIntensity = on ? (socF < 0.12 ? 0 : 2.2) : 0.05; s.material.emissive.set(socF < 0.12 ? PAL.heat : SIM.k < -1 ? PAL.harv : PAL.elec); if (socF < 0.12 && on) s.material.emissiveIntensity = 2.2; });
   if (S.xray) {
     const n = 12 * 7, lit = socF * 12;
-    for (let i = 0; i < n; i++) { const col = Math.floor(i / 7), f = clamp(lit - col, 0, 1); cellCol.setRGB(0.02 + 0.02 * f, 0.04 + 0.3 * f, 0.04 + 0.2 * f); cellMesh.setColorAt(i, cellCol); }
+    for (let i = 0; i < n; i++) { const col = Math.floor(i / 7), f = clamp(lit - col, 0, 1); cellCol.setRGB(0.02 + 0.02 * f, 0.05 + 0.55 * f, 0.05 + 0.45 * f); cellMesh.setColorAt(i, cellCol); }
     cellMesh.instanceColor.needsUpdate = true;
   }
   fuelMesh.material.uniforms.uTime.value = time; fuelMesh.material.uniforms.uFlow.value = SIM.fuel / 3000;
@@ -2679,7 +2878,7 @@ function resize() {
   camera.fov = w < h ? 46 : 34; camera.updateProjectionMatrix();
   frameView();
   sizeTrace();
-  paperBackground(w, h);
+  carbonBackground(w, h);
 }
 addEventListener('resize', resize);
 
