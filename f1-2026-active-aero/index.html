@@ -1,0 +1,2237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<title>Two-Mode Wings — 2026 F1 active aero</title>
+<meta name="description" content="An interactive lab: switch a procedurally built 2026-rules open-wheel car between Corner Mode and Straight Mode, watch the airflow, run a lap, follow another car and compare with 2025 DRS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:ital,wdth,wght@0,50..125,400..900;1,50..125,400..900&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+<style>
+/* ==========================================================================
+   Theme: "pit wall" — race-broadcast graphics on a carbon-fibre backdrop.
+   Shared with ../f1-2026-power-unit/ so the two labs read as one series.
+   UI base = red / white / black. Lime = live telemetry. Purple / green / yellow
+   = sector timing only. Data colours: --hi (high pressure) / --lo (low pressure),
+   --dfc (downforce), --drg (drag), --elec (electric deploy).
+   ========================================================================== */
+:root{
+  --bg:#0a0a0c; --panel:#111114; --panel2:#18181d; --panel3:#24242b;
+  --txt:#f4f4f2; --txt2:#c4c4ca; --mute:#8b8b95; --faint:#5a5a64;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.15); --line3:rgba(255,255,255,.32);
+  --red:#e3102a; --red2:#a30b1d; --redtint:rgba(227,16,42,.18);
+  --live:#d4ff33; --livetint:rgba(212,255,51,.13);
+  --s-p:#b84dff; --s-g:#2fdc4a; --s-y:#ffd21f;
+  --elec:#19e6c1; --harv:#4d7dff; --fuel:#ff8a1c; --heat:#ff4d6d; --air:#a3bcdc; --mech:#e2b54a; --mguh:#a97bff;
+  --hi:#ff4a3d; --lo:#5a7dff; --dfc:#5a7dff; --drg:#ff8a1c; --wake:#b98bff;
+  --kerb:repeating-linear-gradient(90deg,var(--red) 0 14px,#f2f2f2 14px 28px);
+  --carbon:none;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:Saira,"Arial Narrow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hdr:48px; --strip:36px; --top:calc(var(--hdr) + var(--strip));
+  --side:240px; --drawer:376px; --tele:140px; --cut:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg) var(--carbon);color:var(--txt);font:400 14px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;font-synthesis:none}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--live);outline-offset:1px}
+kbd{font:600 10px/1 var(--mono);color:var(--txt);padding:2px 5px;border:1px solid var(--line3);border-bottom-width:2px;background:var(--panel3)}
+#app{position:fixed;inset:0;overflow:hidden;user-select:none;-webkit-user-select:none}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl.drag{cursor:grabbing}
+#gl.hot{cursor:pointer}
+.panel{background:var(--panel)}
+.ui{transition:opacity .35s,transform .35s}
+#app.noui .ui{opacity:0;pointer-events:none!important}
+#app.noui .ui *{pointer-events:none!important}
+/* broadcast caption: bold italic condensed caps */
+.capt{font:italic 700 12px/1 var(--sans);font-stretch:75%;letter-spacing:.06em;text-transform:uppercase;color:var(--txt)}
+.capt em{font:400 10px/1 var(--mono);letter-spacing:0;text-transform:none;font-style:normal;color:var(--faint)}
+.chamf{clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut))}
+
+/* ---------- viewfinder corners around the free 3D area ---------- */
+#frame{position:absolute;left:calc(var(--side) + 14px);right:calc(var(--drawer) + 14px);top:calc(var(--top) + 14px);bottom:calc(var(--tele) + 14px);pointer-events:none}
+#frame i{position:absolute;width:18px;height:18px;border:0 solid rgba(255,255,255,.28)}
+#frame i:nth-of-type(1){left:0;top:0;border-left-width:2px;border-top-width:2px}
+#frame i:nth-of-type(2){right:0;top:0;border-right-width:2px;border-top-width:2px}
+#frame i:nth-of-type(3){left:0;bottom:0;border-left-width:2px;border-bottom-width:2px}
+#frame i:nth-of-type(4){right:0;bottom:0;border-right-width:2px;border-bottom-width:2px}
+
+/* info bug (bottom-right of the 3D area): a strip of slanted broadcast tabs */
+#tblock{position:absolute;right:calc(var(--drawer) + 28px);bottom:calc(var(--tele) + 26px);display:flex;align-items:stretch;height:26px;pointer-events:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+#tblock .no{display:flex;align-items:center;padding:0 14px 0 10px;background:var(--red);color:#fff;font:italic 800 13px/1 var(--sans);font-stretch:75%;letter-spacing:.04em;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#tblock .nm{display:none}
+#tblock .g{display:flex;margin-left:-4px}
+#tblock .g div{display:flex;align-items:center;gap:6px;padding:0 14px 0 12px;margin-left:-4px;background:var(--panel2);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#tblock .g div:nth-child(2n){background:var(--panel3)}
+#tblock .g span{font:italic 600 9.5px/1 var(--sans);font-stretch:75%;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+#tblock .g b{font:600 11.5px/1 var(--mono);color:var(--txt);white-space:nowrap}
+#tblock #tb-mode{color:var(--live)}
+
+/* ---------- header: black bar, red slanted tab, kerb underline ---------- */
+#hdr{position:absolute;left:0;right:0;top:0;height:var(--hdr);display:flex;align-items:center;gap:16px;padding:0 12px 0 0;background:#050506;overflow:hidden}
+#hdr::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--kerb);opacity:.95}
+.speed{position:absolute;inset:0 0 3px 38%;pointer-events:none;overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent)}
+.speed i{position:absolute;height:1px;width:140px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22));animation:streak 3.8s linear infinite}
+.speed i:nth-child(1){top:11px;animation-delay:-.4s}
+.speed i:nth-child(2){top:22px;width:220px;animation-duration:5.2s;animation-delay:-2.1s}
+.speed i:nth-child(3){top:33px;width:90px;animation-duration:3.1s;animation-delay:-1.3s}
+@keyframes streak{from{left:-240px}to{left:100%}}
+.mark{position:relative;align-self:stretch;display:flex;align-items:center;gap:4px;padding:0 26px 3px 14px;background:var(--red);color:#fff;font:italic 800 19px/1 var(--sans);font-stretch:75%;letter-spacing:.02em;clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%)}
+.mark b{font:italic 700 13px/1 var(--mono);padding:3px 5px;background:#fff;color:#050506;transform:skewX(-10deg)}
+.brand{position:relative;display:flex;align-items:center;gap:14px;min-width:0;white-space:nowrap}
+.brand h1{margin:0;font:italic 800 25px/1 var(--sans);font-stretch:75%;letter-spacing:.01em;text-transform:uppercase;color:#fff}
+.brand h1 small{font:italic 500 16px/1 var(--sans);font-stretch:75%;color:var(--mute);margin-right:7px;letter-spacing:.04em}
+.brand h1 .s{color:var(--red);margin:0 1px}
+.kicker{font:500 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:4px 0 4px 14px;border-left:2px solid var(--red);overflow:hidden;text-overflow:ellipsis}
+.hx{position:relative;margin-left:auto;display:flex;align-items:center;gap:8px}
+.live{display:flex;align-items:center;gap:6px;font:italic 700 11px/1 var(--sans);font-stretch:75%;letter-spacing:.14em;color:var(--txt);padding:0 10px;height:24px;background:var(--panel2);transform:skewX(-12deg)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 1.6s steps(2,start) infinite}
+.live span{transform:skewX(12deg)}
+@keyframes blink{50%{opacity:.25}}
+.lang{display:flex;transform:skewX(-12deg);background:var(--panel2)}
+.lang button{border:0;background:none;padding:0 10px;height:26px;font:600 11px/1 var(--mono);color:var(--mute)}
+.lang button.on{background:#fff;color:#050506}
+.ic{display:flex;gap:3px}
+.ic button{width:32px;height:26px;border:0;background:var(--panel2);display:grid;place-items:center;padding:0;color:var(--txt);transform:skewX(-12deg)}
+.ic button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform:skewX(12deg)}
+.ic button:hover{background:var(--panel3)}
+.ic button.on{background:#fff;color:#050506}
+.ic #b-snd.on{background:var(--red);color:#fff}
+#b-snd #snd-w{display:none}
+#b-snd.on #snd-w{display:inline}
+
+/* ---------- chapter strip: slanted session tabs ---------- */
+#chapters{position:absolute;left:0;right:0;top:var(--hdr);height:var(--strip);display:flex;gap:0;background:#0d0d10;padding:0 6px 0 0;border-bottom:1px solid var(--line2)}
+#chapters .lead{flex:none;width:var(--side);display:flex;align-items:center;gap:8px;padding:0 14px}
+#chapters .lead::before{content:"";width:4px;height:14px;background:var(--red);transform:skewX(-14deg)}
+#chapters .ch{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;border:0;background:none;padding:0 14px 0 16px;margin-left:-6px;text-align:left;position:relative;clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);transition:background .15s}
+#chapters .ch::after{content:"";position:absolute;right:4px;top:9px;bottom:9px;width:1px;background:var(--line2);transform:skewX(-14deg)}
+#chapters .ch b{flex:none;font:700 11px/1 var(--mono);color:var(--red);padding:3px 4px;background:rgba(255,255,255,.05)}
+#chapters .ch span{font:italic 700 14px/1.1 var(--sans);font-stretch:75%;letter-spacing:.02em;text-transform:uppercase;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chapters .ch:hover{background:rgba(255,255,255,.05)}
+#chapters .ch.on{background:var(--red)}
+#chapters .ch.on::after{display:none}
+#chapters .ch.on b{background:#fff;color:var(--red)}
+#chapters .ch.on span{color:#fff}
+#chapters .ch.seen:not(.on) b{color:var(--live)}
+
+/* ---------- pit-wall controls (left) ---------- */
+#dock{position:absolute;left:0;top:var(--top);bottom:var(--tele);width:var(--side);padding:14px 14px 14px;display:flex;flex-direction:column;gap:14px;overflow:auto;scrollbar-width:none;background:linear-gradient(90deg,var(--panel) 0 calc(100% - 1px),var(--line2) 0)}
+#dock::-webkit-scrollbar{display:none}
+.dr{display:flex;flex-direction:column;gap:14px}
+.grp{display:flex;flex-direction:column;gap:7px;min-width:0}
+.grp>.lb{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grp>.lb span{display:flex;align-items:center;gap:7px;font:italic 700 12px/1 var(--sans);font-stretch:75%;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
+.grp>.lb span::before{content:"";width:3px;height:11px;background:var(--red);transform:skewX(-14deg)}
+.grp>.lb em{font:500 9.5px/1 var(--mono);letter-spacing:.02em;font-style:normal;color:var(--faint)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;gap:3px;padding-left:4px}
+.seg button{flex:1;border:0;background:var(--panel3);height:28px;padding:0 6px;font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt2);white-space:nowrap;transform:skewX(-12deg);transition:background .15s,color .15s}
+.seg button:hover{background:#2e2e36;color:var(--txt)}
+.seg button.on{background:#fff;color:#050506}
+.seg.mode{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.seg.mode button{height:30px;text-align:left;padding:0 10px;position:relative}
+.seg.mode button::after{content:"";position:absolute;right:6px;top:50%;width:6px;height:6px;margin-top:-3px;background:var(--faint)}
+.seg.mode button.on::after{background:currentColor}
+.seg.mode button.on[data-v=quali]{background:var(--red);color:#fff}
+.seg.mode button.on[data-v=race]{background:#fff;color:#050506}
+.seg.mode button.on[data-v=recharge]{background:var(--harv);color:#fff}
+.seg.mode button.on[data-v=overtake]{background:var(--elec);color:#04120f}
+.seg.era button,.seg#seg-slow button{font:600 12px/1 var(--mono)}
+.tg{display:flex;flex-direction:column;gap:3px;padding-left:4px}
+.tg button{display:flex;align-items:center;gap:9px;height:30px;padding:0 10px;border:0;background:var(--panel2);font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt2);white-space:nowrap;text-align:left;transform:skewX(-12deg);border-left:3px solid var(--panel3)}
+.tg button::before{content:"";flex:none;width:8px;height:8px;background:var(--faint)}
+.tg button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
+.tg button .txt{flex:1}
+.tg button:hover{background:var(--panel3)}
+.tg button.on{color:#fff;border-left-color:var(--live);background:#1d1f16}
+.tg button.on::before{background:var(--live);box-shadow:0 0 8px var(--live)}
+.slider{grid-area:s;position:relative;height:42px;flex:1;min-width:120px;touch-action:none;cursor:pointer}
+.slider .tr{position:absolute;left:0;right:0;top:19px;height:6px;background:var(--panel3);transform:skewX(-20deg)}
+.slider .fl{position:absolute;left:0;top:19px;height:6px;background:linear-gradient(90deg,#6c0a16,var(--red));transform:skewX(-20deg)}
+.slider .kn{position:absolute;top:12px;width:10px;height:20px;margin-left:-5px;background:#fff;transform:skewX(-14deg);box-shadow:0 0 0 2px #050506}
+.slider .tk{position:absolute;top:28px;width:1px;height:5px;background:var(--faint)}
+.slider .mk{position:absolute;top:35px;font:500 9px/1 var(--mono);color:var(--mute);transform:translateX(-50%);white-space:nowrap}
+.slider .tk+.mk{transform:none}
+.slider .mk.a{color:var(--fuel)}
+.slider .mk:last-child{transform:translateX(-100%)}
+.slider.auto .kn{background:var(--mute)}
+.slider.auto .fl{background:linear-gradient(90deg,#26262c,#4a4a53)}
+.rpmv{grid-area:v;font:700 21px/1 var(--mono);color:var(--live);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.rpmv small{color:var(--mute);font-size:10px;font-weight:500;margin-left:4px;letter-spacing:0}
+.slowhint{grid-area:h;justify-self:end;text-align:right;font:400 9.5px/1.25 var(--mono);color:var(--mute);font-style:normal;max-width:100px}
+.rpmrow{display:grid;grid-template-areas:"v h" "s s";align-items:end;gap:2px 8px}
+.dk-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.dk-foot .legend{flex-direction:column;gap:5px;font-size:10.5px}
+.dk-foot p{margin:0;padding-top:8px;border-top:1px solid var(--line2);font:400 10px/1.5 var(--mono);color:var(--mute)}
+
+/* ---------- lower-third telemetry (bottom) ---------- */
+#tele{position:absolute;left:0;right:0;bottom:0;height:var(--tele);display:grid;grid-template-columns:var(--side) 1.1fr 1.05fr 1fr 1.8fr;gap:2px;padding-top:4px;background:#050506}
+#tele::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--kerb)}
+#tele>.tc{min-width:0;overflow:hidden;padding:9px 12px 8px;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+#tele>.tc:first-child{background:#141418}
+.th{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.th .capt{display:flex;align-items:center;gap:6px}
+.th .capt::before{content:"";width:3px;height:10px;background:var(--red);transform:skewX(-14deg)}
+.th em{font:700 9.5px/1 var(--mono);letter-spacing:.06em;font-style:normal;color:#050506;background:var(--live);padding:3px 6px;transform:skewX(-12deg)}
+.big{display:grid;grid-template-columns:1.4fr 1fr .5fr;gap:6px;align-items:end}
+.big div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.big i,.row i,.mini i,.soc i{font:italic 600 10px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.big b{font:700 25px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--live);letter-spacing:-.04em;white-space:nowrap}
+.big div+div b{font-size:18px;color:var(--txt)}
+.big div:last-child b{display:grid;place-items:center;width:30px;height:28px;margin-top:-6px;font:italic 800 24px/1 var(--sans);color:#050506;background:var(--live);clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.big b small{font-size:9.5px;font-weight:500;color:var(--mute);margin-left:2px;letter-spacing:0}
+/* shift lights (replaces the rpm bar) */
+.leds{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;height:8px}
+.leds i{background:#1f1f25;transform:skewX(-20deg);transition:background .06s}
+.leds i.g{background:var(--live);box-shadow:0 0 6px rgba(212,255,51,.6)}
+.leds i.r{background:var(--red);box-shadow:0 0 6px rgba(227,16,42,.7)}
+.leds i.w{background:#fff;box-shadow:0 0 8px rgba(255,255,255,.8)}
+.leds i.k{outline:1px solid rgba(255,138,28,.6)}
+.row{display:grid;grid-template-columns:44px 1fr 62px;align-items:center;gap:7px}
+.row b{font:600 12px/1 var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--txt);white-space:nowrap}
+.bar{position:relative;height:7px;background:#1f1f25;transform:skewX(-20deg)}
+.bar>span{position:absolute;top:0;bottom:0;left:0;transition:background .3s}
+.bar.bi>span{left:50%}
+.bar.bi::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--txt2)}
+.bar .cap{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff}
+#r-ice>span{background:var(--fuel)}
+#r-fuel>span{background:repeating-linear-gradient(90deg,var(--fuel) 0 3px,#b35a0c 3px 5px)}
+#r-turbo>span{background:var(--air)}
+#r-h>span{background:var(--mguh)}
+.hrow{display:none}
+.era25 .hrow{display:grid}
+.split{display:flex;flex-direction:column;gap:4px}
+.split .sb{display:flex;height:16px;overflow:hidden;gap:2px;transform:skewX(-14deg)}
+.split .sb span{display:flex;align-items:center;justify-content:center;font:700 9.5px/1 var(--mono);color:#050506;transition:flex-basis .5s cubic-bezier(.2,.8,.2,1);white-space:nowrap;overflow:hidden}
+.split .sb .a{background:var(--fuel)} .split .sb .b{background:var(--elec)} .split .sb .c{background:var(--mguh)}
+.split .lg{display:flex;justify-content:space-between;font:500 10px/1.2 var(--mono);color:var(--txt2)}
+.soc{display:grid;grid-template-columns:44px 1fr 84px;gap:7px;align-items:center}
+.batt{position:relative;height:15px;border:1.5px solid var(--txt2);padding:2px;margin-right:4px}
+.batt::after{content:"";position:absolute;right:-5px;top:3px;width:3px;height:6px;background:var(--txt2)}
+.batt span{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--elec) 0 6px,transparent 6px 8px);transition:background .3s}
+.batt.low span{background:repeating-linear-gradient(90deg,var(--red) 0 6px,transparent 6px 8px)}
+.soc b{font:600 12px/1 var(--mono);text-align:right;color:var(--txt);white-space:nowrap}
+.soc b small{color:var(--mute);font-size:9.5px}
+.lapmj{display:flex;flex-direction:column;gap:7px}
+.mini{display:flex;flex-direction:column;gap:4px;white-space:nowrap}
+.mini>div:first-child{display:flex;flex-direction:column;gap:3px}
+.mini b{font:700 16px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums}
+.mini b small{font-size:9.5px;font-weight:500;color:var(--mute)}
+.mini .bar{height:5px}
+#m-harv .bar>span{background:var(--harv)} #m-dep .bar>span{background:var(--elec)}
+.status{display:flex;flex-wrap:wrap;gap:4px;max-height:42px;overflow:hidden;padding-left:3px}
+.chip{font:italic 700 10px/1 var(--sans);font-stretch:75%;letter-spacing:.07em;text-transform:uppercase;padding:4px 7px;color:var(--txt2);white-space:nowrap;background:var(--panel3);transform:skewX(-12deg)}
+.chip.on-e{color:#04120f;background:var(--elec)}
+.chip.on-h{color:#fff;background:var(--harv)}
+.chip.on-w{color:#fff;background:var(--red)}
+.chip.on-a{color:#140a00;background:var(--fuel)}
+.chip.on-v{color:#fff;background:var(--wake)}
+#trace{width:100%;height:0;flex:1 1 0;min-height:0;display:block;background:#0b0b0e}
+/* sector timing: purple = session best, green = faster than last lap, yellow = slower */
+.secs{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.secs div{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px 3px 8px;background:var(--panel3);transform:skewX(-12deg);min-width:0}
+.secs i{font:italic 700 10px/1 var(--sans);font-stretch:75%;letter-spacing:.06em;color:var(--mute);font-style:italic}
+.secs b{font:600 11.5px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+.secs div.p{background:var(--s-p)} .secs div.g{background:var(--s-g)} .secs div.y{background:var(--s-y)}
+.secs div.p i,.secs div.p b{color:#fff}
+.secs div.g i,.secs div.g b,.secs div.y i,.secs div.y b{color:#08140a}
+.secs div.y i,.secs div.y b{color:#1a1400}
+.secs div.run{box-shadow:inset 0 -2px 0 var(--live)}
+.secs div.old b{color:var(--mute)}
+.lapline{display:flex;justify-content:space-between;gap:8px;font:500 10.5px/1 var(--mono);color:var(--mute);text-transform:uppercase}
+.lapline b{color:var(--txt);font-weight:700}
+.lapline #t-lapt{color:var(--live)}
+
+/* ---------- lesson panel (right) ---------- */
+#cards{position:absolute;right:0;top:var(--top);bottom:var(--tele);width:var(--drawer);display:flex;flex-direction:column;background:linear-gradient(90deg,var(--line2) 0 1px,var(--panel) 0)}
+#cards .dh{flex:none;display:flex;align-items:center;justify-content:space-between;height:36px;padding:0 10px 0 16px;background:#0d0d10}
+#cards .dh .capt{display:flex;align-items:center;gap:7px}
+#cards .dh .capt::before{content:"";width:3px;height:11px;background:var(--red);transform:skewX(-14deg)}
+#cards .dh .nav{display:flex;gap:3px}
+#cards .dh .nav button{border:0;background:var(--panel3);width:28px;height:22px;padding:0;font:600 13px/1 var(--mono);color:var(--txt);transform:skewX(-12deg)}
+#cards .dh .nav button:hover{background:var(--red)}
+#cards .dh .pos{font:600 11px/1 var(--mono);color:var(--mute);margin-right:10px}
+#intro{flex:1;overflow:auto;padding:18px 16px 16px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--panel3) transparent}
+#intro .big1{margin:0;font:italic 800 38px/.95 var(--sans);font-stretch:75%;letter-spacing:.005em;text-transform:uppercase;color:#fff}
+#intro .big1 .s{color:var(--red)}
+#intro .big1 span:first-child{display:block;font-size:17px;font-weight:600;color:var(--mute);letter-spacing:.06em;margin-bottom:4px}
+#intro p{margin:0;font-size:14px;line-height:1.55;color:var(--txt2)}
+/* timing tower: lessons as a running order */
+.tower{display:flex;flex-direction:column;gap:2px}
+.tower .hd{display:grid;grid-template-columns:34px 1fr 44px;gap:8px;padding:0 6px 4px 4px;font:italic 600 9.5px/1 var(--sans);font-stretch:75%;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+#intro ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+#intro li button{display:grid;grid-template-columns:30px 4px 1fr 44px;align-items:center;gap:8px;width:100%;height:34px;border:0;background:var(--panel2);padding:0 8px 0 0;text-align:left;font:italic 700 15px/1.05 var(--sans);font-stretch:75%;text-transform:uppercase;letter-spacing:.02em;color:var(--txt);transition:background .15s}
+#intro li button b{height:100%;display:grid;place-items:center;font:700 13px/1 var(--mono);font-style:normal;color:#050506;background:#fff}
+#intro li button u{height:18px;text-decoration:none;transform:skewX(-14deg)}
+#intro li button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#intro li button em{justify-self:end;font:600 10px/1 var(--mono);font-style:normal;color:var(--faint);text-transform:uppercase}
+#intro li button.seen em{color:var(--live)}
+#intro li button:hover{background:var(--panel3)}
+#intro li button:hover b{background:var(--red);color:#fff}
+#intro .note{font:400 10.5px/1.5 var(--mono);color:var(--mute)}
+#app.has-card #intro{display:none}
+#cardlist{list-style:none;margin:0;padding:0;flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--panel3) transparent}
+#app:not(.has-card) #cardlist{display:none}
+.card{display:none}
+.card.on{display:block}
+.card>button{display:flex;align-items:stretch;gap:12px;width:100%;border:0;background:linear-gradient(180deg,#16161b,var(--panel));padding:16px 16px 12px;text-align:left;position:relative}
+.card>button::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:2px;background:linear-gradient(90deg,var(--red) 0 48px,var(--line2) 48px)}
+.card .n{flex:none;display:flex;align-items:center;justify-content:center;min-width:52px;padding:0 10px 0 6px;font:italic 800 34px/1 var(--sans);font-stretch:75%;color:#fff;background:var(--red);clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%);letter-spacing:-.02em}
+.card .n::before{content:"0"}
+.card .t{flex:1;align-self:center;font:italic 800 23px/1.02 var(--sans);font-stretch:75%;letter-spacing:.01em;text-transform:uppercase;color:#fff}
+.card .body{display:block}
+.card .inner{padding:12px 16px 18px;font-size:14px;line-height:1.58;color:var(--txt2)}
+.card .inner p{margin:0 0 10px}
+.card .inner b{color:#fff;font-weight:600}
+.card .inner .c,.card .inner .a,.card .inner .g,.card .inner .v,.card .inner .r{font-weight:600}
+.card .inner .c{color:var(--elec)} .card .inner .a{color:var(--fuel)} .card .inner .g{color:var(--harv)} .card .inner .v{color:var(--mguh)} .card .inner .r{color:var(--heat)}
+.card .inner .look{display:flex;gap:9px;align-items:flex-start;margin-top:10px;padding:9px 11px;background:var(--panel2);border-left:3px solid var(--live);font-size:13px;line-height:1.5;color:var(--txt)}
+.card .inner .look svg{flex:none;width:14px;height:14px;margin-top:2px;fill:none;stroke:var(--live);stroke-width:2}
+.cbtns{display:flex;flex-wrap:wrap;gap:3px;margin:10px 0 4px 4px}
+.cbtns button{border:0;background:var(--panel3);padding:7px 11px;font:italic 600 13px/1 var(--sans);font-stretch:87.5%;color:var(--txt);transform:skewX(-12deg)}
+.cbtns button:hover{background:#34343c}
+.cbtns button.on{background:#fff;color:#050506}
+.fire{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:10px 0 6px}
+.fire div{display:flex;flex-direction:column;align-items:center;gap:4px;font:600 9.5px/1 var(--mono);color:var(--txt2)}
+.fire span{display:block;width:100%;height:26px;background:#1f1f25;transform:skewX(-12deg);transition:background .05s}
+.legend{display:flex;flex-wrap:wrap;gap:5px 12px;font:500 10.5px/1 var(--mono);color:var(--txt2)}
+.legend i{display:inline-block;width:12px;height:4px;margin-right:6px;vertical-align:2px;transform:skewX(-20deg)}
+.cmp{display:grid;grid-template-columns:38px 1fr;gap:5px 8px;align-items:center;margin:10px 0 4px;font:600 10.5px/1 var(--mono);color:var(--txt2)}
+.cmp .sb{display:flex;gap:2px;height:18px;overflow:hidden;transform:skewX(-12deg)}
+.cmp .sb span{display:flex;align-items:center;padding-left:6px;font:700 9.5px/1 var(--mono);color:#050506;white-space:nowrap;overflow:hidden}
+.cmp .sb .a{background:var(--fuel)} .cmp .sb .b{background:var(--elec)}
+#ffchart{display:block;width:100%;height:96px;margin:8px 0 4px;background:#0b0b0e}
+#cmdesc{font-size:13px!important;color:var(--txt)!important}
+
+/* ---------- part 2 additions: aero modes, flap gauges, series link ---------- */
+.series{font:italic 700 11px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;text-transform:uppercase;color:var(--txt2);text-decoration:none;padding:0 10px;height:24px;display:flex;align-items:center;border:1px solid var(--line2);transform:skewX(-12deg)}
+.series:hover{color:#fff;border-color:var(--red)}
+.seg.mode button.wide{grid-column:1/3}
+.seg.mode button.on[data-v=corner]{background:var(--red);color:#fff}
+.seg.mode button.on[data-v=straight]{background:#fff;color:#050506}
+.seg.mode button.on[data-v=auto]{background:var(--live);color:#050506}
+.tg button.ovt.on{border-left-color:var(--elec);background:#0f201d}
+.tg button.ovt.on::before{background:var(--elec);box-shadow:0 0 8px var(--elec)}
+.tg button[disabled]{opacity:.38;cursor:not-allowed}
+#t-mode.c{background:var(--red);color:#fff}
+#t-mode.s{background:#fff;color:#050506}
+#t-mode.d{background:var(--s-g);color:#08140a}
+#t-mode.p{background:linear-gradient(90deg,#fff 50%,var(--red) 50%);color:#050506}
+.flaps{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px;align-items:center}
+.flaps i{font:italic 600 9.5px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.fbar{position:relative;height:8px;background:#1f1f25;transform:skewX(-20deg)}
+.fbar span{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--red),#fff)}
+.th em.ill{background:transparent;color:var(--mute);border:1px solid var(--line2);font-weight:600}
+#r-df>span{background:var(--dfc)} #r-dr>span{background:var(--drg)} #r-ld>span{background:var(--txt2)}
+#r-vmax>span,#r-vcor>span{background:#fff}
+#r-k>span{background:var(--elec)}
+.lg2{font:400 9.5px/1.3 var(--mono);color:var(--mute)}
+.card .inner .dfc{color:var(--dfc);font-weight:600} .card .inner .drg{color:var(--drg);font-weight:600} .card .inner .wk{color:var(--wake);font-weight:600} .card .inner .el{color:var(--elec);font-weight:600}
+/* 2025 vs 2026 rule table inside a card */
+.vs{width:100%;border-collapse:collapse;margin:8px 0 6px;font-size:12px}
+.vs th{font:italic 700 11px/1 var(--sans);font-stretch:75%;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line2)}
+.vs th:nth-child(2){color:var(--txt2)} .vs th:nth-child(3){color:#fff;background:var(--redtint)}
+.vs td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--txt2)}
+.vs td:first-child{color:var(--mute);font:500 10.5px/1.3 var(--mono);white-space:nowrap}
+.vs td:nth-child(3){color:#fff;background:rgba(227,16,42,.07)}
+.mini-bars{display:grid;grid-template-columns:44px 1fr 46px;gap:4px 8px;align-items:center;margin:8px 0;font:600 10.5px/1 var(--mono);color:var(--txt2)}
+.mini-bars .bar{height:9px}
+.mini-bars b{text-align:right;color:#fff;font-weight:600}
+#pkey{display:flex;flex-direction:column;gap:6px}
+.pgrad{height:8px;background:linear-gradient(90deg,var(--lo),#e9ebf2 50%,var(--hi));transform:skewX(-20deg)}
+.pgl{display:flex;justify-content:space-between;font:500 9.5px/1 var(--mono);color:var(--txt2)}
+
+/* ---------- labels / tooltips ---------- */
+#leaders{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#leaders line{stroke:rgba(255,255,255,.7);stroke-width:1}
+#leaders circle{fill:var(--live);stroke:#050506;stroke-width:1}
+#labels{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:4px 9px 5px 10px;background:rgba(8,8,10,.92);border-left:3px solid var(--red);font:italic 700 13px/1.1 var(--sans);font-stretch:75%;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;opacity:0;transition:opacity .25s;will-change:transform}
+.lbl small{display:block;font:400 9.5px/1.2 var(--mono);font-style:normal;letter-spacing:0;text-transform:none;color:var(--mute);margin-top:2px}
+.lbl.on{opacity:1}
+.lbl.hi{border-left-color:var(--live);box-shadow:0 0 0 1px var(--live)}
+.lbl.stroke{padding:3px 6px;font:700 9.5px/1 var(--mono);font-style:normal;letter-spacing:.04em;transform:translate(-50%,-50%);border:1.5px solid;background:rgba(8,8,10,.85)}
+#tip{position:absolute;z-index:20;pointer-events:none;padding:6px 10px 6px 12px;background:rgba(8,8,10,.95);border-left:3px solid var(--red);font:italic 700 14px/1.15 var(--sans);font-stretch:75%;letter-spacing:.03em;text-transform:uppercase;color:#fff;white-space:nowrap;opacity:0;transform:translate(14px,14px);transition:opacity .12s}
+#tip small{display:block;font:400 10px/1.3 var(--mono);font-style:normal;text-transform:none;letter-spacing:0;color:var(--mute);margin-top:2px}
+#tip.on{opacity:1}
+#toast{position:absolute;left:50%;top:calc(var(--top) + 22px);transform:translate(-50%,-8px);display:flex;align-items:stretch;background:#050506;color:#fff;font:500 13px/1.3 var(--sans);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;z-index:30;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+#toast::before{content:"";flex:none;width:18px;background:var(--live);clip-path:polygon(0 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+#toast>span{padding:8px 14px 8px 10px}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast kbd{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+
+/* ---------- help ---------- */
+#help{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.72);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s}
+#help.on{opacity:1;pointer-events:auto}
+.help{width:min(560px,calc(100vw - 32px));max-height:calc(100% - 40px);overflow:auto;padding:0 20px 18px;background:var(--panel2)!important;border-top:4px solid transparent;border-image:var(--kerb) 1}
+.help h2{margin:0 -20px 4px;padding:12px 20px;font:italic 800 26px/1 var(--sans);font-stretch:75%;text-transform:uppercase;background:#050506}
+.help p{margin:12px 0;color:var(--txt2);font-size:13.5px}
+.help dl{display:grid;grid-template-columns:auto 1fr;gap:0;margin:0;font-size:13.5px;align-items:stretch}
+.help dt,.help dd{padding:6px 0;border-bottom:1px solid var(--line)}
+.help dt{display:flex;gap:4px;justify-content:flex-end;align-items:center;padding-right:14px}
+.help dd{margin:0;color:var(--txt2)}
+.help .x{float:right;margin:10px -8px 0 0;position:relative;z-index:1;border:0;background:var(--red);color:#fff;width:30px;height:28px;transform:skewX(-12deg)}
+
+/* ---------- cinematic: letterbox + broadcast lower third ---------- */
+.lb-bar{position:absolute;left:0;right:0;height:0;background:#000;z-index:15;transition:height .8s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+#lbt{top:0} #lbb{bottom:0}
+#app.cine .lb-bar{height:9vh}
+#caption{position:absolute;left:6vw;bottom:calc(9vh + 30px);z-index:16;pointer-events:none;opacity:0;transform:translateX(-24px);transition:opacity .5s,transform .5s cubic-bezier(.2,.8,.2,1);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;filter:drop-shadow(0 6px 16px rgba(0,0,0,.55))}
+#caption i{display:block;grid-row:1/3;width:22px;background:var(--red);clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+#caption b{display:block;padding:9px 30px 8px 14px;margin-left:-6px;font:italic 800 32px/1 var(--sans);font-stretch:75%;text-transform:uppercase;letter-spacing:.01em;color:#050506;background:#fff;clip-path:polygon(9px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+#caption span{display:block;justify-self:start;margin-left:-6px;padding:6px 20px 6px 16px;font:500 12px/1.2 var(--mono);color:#fff;background:#050506;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+#app.cine #caption.on{opacity:1;transform:none}
+#app.cine .ui,#app.noui #frame,#app.cine #frame{opacity:0;pointer-events:none}
+#app.cine .ui *{pointer-events:none!important}
+
+#loader{position:absolute;inset:0;display:grid;place-items:center;z-index:50;background:var(--bg) var(--carbon);transition:opacity .6s}
+#loader.done{opacity:0;pointer-events:none}
+#loader div{font:italic 700 13px/1 var(--sans);font-stretch:75%;letter-spacing:.2em;color:#fff;text-transform:uppercase}
+#loader div::after{content:"";display:block;margin:14px auto 0;width:180px;height:4px;background:var(--kerb);background-size:28px 100%;animation:ld .6s linear infinite}
+@keyframes ld{to{background-position:28px 0}}
+#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:24px;color:var(--txt2)}
+
+/* ---------- mobile bits (hidden on desktop) ---------- */
+#mchips{display:none}
+#mnav{display:none}
+
+@media (max-width:1280px){
+  :root{--side:222px;--drawer:340px}
+  .kicker{display:none}
+  #chapters .ch{padding:0 11px 0 14px;gap:6px}
+  #chapters .ch span{font-size:13px}
+  #tele{grid-template-columns:var(--side) 1fr 1fr .95fr 1.6fr}
+}
+@media (max-width:1060px) and (min-width:761px){
+  :root{--drawer:304px;--side:204px}
+  .live{display:none}
+  #chapters .ch span{display:none}
+  #chapters .ch{justify-content:center}
+  #tblock{display:none}
+  #tele{grid-template-columns:var(--side) 1fr 1fr 1.4fr}
+  #tele>.tc.t-c{display:none}
+  .series{display:none}
+  .card .inner{font-size:13px}
+  .big b{font-size:20px} .big div+div b{font-size:15px}
+  .secs div{padding:3px 5px 3px 6px}
+  .secs i{display:none}
+  .dk-foot{display:none}
+  .big div:last-child i{visibility:hidden}
+  .lapline{font-size:9.5px;flex-wrap:wrap;gap:2px 8px}
+}
+@media (max-height:880px) and (min-width:761px){
+  .dk-foot p{display:none}
+  .dk-foot .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 6px;font-size:9.5px}
+  #dock{gap:12px} .dr{gap:12px}
+}
+@media (max-height:760px) and (min-width:761px){
+  :root{--tele:128px}
+  #tblock{display:none}
+  .tg button,.seg.mode button{height:27px}
+  #dock{gap:10px}
+  .dr{gap:10px}
+  .dk-foot{display:none}
+}
+@media (max-width:760px){
+  :root{--hdr:44px}
+  body{font-size:13px}
+  #frame,#tblock,#chapters,.series,#intro,#cards .dh,.kicker,.live,.speed,.hx .lang,#b-help,#b-hide,.dk-foot{display:none!important}
+  #hdr{height:calc(var(--hdr) + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);gap:10px;padding-right:8px}
+  .mark{padding:0 20px 3px 10px;font-size:16px}
+  .mark b{font-size:11px}
+  .brand h1{font-size:20px}
+  .brand h1 small{font-size:13px}
+  #tele{display:none}
+  #mchips{display:flex;position:absolute;left:0;right:0;top:calc(var(--hdr) + env(safe-area-inset-top));gap:2px;overflow-x:auto;scrollbar-width:none;pointer-events:auto;background:#050506;padding:0 0 2px}
+  #mchips::-webkit-scrollbar{display:none}
+  #mchips div{flex:none;padding:5px 10px 6px;background:var(--panel)}
+  #mchips div:first-child{border-left:3px solid var(--red)}
+  #mchips i{display:block;font:italic 600 9px/1 var(--sans);font-stretch:75%;letter-spacing:.1em;color:var(--mute);font-style:italic;text-transform:uppercase}
+  #mchips b{display:block;margin-top:3px;font:700 13px/1 var(--mono);color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #mchips #mc-rpm{color:var(--live)}
+  #mchips b.c{color:var(--elec)} #mchips b.g{color:var(--harv)}
+  #cards{left:8px;right:8px;top:auto;bottom:calc(112px + env(safe-area-inset-bottom));width:auto;background:none;pointer-events:none}
+  #cardlist{display:block!important;flex:none;overflow:hidden;pointer-events:auto}
+  #app:not(.has-card) #cardlist{display:none!important}
+  .card.on{background:rgba(17,17,20,.96);border-top:3px solid var(--red)}
+  .card>button{padding:9px 12px 8px;gap:10px;align-items:center;background:none}
+  .card>button::after{left:12px;right:12px}
+  .card .n{font-size:24px;min-width:40px;height:30px}
+  .card .t{font-size:18px}
+  .card .inner{padding:8px 12px 10px;font-size:13px;line-height:1.5;max-height:22vh;overflow:auto}
+  #mnav{display:flex;align-items:center;gap:3px;justify-content:center;margin:6px auto 0;pointer-events:auto;width:max-content;padding:3px;background:rgba(5,5,6,.9)}
+  #mnav button{border:0;background:var(--panel3);width:30px;height:28px;font:600 12px/1 var(--mono);color:var(--txt);padding:0;transform:skewX(-12deg)}
+  #mnav button.on{background:var(--red);color:#fff}
+  #mnav .lang2{width:auto;padding:0 10px;background:#fff;color:#050506}
+  #dock{left:0;right:0;top:auto;bottom:0;width:auto;padding:9px 8px calc(8px + env(safe-area-inset-bottom));gap:7px;overflow:visible;background:#0d0d10}
+  #dock::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--kerb)}
+  .dr{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:10px;align-items:center;padding:0 34px 0 4px;scroll-snap-type:x proximity;scroll-padding-left:4px;
+      -webkit-mask:linear-gradient(90deg,#000 calc(100% - 40px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 40px),transparent)}
+  .dr.end{-webkit-mask:none;mask:none}
+  .dr>*{scroll-snap-align:start}
+  .dr>.grp,.dr>.pair{flex:none}
+  .pair{display:flex;gap:10px}
+  .dr::-webkit-scrollbar{display:none}
+  .grp>.lb{display:none}
+  .seg.mode{display:flex}
+  .seg.mode button{text-align:center;padding:0 10px}
+  .seg.mode button::after{display:none}
+  .seg button,.seg.mode button{height:32px;padding:0 11px;font-size:13px;flex:none}
+  .tg{flex-direction:row}
+  .tg button{height:32px}
+  .tg button svg{display:none}
+  .grp.rpmg{width:236px}
+  .rpmrow{display:flex;flex-direction:row;align-items:center;gap:8px}
+  .slider{height:32px}
+  .slider .tr{top:13px} .slider .fl{top:13px} .slider .kn{top:6px} .slider .tk{top:22px}
+  .slider .mk,.slowhint{display:none}
+  .rpmv{font-size:14px;min-width:70px;text-align:right}
+  #caption{left:12px;right:auto;max-width:calc(100vw - 24px)}
+  #caption b{font-size:22px}
+  #toast{top:calc(var(--hdr) + 52px + env(safe-area-inset-top));white-space:normal;max-width:calc(100vw - 24px);text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  .ui{transition:none}
+  .speed,.live i{animation:none!important}
+  .speed{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl" aria-label="3D model of a generic 2026-rules open-wheel race car"></canvas>
+  <div id="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <svg id="leaders"></svg>
+  <div id="labels"></div>
+
+  <div id="tblock" class="ui" aria-hidden="true">
+    <span class="no">AA-26</span>
+    <div class="g">
+      <div><span data-i="view">View</span><b id="tb-view">—</b></div>
+      <div><span data-i="aero">Aero</span><b id="tb-mode">—</b></div>
+      <div><span data-i="rules">Rules</span><b id="tb-rules">—</b></div>
+      <div><span data-i="scene">Scene</span><b id="tb-scene">—</b></div>
+    </div>
+  </div>
+
+  <header id="hdr" class="ui">
+    <div class="speed" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="mark" aria-hidden="true">AA<b>26</b></div>
+    <div class="brand">
+      <h1><small data-i="h1a">Inside</small><span data-i="h1b">two-mode</span><span class="s">/</span><span data-i="h1c">wings</span></h1>
+      <span class="kicker" data-i="kicker">2026 rules · active aerodynamics · interactive lab · part 2</span>
+    </div>
+    <div class="hx">
+      <a class="series" href="../f1-2026-power-unit/" data-i="series">◂ Part 1: power unit</a>
+      <div class="live" aria-hidden="true"><i></i><span id="live-src">STUDIO</span></div>
+      <div class="lang" role="group" aria-label="Language"><button data-lang="en" class="on">EN</button><button data-lang="zh">中文</button></div>
+      <div class="ic">
+        <button id="b-snd" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="snd-x" d="M16 9l5 6M21 9l-5 6"/><path id="snd-w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+        <button id="b-cine" title="Cinematic camera (V)" aria-label="Cinematic camera"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="1"/><path d="M16 10l5-3v10l-5-3"/></svg></button>
+        <button id="b-help" title="Keyboard shortcuts (?)" aria-label="Help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg></button>
+        <button id="b-hide" title="Hide interface (/)" aria-label="Hide interface"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="chapters" class="ui" aria-label="Chapters"></nav>
+
+  <div id="mchips" class="ui">
+    <div><i>km/h</i><b id="mc-v">—</b></div>
+    <div><i data-i="aero">Aero</i><b id="mc-mode">—</b></div>
+    <div><i data-i="dfShort">DF kN</i><b id="mc-df" class="g">—</b></div>
+    <div><i data-i="drShort">Drag kN</i><b id="mc-dr" class="a">—</b></div>
+    <div><i>SoC</i><b id="mc-soc" class="c">—</b></div>
+    <div><i data-i="lap">Lap</i><b id="mc-lap">—</b></div>
+  </div>
+
+  <nav id="dock" class="panel ui" aria-label="Controls">
+    <div class="dr r1">
+      <div class="grp"><div class="lb"><span data-i="aero">Aero mode</span><em>C · S · A</em></div>
+        <div class="seg mode" id="seg-aero">
+          <button data-v="corner" data-i="m_corner">Corner</button><button data-v="straight" data-i="m_straight">Straight</button><button data-v="auto" class="on wide" data-i="m_auto">Auto (lap logic)</button>
+        </div></div>
+      <div class="grp"><div class="lb"><span data-i="rules">Rules</span><em>Y</em></div>
+        <div class="seg era" id="seg-era"><button data-v="2025">2025</button><button data-v="2026" class="on">2026</button></div></div>
+      <div class="grp"><div class="lb"><span data-i="scene">Scene</span><em>T · L · K</em></div>
+        <div class="seg" id="seg-scene"><button data-v="studio" data-i="sc_studio">Tunnel</button><button data-v="lap" class="on" data-i="sc_lap">Lap</button><button data-v="chase" data-i="sc_chase">Chase</button></div></div>
+    </div>
+    <div class="dr r2">
+      <div class="grp"><div class="lb"><span data-i="view">View</span><em>F · E · X</em></div>
+        <div class="tg" id="views">
+          <button id="b-flow" aria-pressed="true" class="on"><span class="txt" data-i="v_flow">Airflow</span><svg viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 16h15a3 3 0 1 1-3 3M3 12h7"/></svg></button>
+          <button id="b-expl" aria-pressed="false"><span class="txt" data-i="v_expl">Explode</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M4 4l3 3M20 4l-3 3M4 20l3-3M20 20l-3-3"/></svg></button>
+          <button id="b-xray" aria-pressed="false"><span class="txt" data-i="v_xray">X-ray · actuators</span><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 14l6-6M9 20l11-11M15 20l5-5"/></svg></button>
+        </div></div>
+      <div class="grp rpmg" id="g-speed"><div class="lb"><span data-i="tunnelSpeed">Tunnel speed</span><em>↑ ↓</em></div>
+        <div class="rpmrow">
+          <div class="rpmv" id="spdv">250<small>km/h</small></div>
+          <div class="slider" id="spd" role="slider" tabindex="0" aria-label="Air speed" aria-valuemin="60" aria-valuemax="360" aria-valuenow="250">
+            <div class="tr"></div><div class="fl"></div><div class="kn"></div>
+          </div>
+        </div></div>
+      <div class="grp rpmg" id="g-gap"><div class="lb"><span data-i="gap">Gap to car ahead</span><em>[ ]</em></div>
+        <div class="rpmrow">
+          <div class="rpmv" id="gapv">15<small>m</small></div>
+          <div class="slider" id="gap" role="slider" tabindex="0" aria-label="Gap to car ahead" aria-valuemin="5" aria-valuemax="60" aria-valuenow="15">
+            <div class="tr"></div><div class="fl"></div><div class="kn"></div>
+          </div>
+        </div></div>
+      <div class="grp"><div class="lb"><span data-i="attack">Attack</span><em>O · G</em></div>
+        <div class="tg" id="attack">
+          <button id="b-ovt" aria-pressed="false"><span class="txt" data-i="ovt">Overtake (+0.5 MJ)</span></button>
+          <button id="b-chasing" aria-pressed="false"><span class="txt" data-i="chasing">Within 1 s of car ahead</span></button>
+        </div></div>
+    </div>
+    <div class="dk-foot"><div class="grp"><div class="lb"><span data-i="flowKey">Airflow key</span></div><div id="flowkey"></div></div>
+      <p data-i="dkFoot">Drag to orbit · scroll to zoom · click a part to open its chapter · press ? for all keys</p></div>
+  </nav>
+
+  <section id="tele" class="ui" aria-label="Telemetry">
+    <div class="tc t-a">
+      <div class="th"><span class="capt" data-i="telemetry">Telemetry</span><em id="t-src">LAP SIM</em></div>
+      <div class="big">
+        <div><i data-i="speed">Speed</i><b id="t-v">0<small>km/h</small></b></div>
+        <div><i data-i="gear">Gear</i><b id="t-gear">–</b></div>
+        <div><i data-i="modeShort">Mode</i><b id="t-mode">C</b></div>
+      </div>
+      <div class="flaps"><i data-i="flapF">Front flap</i><div class="fbar" id="f-front"><span></span></div><i data-i="flapR">Rear flap</i><div class="fbar" id="f-rear"><span></span></div></div>
+    </div>
+    <div class="tc t-b">
+      <div class="th"><span class="capt" data-i="c_forces">Forces</span><em class="ill" data-i="illus">ILLUSTRATIVE</em></div>
+      <div class="row"><i data-i="df">Downforce</i><div class="bar" id="r-df"><span></span><em class="cap" id="c-df"></em></div><b id="t-df">0 kN</b></div>
+      <div class="row"><i data-i="dr">Drag</i><div class="bar" id="r-dr"><span></span><em class="cap" id="c-dr"></em></div><b id="t-dr">0 kN</b></div>
+      <div class="row"><i>L/D</i><div class="bar" id="r-ld"><span></span></div><b id="t-ld">0</b></div>
+    </div>
+    <div class="tc t-c">
+      <div class="th"><span class="capt" data-i="c_speeds">Speed limits</span></div>
+      <div class="row"><i data-i="vmax">Top</i><div class="bar" id="r-vmax"><span></span><em class="cap" id="c-vmax"></em></div><b id="t-vmax">0</b></div>
+      <div class="row"><i data-i="vcor">Corner</i><div class="bar" id="r-vcor"><span></span><em class="cap" id="c-vcor"></em></div><b id="t-vcor">0</b></div>
+      <div class="lg2" data-i="capNote">white tick = 2025 car in Corner setup</div>
+    </div>
+    <div class="tc t-d">
+      <div class="th"><span class="capt" data-i="c_energy">Energy</span></div>
+      <div class="soc"><i>SoC</i><div class="batt" id="t-batt"><span id="t-battf" style="width:50%"></span></div><b id="t-soc">50%</b></div>
+      <div class="row"><i>MGU-K</i><div class="bar bi" id="r-k"><span></span></div><b id="t-k">0 kW</b></div>
+      <div class="status" id="t-status"></div>
+    </div>
+    <div class="tc t-f">
+      <canvas id="trace"></canvas>
+      <div class="secs" id="t-secs"><div><i>S1</i><b>—</b></div><div><i>S2</i><b>—</b></div><div><i>S3</i><b>—</b></div></div>
+      <div class="lapline"><span><span data-i="lap">Lap</span> <b id="t-lapt">0:00.0</b></span><span><span data-i="last">Last</span> <b id="t-last">—</b></span><span><span data-i="best">Best</span> <b id="t-best">—</b></span></div>
+    </div>
+  </section>
+
+  <aside id="cards" class="panel ui" aria-label="Lessons">
+    <div class="dh"><span class="capt" data-i="lessons">Seven things to know</span>
+      <div style="display:flex;align-items:center"><span class="pos" id="dpos">— / 07</span>
+        <div class="nav"><button id="d-prev" aria-label="Previous chapter">‹</button><button id="d-next" aria-label="Next chapter">›</button></div></div>
+    </div>
+    <div id="intro">
+      <h2 class="big1"><span data-i="introKick">Part 2 · active aero</span><span data-i="introT1">Wings that</span> <span class="s" data-i="introT2">change shape</span></h2>
+      <p data-i="sub">From 2026 the front and rear wing flaps move: flat on the straights to cut drag, angled in the corners for grip. Flip the modes, watch the air, run a lap and chase another car.</p>
+      <div class="tower"><div class="hd"><span data-i="towerNo">No.</span><span data-i="towerLesson">Lesson</span><span data-i="towerStatus">Status</span></div><ol id="toc"></ol></div>
+      <div class="note" data-i="introNote">Rule facts follow FIA 2026 regulations and official explainers (see README). Forces, speeds and airflow are an illustrative model, not team data.</div>
+    </div>
+    <ol id="cardlist"></ol>
+    <div id="mnav"></div>
+  </aside>
+
+  <div id="tip"></div>
+  <div id="toast"></div>
+  <div class="lb-bar" id="lbt"></div><div class="lb-bar" id="lbb"></div>
+  <div id="caption"><i></i><b id="cap-t"></b><span id="cap-s"></span></div>
+
+  <div id="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="help panel">
+      <button class="x" id="help-x" aria-label="Close">✕</button>
+      <h2 data-i="helpT">Controls</h2>
+      <p data-i="helpP">Drag to orbit, right-drag or two-finger drag to pan, scroll or pinch to zoom. Hover a part to name it; click it to open its lesson.</p>
+      <dl id="helpdl"></dl>
+    </div>
+  </div>
+
+  <div id="loader"><div data-i="loading">Laying up carbon…</div></div>
+  <div id="err"></div>
+</div>
+<script type="module">
+/* ==========================================================================
+   Two-Mode Wings — an interactive lab about 2026 active aerodynamics.
+   Part 2 of the series that starts with ../f1-2026-power-unit/.
+   Everything here (car geometry, airflow, sound, copy) is generated in code.
+   ========================================================================== */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const D2R = Math.PI / 180;
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const QS = new URLSearchParams(location.search);
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
+const small = () => innerWidth <= 760;
+
+/* ------------------------------------------------------------------ rules + aero model
+   Rule facts (sources in README.md): 2026 cars are 200 mm shorter in wheelbase (3.4 m),
+   100 mm narrower (1.9 m), minimum mass 768 kg (2025: 800 kg). FIA targets: about 30 %
+   less downforce and about 55 % less drag in the low-drag setting (later figures quote
+   ~15–30 % and ~40 %). Front AND rear wing flaps move; 2025 DRS moved only the rear flap.
+   The coefficients below are ILLUSTRATIVE: chosen so the car behaves plausibly,
+   not measured. ClA / CdA in m² (lift/drag coefficient × reference area).            */
+const RHO = 1.2;
+const AERO = {
+  2026: { corner: { ClA: 3.30, CdA: 1.18 }, straight: { ClA: 1.10, CdA: 0.86 }, partial: { ClA: 2.30, CdA: 1.02 },
+          mass: 768 + 60, wheelbase: 3.4, width: 1.9, kMax: 350, ice: 400, wakeLoss: 0.20 },
+  2025: { corner: { ClA: 4.40, CdA: 1.40 }, drs: { ClA: 3.85, CdA: 1.24 },
+          mass: 800 + 60, wheelbase: 3.6, width: 2.0, kMax: 120, ice: 560, wakeLoss: 0.32 }
+};
+const MU = 1.55, G = 9.81, CRR = 0.012;
+/* aero state → coefficients. aeroT: 0 = corner, 1 = low drag. partial = only front flaps. */
+function coeffs(era, aeroT, partial = false) {
+  const A = AERO[era];
+  if (era === 2025) return { ClA: lerp(A.corner.ClA, A.drs.ClA, aeroT), CdA: lerp(A.corner.CdA, A.drs.CdA, aeroT) };
+  const lo = partial ? A.partial : A.straight;
+  return { ClA: lerp(A.corner.ClA, lo.ClA, aeroT), CdA: lerp(A.corner.CdA, lo.CdA, aeroT) };
+}
+const forceN = (cA, v) => 0.5 * RHO * cA * v * v;                   // newtons, v in m/s
+/* speed-dependent MGU-K ceiling (kW): simplified 2026 taper (approx.); Overtake holds 350 kW to 337 km/h */
+function kCeil(era, vkph, overtake) {
+  if (era === 2025) return 120;
+  if (overtake) return vkph <= 337 ? 350 : Math.max(0, 350 - 5 * (vkph - 337));
+  if (vkph <= 290) return 350;
+  return Math.max(150, 350 - 4 * (vkph - 290));
+}
+/* steady-state top speed for a given aero configuration (bisection on power = drag·v + rolling) */
+function topSpeed(era, c, overtake = false, kW = null) {
+  const A = AERO[era]; let lo = 30, hi = 140;
+  for (let i = 0; i < 40; i++) {
+    const v = (lo + hi) / 2, P = (A.ice + (kW ?? kCeil(era, v * 3.6, overtake))) * 1000;
+    const need = (forceN(c.CdA, v) + CRR * (A.mass * G + forceN(c.ClA, v))) * v;
+    if (need > P) hi = v; else lo = v;
+  }
+  return lo;
+}
+/* max cornering speed on radius R: μ(mg + ½ρClA v²) = m v²/R */
+function cornerSpeed(era, c, R, dfLoss = 0) {
+  const m = AERO[era].mass, cl = c.ClA * (1 - dfLoss), den = m / R - MU * 0.5 * RHO * cl;
+  return den <= 0 ? 110 : Math.min(110, Math.sqrt(MU * m * G / den));
+}
+/* dirty air: fraction of downforce the FOLLOWING car loses at a given gap (m). Illustrative shape;
+   the 2026 value is lower because of the narrower car, wheel-wake boards and less floor suction. */
+function wakeLoss(era, gap) { return AERO[era].wakeLoss * Math.exp(-(Math.max(gap, 5) - 5) / 22); }
+/* slipstream (tow): drag reduction for the following car, fades faster than it would in reality */
+function towGain(gap) { return 0.28 * Math.exp(-(Math.max(gap, 5) - 5) / 18); }
+
+/* ------------------------------------------------------------------ state */
+const S = {
+  era: +(QS.get('era') || 2026), aero: QS.get('aero') || 'auto', scene: QS.get('scene') || 'lap',
+  flow: QS.get('flow') !== '0', xray: QS.has('xray'), expl: QS.has('explode') ? 1 : 0, explT: QS.has('explode') ? 1 : 0,
+  vSet: +(QS.get('v') || 250), gap: +(QS.get('gap') || 15), overtake: false, chasing: QS.has('chasing'),
+  lang: QS.get('lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'),
+  card: QS.has('card') ? +QS.get('card') - 1 : -1, cine: false, noui: false, sound: false,
+  hover: null, t: 0,
+  aeroT: 0, aeroGoal: 0, partial: false, eraT: 0   // animated values
+};
+S.eraT = S.era === 2025 ? 1 : 0;
+/* ------------------------------------------------------------------ renderer (shared with part 1) */
+const canvas = $('#gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+} catch (e) {
+  $('#err').style.display = 'grid'; $('#err').textContent = 'WebGL is not available in this browser.'; throw e;
+}
+const LOWQ = IS_TOUCH || QS.has('lowq');
+const DPR = Math.min(devicePixelRatio || 1, LOWQ ? 1.5 : 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.toneMapping = THREE.NeutralToneMapping;   // keeps the energy colours honest on dark
+renderer.toneMappingExposure = 1.08;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const scene = new THREE.Scene();
+/* Colours shared with the CSS (single source of truth: the :root custom properties) */
+const ROOT_CSS = getComputedStyle(document.documentElement);
+const PAL = new Proxy({}, { get: (_, k) => ROOT_CSS.getPropertyValue('--' + String(k)).trim() || '#ffffff' });
+
+/* The backdrop is dark carbon fibre: a 2×2 twill tile drawn in code. The same tile is used
+   by the CSS panels; the 3D background is a screen-space version whose colours are
+   pre-compensated for the tone mapper, so both read as the same material. */
+function neutralTM(c) { // JS copy of three's NeutralToneMapping (linear in → linear out)
+  let [r, g, b] = c; const x = Math.min(r, g, b), off = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  r -= off; g -= off; b -= off; const peak = Math.max(r, g, b); if (peak < 0.76) return [r, g, b];
+  const d = 0.24, np = 1 - d * d / (peak + d - 0.76), k = np / peak; r *= k; g *= k; b *= k;
+  const f = 1 - 1 / (0.15 * (peak - np) + 1); return [r + (np - r) * f, g + (np - g) * f, b + (np - b) * f];
+}
+function preTone(hex) { // find the linear input that displays as `hex`
+  const t = new THREE.Color(hex), want = [t.r, t.g, t.b], x = want.slice();
+  for (let i = 0; i < 40; i++) { const y = neutralTM(x); for (let k = 0; k < 3; k++) x[k] = clamp(x[k] + (want[k] - y[k]), 0, 1); }
+  return new THREE.Color(x[0], x[1], x[2]);
+}
+// per-channel LUT: displayed sRGB byte → sRGB byte to feed the tone mapper (near-neutral colours)
+const TONE_LUT = (() => {
+  const lut = new Uint8ClampedArray(256), toL = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
+    toS = c => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  for (let v = 0; v < 256; v++) { const o = toL(v / 255), x = o < 0.04 ? Math.sqrt(o / 6.25) : o + 0.04; lut[v] = Math.round(toS(Math.min(1, x)) * 255); }
+  return lut;
+})();
+function carbonTile(px, exposure = 1) { // 2×2 twill, px = size of one tow
+  const n = 4, c = document.createElement('canvas'); c.width = c.height = px * n; const g = c.getContext('2d');
+  g.fillStyle = '#08080a'; g.fillRect(0, 0, px * n, px * n);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const along = ((i + j) >> 1) % 2 === 0, x = i * px, y = j * px;
+    const grd = along ? g.createLinearGradient(x, y, x, y + px) : g.createLinearGradient(x, y, x + px, y);
+    const hi = Math.round((along ? 26 : 20) * exposure), lo = Math.round(11 * exposure);
+    grd.addColorStop(0, `rgb(${lo},${lo},${lo + 1})`); grd.addColorStop(0.5, `rgb(${hi},${hi},${hi + 2})`); grd.addColorStop(1, `rgb(${lo},${lo},${lo + 1})`);
+    g.fillStyle = grd; g.fillRect(x + 0.5, y + 0.5, px - 1, px - 1);
+  }
+  return c;
+}
+try { document.documentElement.style.setProperty('--carbon', `url(${carbonTile(5).toDataURL()})`); } catch (e) { /* CSS falls back to flat black */ }
+const BG_HEX = '#0a0a0c', BG = preTone(BG_HEX);
+let bgTex = null;
+function carbonBackground(w, h) {
+  const d = Math.min(devicePixelRatio || 1, 2), W = Math.round(w * d), H = Math.round(h * d);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = g.createPattern(carbonTile(Math.round(5 * d), 1.12), 'repeat'); g.fillRect(0, 0, W, H);
+  // overhead garage light: a soft, wide band that falls off towards the floor (no vignette)
+  const top = g.createLinearGradient(0, 0, 0, H);
+  top.addColorStop(0, 'rgba(255,255,255,0.035)'); top.addColorStop(0.35, 'rgba(255,255,255,0.012)'); top.addColorStop(0.7, 'rgba(0,0,0,0.25)'); top.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = top; g.fillRect(0, 0, W, H);
+  // compensate the tone mapper so the weave keeps its contrast
+  const img = g.getImageData(0, 0, W, H), px = img.data;
+  for (let i = 0; i < px.length; i += 4) { px[i] = TONE_LUT[px[i]]; px[i + 1] = TONE_LUT[px[i + 1]]; px[i + 2] = TONE_LUT[px[i + 2]]; }
+  g.putImageData(img, 0, 0);
+  if (bgTex) bgTex.dispose();
+  bgTex = new THREE.CanvasTexture(c); bgTex.colorSpace = THREE.SRGBColorSpace; bgTex.minFilter = bgTex.magFilter = THREE.NearestFilter; bgTex.generateMipmaps = false;
+  scene.background = bgTex;
+}
+scene.background = BG;
+scene.fog = new THREE.Fog(preTone('#060607'), 26, 58);
+
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.1, 200);
+const HOME = { pos: V3(6.4, 3.7, 10.4), tgt: V3(0, 0.3, 0) };
+camera.position.copy(HOME.pos);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.copy(HOME.tgt);
+controls.enableDamping = true;
+controls.dampingFactor = 0.075;
+controls.minDistance = 2.5;
+controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.53;
+controls.rotateSpeed = 0.7;
+controls.zoomSpeed = 0.9;
+controls.update();
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+/* Studio environment for reflections: a black garage box with long overhead light strips,
+   a white softbox on one side and a red accent strip behind — built in code, baked by PMREM. */
+function studioEnvironment() {
+  const env = new THREE.Scene();
+  const room = new THREE.Mesh(new THREE.BoxGeometry(40, 16, 40), new THREE.MeshBasicMaterial({ color: 0x050506, side: THREE.BackSide }));
+  room.position.y = 6; env.add(room);
+  const floorE = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0d0d0f }));
+  floorE.position.y = -1.9; env.add(floorE);
+  const strip = (w, h, rgb, gain, pos, look) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(rgb).multiplyScalar(gain), side: THREE.DoubleSide }));
+    m.position.copy(pos); m.lookAt(look); env.add(m);
+  };
+  for (const z of [-4.5, 0, 4.5]) strip(22, 0.7, 0xffffff, 1.5, V3(0, 13.5, z), V3(0, 0, z));        // overhead strips
+  strip(3, 9, 0xfff3e6, 3.0, V3(-17, 5, 8), V3(0, 3, 0));                                               // key softbox
+  strip(1.2, 10, 0xe8eeff, 2.6, V3(15, 5, -12), V3(0, 3, 0));                                           // cool rim
+  strip(14, 0.6, 0xff1a2e, 3.2, V3(-4, 3.2, -19), V3(-4, 3.2, 0));                                      // red accent strip
+  return pmrem.fromScene(env, 0.02).texture;
+}
+scene.environment = studioEnvironment();
+scene.environmentIntensity = 0.9;
+
+/* lights: dark studio — one soft key, two rim lights (cool white + racing red), little fill */
+const hemi = new THREE.HemisphereLight(0x9aa0aa, 0x0a0a0c, 0.35);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xfff4e8, 2.3);
+key.position.set(-7, 13, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(LOWQ ? 1024 : 2048, LOWQ ? 1024 : 2048);
+key.shadow.camera.left = -9; key.shadow.camera.right = 9; key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
+key.shadow.camera.near = 2; key.shadow.camera.far = 40;
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02; key.shadow.radius = 4;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xdfe7ff, 2.6);
+rim.position.set(9, 6, -9);
+scene.add(rim);
+const rimRed = new THREE.DirectionalLight(0xff2438, 2.2);
+rimRed.position.set(-10, 3.5, -7);
+scene.add(rimRed);
+const warm = new THREE.DirectionalLight(0xffe0c8, 0.35);
+warm.position.set(6, -2, 7);
+scene.add(warm);
+
+/* ------------------------------------------------------------------ post */
+const rt = new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { type: THREE.HalfFloatType, samples: LOWQ ? 2 : 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(DPR);
+composer.addPass(new RenderPass(scene, camera));
+let gtao = null;
+if (!LOWQ && !QS.has('noao')) {
+  gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+  gtao.output = GTAOPass.OUTPUT.Default;
+  gtao.blendIntensity = 0.85;
+  gtao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+  // keep glowing overlays (flows, gas, ghost shells) out of the AO G-buffer
+  const baseHide = gtao._overrideVisibility.bind(gtao);
+  gtao._overrideVisibility = function () {
+    baseHide();
+    const cache = this._visibilityCache;
+    scene.traverse(o => { if (o.userData.noAO && o.visible) { o.visible = false; cache.push(o); } });
+  };
+  composer.addPass(gtao);
+}
+// sanitise HDR before bloom: kill NaN/Inf and clamp tiny specular spikes so they can't flare
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c.rgb)) || any(isinf(c.rgb))) c.rgb = vec3(0.);
+      float m = max(c.r, max(c.g, c.b)); if (m > 3.) c.rgb *= 3. / m;
+      gl_FragColor = c; }`
+}));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.42, 1.25); // threshold 1.25: only hot parts (HDR) bloom
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+/* ------------------------------------------------------------------ procedural textures */
+function canvasTex(w, h, draw, repeat = 1, srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat);
+  t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function rnd(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const carbonMap = canvasTex(128, 128, (g, w, h) => {                  // 2×2 twill weave
+  g.fillStyle = '#0d0f13'; g.fillRect(0, 0, w, h);
+  const n = 8, s = w / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const along = ((i + j) >> 1) % 2 === 0;
+    const grd = along ? g.createLinearGradient(i * s, 0, i * s + s, 0) : g.createLinearGradient(0, j * s, 0, j * s + s);
+    grd.addColorStop(0, '#15181e'); grd.addColorStop(0.5, along ? '#3a3f49' : '#2a2e36'); grd.addColorStop(1, '#14171c');
+    g.fillStyle = grd; g.fillRect(i * s + 0.5, j * s + 0.5, s - 1, s - 1);
+  }
+}, 10);
+const primerRough = canvasTex(256, 256, (g, w, h) => {                // sprayed primer speckle
+  const r = rnd(5); g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 7000; i++) { const v = 130 + r() * 90 | 0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * w, r() * h, 1.5, 1.5); }
+}, 4, false);
+const treadTex = canvasTex(256, 64, (g, w, h) => {                    // slick with a faint scrub band + sidewall ring
+  g.fillStyle = '#16161a'; g.fillRect(0, 0, w, h);
+  const r = rnd(9); for (let i = 0; i < 1400; i++) { const v = 22 + r() * 16 | 0; g.fillStyle = `rgb(${v},${v},${v + 2})`; g.fillRect(r() * w, r() * h, 2, 1); }
+}, 1);
+
+/* ------------------------------------------------------------------ materials */
+const M = {
+  primer: new THREE.MeshPhysicalMaterial({ color: '#b4b7bd', metalness: 0.05, roughness: 0.55, roughnessMap: primerRough, clearcoat: 0.25, clearcoatRoughness: 0.5 }),
+  carbon: new THREE.MeshPhysicalMaterial({ color: '#ffffff', map: carbonMap, metalness: 0.2, roughness: 0.55, clearcoat: 0.3, clearcoatRoughness: 0.4 }),
+  dark: new THREE.MeshStandardMaterial({ color: '#1a1b1f', metalness: 0.3, roughness: 0.6 }),
+  rubber: new THREE.MeshStandardMaterial({ color: '#ffffff', map: treadTex, metalness: 0, roughness: 0.82 }),
+  wall: new THREE.MeshStandardMaterial({ color: '#1c1c20', metalness: 0, roughness: 0.75 }),
+  rim: new THREE.MeshStandardMaterial({ color: '#3a3d44', metalness: 0.9, roughness: 0.35 }),
+  steel: new THREE.MeshStandardMaterial({ color: '#c9ced6', metalness: 1, roughness: 0.3 }),
+  red: new THREE.MeshStandardMaterial({ color: '#d80f27', metalness: 0.2, roughness: 0.4 }),
+  white: new THREE.MeshStandardMaterial({ color: '#f2f2f0', metalness: 0.05, roughness: 0.45 }),
+  helmet: new THREE.MeshPhysicalMaterial({ color: '#f2f2f0', metalness: 0.1, roughness: 0.25, clearcoat: 1 }),
+  visor: new THREE.MeshPhysicalMaterial({ color: '#0b0c10', metalness: 0.6, roughness: 0.08, clearcoat: 1 }),
+  act: new THREE.MeshStandardMaterial({ color: '#e0a83e', metalness: 1, roughness: 0.32, emissive: '#000000' }),
+  link: new THREE.MeshStandardMaterial({ color: '#d7dbe2', metalness: 1, roughness: 0.25 }),
+};
+/* X-ray shell: fresnel rim, additive (same idea as part 1) */
+function ghostMat(tint = '#d8dde6') {
+  return new THREE.ShaderMaterial({
+    uniforms: { uCol: { value: new THREE.Color(tint) }, uA: { value: 0.0 } },
+    vertexShader: `varying vec3 vN; varying vec3 vV;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uCol; uniform float uA; varying vec3 vN; varying vec3 vV;
+      void main(){ float f = pow(1. - abs(dot(normalize(vN), normalize(vV))), 2.2); gl_FragColor = vec4(uCol * (0.05 + 0.55 * f), uA * (0.06 + 0.6 * f)); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2
+  });
+}
+
+/* ------------------------------------------------------------------ geometry helpers */
+/* loft: a smooth body from cross-sections [x, halfWidth, yBottom, yTop, squareness]. Each ring
+   is a superellipse; rings are stitched into one BufferGeometry with end caps. */
+function loft(secs, n = 28, zOff = 0) {
+  const pos = [], idx = [], rings = secs.length;
+  for (const [x, hw, y0, y1, sq] of secs) {
+    const cy = (y0 + y1) / 2, hh = (y1 - y0) / 2, e = 2 / Math.max(0.3, sq);
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      const sx = Math.sign(c) * Math.pow(Math.abs(c), e), sy = Math.sign(s) * Math.pow(Math.abs(s), e);
+      pos.push(x, cy + sy * hh, zOff + sx * hw);
+    }
+  }
+  for (let r = 0; r < rings - 1; r++) for (let i = 0; i < n; i++) {
+    const a = r * n + i, b = r * n + (i + 1) % n, c = a + n, d = b + n;
+    idx.push(a, b, c, b, d, c);
+  }
+  const c0 = pos.length / 3, c1 = c0 + 1, f = secs[0], l = secs[rings - 1];
+  pos.push(f[0], (f[2] + f[3]) / 2, zOff, l[0], (l[2] + l[3]) / 2, zOff);
+  for (let i = 0; i < n; i++) { idx.push(c0, (i + 1) % n, i); idx.push(c1, (rings - 1) * n + i, (rings - 1) * n + (i + 1) % n); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  const uv = []; for (let r = 0; r < rings; r++) for (let i = 0; i < n; i++) uv.push(r / (rings - 1) * 4, i / n * 2); uv.push(0, 0, 1, 1);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+/* inverted airfoil (downforce) section in the X-Y plane, leading edge at x=0, trailing edge at x=-chord,
+   extruded across the car (Z) by `span`. camber > 0 bows the section downward (suction side down). */
+function airfoil(chord, span, thick = 0.1, camber = 0.06) {
+  const N = 22, up = [], lo = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, xc = (1 - Math.cos(t * Math.PI)) / 2;              // cosine spacing
+    const yt = 5 * thick * (0.2969 * Math.sqrt(xc) - 0.126 * xc - 0.3516 * xc * xc + 0.2843 * xc ** 3 - 0.1036 * xc ** 4);
+    const yc = -camber * 4 * xc * (1 - xc);
+    up.push([-xc * chord, (yc + yt) * chord]); lo.push([-xc * chord, (yc - yt) * chord]);
+  }
+  const sh = new THREE.Shape();
+  sh.moveTo(up[0][0], up[0][1]); up.forEach(p => sh.lineTo(p[0], p[1])); lo.reverse().forEach(p => sh.lineTo(p[0], p[1]));
+  const g = new THREE.ExtrudeGeometry(sh, { depth: span, bevelEnabled: false, curveSegments: 4 });
+  g.translate(0, 0, -span / 2);
+  return g;
+}
+function cyl(r, len, seg = 16, r2 = r) { return new THREE.CylinderGeometry(r2, r, len, seg); }
+function rod(a, b, r, mat) {                                            // cylinder between two points
+  const d = b.clone().sub(a), m = new THREE.Mesh(cyl(r, d.length(), 8), mat);
+  m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize());
+  m.castShadow = true; return m;
+}
+/* ==========================================================================
+   THE CAR — a generic 2026-style open-wheel car, built from code.
+   Units: metres. +X = forward, +Y = up, ground at y = 0. Wheelbase 3.4 m.
+   ========================================================================== */
+const WB = 3.4, FX = WB / 2, RX = -WB / 2, TR = 0.36;          // axle x, tyre radius (18-inch rim, ≈720 mm tyre)
+const WF = 0.28, WR = 0.375, ZF = 0.95 - WF / 2, ZR = 0.95 - WR / 2; // tyre widths (approx.), wheel centre z: overall width 1.9 m
+function buildCar(hero, bodyMat = M.primer) {
+  const root = new THREE.Group(), parts = {}, flaps = { front: [], rear: [], beam: null }, pick = [];
+  const part = (id, o = {}) => {
+    const g = new THREE.Group(); g.name = id; root.add(g);
+    parts[id] = { g, base: V3(), explode: o.explode || V3(), mats: [], id };
+    return g;
+  };
+  const add = (grp, geo, mat, o = {}) => {
+    const m = new THREE.Mesh(geo, mat); m.castShadow = o.shadow !== false; m.receiveShadow = true;
+    if (o.p) m.position.copy(o.p); if (o.r) m.rotation.set(o.r[0], o.r[1], o.r[2]);
+    grp.add(m); if (hero) { let q = grp; while (q && !parts[q.name]) q = q.parent; m.userData.part = q ? q.name : ''; pick.push(m); } return m;
+  };
+  /* --- monocoque, nose and engine cover: one loft along the centreline --- */
+  const chassis = part('chassis', { explode: V3(0, 0.9, 0) });
+  add(chassis, loft([
+    [3.02, 0.07, 0.19, 0.29, 0.9], [2.85, 0.1, 0.18, 0.33, 1], [2.5, 0.14, 0.2, 0.42, 1.2], [2.0, 0.18, 0.24, 0.55, 1.4],
+    [1.5, 0.23, 0.26, 0.64, 1.6], [0.9, 0.29, 0.2, 0.7, 1.8], [0.3, 0.36, 0.14, 0.72, 2], [-0.35, 0.36, 0.14, 0.8, 2],
+    [-0.8, 0.3, 0.14, 0.9, 1.6], [-1.3, 0.24, 0.16, 0.78, 1.4], [-1.8, 0.16, 0.2, 0.6, 1.3], [-2.2, 0.1, 0.24, 0.46, 1.1], [-2.35, 0.05, 0.28, 0.38, 1]
+  ], 32), bodyMat);
+  // cockpit opening, airbox and a shark fin
+  add(chassis, new THREE.CapsuleGeometry(0.2, 0.55, 6, 16).rotateZ(Math.PI / 2).scale(1, 0.25, 1.05), M.dark, { p: V3(0.12, 0.72, 0) });
+  add(chassis, loft([[-0.2, 0.09, 0.78, 0.98, 1.2], [-0.45, 0.13, 0.78, 1.02, 1.3], [-0.8, 0.1, 0.8, 0.95, 1.2], [-1.1, 0.05, 0.78, 0.84, 1]], 20), bodyMat);
+  add(chassis, new THREE.CircleGeometry(0.075, 20).rotateY(Math.PI / 2), M.dark, { p: V3(-0.199, 0.9, 0) });
+  const fin = new THREE.Shape(); fin.moveTo(-0.9, 0); fin.lineTo(-2.0, 0); fin.lineTo(-2.0, 0.18); fin.quadraticCurveTo(-1.3, 0.12, -0.9, 0.02);
+  add(chassis, new THREE.ExtrudeGeometry(fin, { depth: 0.012, bevelEnabled: false }).translate(0, 0, -0.006), M.carbon, { p: V3(0, 0.82, 0) });
+  // generic number panel (not a real entry) + red accent stripe along the nose
+  add(chassis, new THREE.PlaneGeometry(0.34, 0.16), numberMat('26'), { p: V3(2.25, 0.475, 0), r: [-Math.PI / 2 + 0.36, 0, -Math.PI / 2], shadow: false });
+  add(chassis, loft([[2.99, 0.071, 0.26, 0.295, 0.9], [2.6, 0.13, 0.36, 0.42, 1.1], [2.2, 0.165, 0.46, 0.53, 1.3]], 24), M.red, { shadow: false });
+  /* --- sidepods: two lofts, with inlets and a coke-bottle taper --- */
+  const pods = part('sidepods', { explode: V3(0, 0.25, 0) });
+  for (const s of [-1, 1]) {
+    const secs = [[0.55, 0.16, 0.14, 0.52, 1.6], [0.35, 0.24, 0.12, 0.56, 2.2], [-0.1, 0.25, 0.12, 0.54, 2.2], [-0.6, 0.2, 0.12, 0.44, 1.8], [-1.1, 0.12, 0.13, 0.32, 1.4], [-1.45, 0.05, 0.15, 0.22, 1]];
+    add(pods, loft(secs.map(q => [q[0], q[1], q[2], q[3], q[4]]), 24, s * 0.52), bodyMat);
+    add(pods, new THREE.PlaneGeometry(0.34, 0.2), M.dark, { p: V3(0.555, 0.37, s * 0.54), r: [0, Math.PI / 2, 0], shadow: false });
+  }
+  /* --- halo + driver helmet --- */
+  const halo = part('halo', { explode: V3(0, 1.4, 0) });
+  const hc = new THREE.CatmullRomCurve3([V3(-0.34, 0.8, 0.27), V3(-0.1, 0.99, 0.26), V3(0.2, 1.02, 0.18), V3(0.38, 1.0, 0), V3(0.2, 1.02, -0.18), V3(-0.1, 0.99, -0.26), V3(-0.34, 0.8, -0.27)]);
+  add(halo, new THREE.TubeGeometry(hc, 40, 0.03, 10), M.dark);
+  halo.add(rod(V3(0.38, 1.0, 0), V3(0.58, 0.71, 0), 0.03, M.dark));
+  const helm = part('helmet', { explode: V3(0, 1.1, 0) });
+  add(helm, new THREE.SphereGeometry(0.135, 24, 16), M.helmet, { p: V3(0.02, 0.82, 0) });
+  add(helm, new THREE.SphereGeometry(0.138, 24, 8, Math.PI - 0.95, 1.9, 1.25, 0.42), M.visor, { p: V3(0.02, 0.82, 0) });
+  /* --- floor (partially flat in 2026), floor fences and the diffuser --- */
+  const floor = part('floor', { explode: V3(0, -0.55, 0) });
+  const fo = new THREE.Shape(); const fpts = [[1.45, 0.2], [1.1, 0.45], [0.75, 0.7], [-0.9, 0.7], [-1.35, 0.6], [-1.75, 0.52]];
+  fo.moveTo(fpts[0][0], fpts[0][1]); fpts.forEach(q => fo.lineTo(q[0], q[1])); [...fpts].reverse().forEach(q => fo.lineTo(q[0], -q[1]));
+  add(floor, new THREE.ExtrudeGeometry(fo, { depth: 0.025, bevelEnabled: false }).rotateX(Math.PI / 2).translate(0, 0.075, 0), M.carbon);
+  for (const s of [-1, 1]) for (const z of [0.3, 0.45]) add(floor, new THREE.BoxGeometry(0.55, 0.05, 0.008), M.carbon, { p: V3(1.05, 0.045, s * z), r: [0, s * 0.18, 0] });
+  const diff = part('diffuser', { explode: V3(-0.6, -0.45, 0) });
+  const dA = Math.atan2(0.26, 0.62), dL = Math.hypot(0.26, 0.62);
+  add(diff, new THREE.BoxGeometry(dL, 0.02, 1.0), M.carbon, { p: V3(-1.52, 0.18, 0), r: [0, 0, -dA] });
+  for (const z of [-0.5, -0.25, 0, 0.25, 0.5]) {
+    const st = new THREE.Shape(); st.moveTo(-1.2, 0.05); st.lineTo(-1.82, 0.31); st.lineTo(-1.82, 0.05); st.lineTo(-1.2, 0.05);
+    add(diff, new THREE.ExtrudeGeometry(st, { depth: z === 0 || Math.abs(z) === 0.5 ? 0.012 : 0.008, bevelEnabled: false }).translate(0, 0, z - 0.005), M.carbon);
+  }
+  /* --- wheels: lathe-turned tyres, rims and wheel covers --- */
+  const wheels = part('wheels', { explode: V3(0, 0, 0) }); const WH = [];
+  function tyreGeo(w) {
+    const p = [], ri = 0.225, ro = TR, rr = 0.07;
+    p.push(new THREE.Vector2(ri, -w / 2 + 0.01));
+    for (let i = 0; i <= 8; i++) { const a = -Math.PI / 2 + i / 8 * Math.PI / 2; p.push(new THREE.Vector2(ro - rr + Math.cos(a) * rr, -w / 2 + rr + Math.sin(a) * rr)); }
+    for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI / 2; p.push(new THREE.Vector2(ro - rr + Math.cos(a) * rr, w / 2 - rr + Math.sin(a) * rr)); }
+    p.push(new THREE.Vector2(ri, w / 2 - 0.01));
+    return new THREE.LatheGeometry(p, 48).rotateX(Math.PI / 2);
+  }
+  for (const [x, w, zc] of [[FX, WF, ZF], [RX, WR, ZR]]) for (const s of [-1, 1]) {
+    const g = new THREE.Group(); g.position.set(x, TR, s * zc); wheels.add(g);
+    const spin = new THREE.Group(); g.add(spin);
+    add(spin, tyreGeo(w), M.rubber);
+    add(spin, cyl(0.226, w * 0.92, 32).rotateX(Math.PI / 2), M.rim);
+    const cover = add(spin, new THREE.CylinderGeometry(0.2, 0.215, 0.012, 32).rotateX(Math.PI / 2), M.carbon, { p: V3(0, 0, s * w * 0.47) });
+    add(spin, new THREE.RingGeometry(0.12, 0.135, 32), M.red, { p: V3(0, 0, s * (w * 0.47 + 0.007)), r: [0, s > 0 ? 0 : Math.PI, 0], shadow: false });
+    WH.push({ g, spin, front: x > 0, s, x });
+  }
+  /* --- suspension: wishbones + push rods (carbon) --- */
+  const susp = part('susp', { explode: V3(0, 0.35, 0) });
+  for (const [x, zc] of [[FX, ZF], [RX, ZR]]) for (const s of [-1, 1]) {
+    const hub = zc - 0.12, cz = x > 0 ? 0.2 : 0.18;
+    for (const [yc, yh] of [[0.52, 0.52], [0.26, 0.2]]) {
+      susp.add(rod(V3(x + 0.3, yc, s * cz), V3(x, yh, s * hub), 0.014, M.carbon));
+      susp.add(rod(V3(x - 0.3, yc, s * cz), V3(x, yh, s * hub), 0.014, M.carbon));
+    }
+    susp.add(rod(V3(x, 0.22, s * hub), V3(x - 0.15, 0.62, s * cz), 0.012, M.carbon));
+  }
+  /* --- 2026: in-washing wheel-wake control boards ahead of the sidepods --- */
+  const boards = part('boards', { explode: V3(0.4, 0.2, 0) });
+  for (const s of [-1, 1]) add(boards, new THREE.BoxGeometry(0.42, 0.34, 0.012), M.carbon, { p: V3(0.95, 0.27, s * 0.7), r: [0, s * 0.22, 0] });
+  /* --- 2025 only: front wheel arches (removed for 2026) --- */
+  const arches = part('arches', { explode: V3(0, 0.5, 0) });
+  for (const s of [-1, 1]) add(arches, new THREE.CylinderGeometry(TR + 0.035, TR + 0.035, WF * 0.9, 24, 1, true, Math.PI - 0.7, 1.4).rotateX(Math.PI / 2), M.carbon, { p: V3(FX, TR, s * ZF) });
+  /* --- wings. Flaps sit in pivot groups; angle < 0 = trailing edge up (more downforce).
+         Front flaps hinge at their leading edge, rear flaps at their trailing edge
+         (the leading edge lifts away from the main plane, like the old DRS flap). --- */
+  const flap = (grp, list, o) => {
+    const pv = new THREE.Group(); pv.position.copy(o.pivot); grp.add(pv);
+    const geo = airfoil(o.chord, o.span, 0.1, 0.05); if (o.te) geo.translate(o.chord, 0, 0);
+    add(pv, geo, M.carbon);
+    const edge = add(pv, new THREE.BoxGeometry(0.018, 0.01, o.span * 0.98), M.red, { p: V3(o.te ? 0.004 : -o.chord + 0.012, 0.004, 0), shadow: false });
+    edge.userData.flapEdge = true;
+    const f = { pv, ...o, ang: o.corner }; pv.rotation.z = o.corner * D2R; list.push(f); return f;
+  };
+  const fw = part('fwing', { explode: V3(0.9, -0.1, 0) });
+  const FS = 0.88;                                                   // front wing half-span (≈1.8 m wide, approx.)
+  add(fw, airfoil(0.3, FS * 2, 0.11, 0.06), M.carbon, { p: V3(3.3, 0.08, 0), r: [0, 0, -4 * D2R] });
+  for (const s of [-1, 1]) {
+    const ep = new THREE.Shape(); ep.moveTo(3.34, 0.03); ep.lineTo(2.86, 0.03); ep.lineTo(2.82, 0.2); ep.quadraticCurveTo(2.95, 0.33, 3.12, 0.3); ep.lineTo(3.34, 0.1);
+    add(fw, new THREE.ExtrudeGeometry(ep, { depth: 0.012, bevelEnabled: false }).translate(0, 0, s * FS - 0.006), M.carbon);
+  }
+  for (const s of [-1, 1]) add(fw, new THREE.BoxGeometry(0.16, 0.12, 0.012), M.carbon, { p: V3(3.05, 0.16, s * 0.1) });   // nose pylons
+  const fflaps = part('fflaps', { explode: V3(1.3, 0.35, 0) });
+  flap(fflaps, flaps.front, { pivot: V3(3.07, 0.135, 0), chord: 0.17, span: FS * 2 - 0.04, corner: -26, straight: -6 });
+  flap(fflaps, flaps.front, { pivot: V3(2.93, 0.205, 0), chord: 0.13, span: FS * 2 - 0.04, corner: -40, straight: -12 });
+  const rw = part('rwing', { explode: V3(-0.8, 0.35, 0) });
+  const RS = 0.5;                                                    // rear wing half-span
+  add(rw, airfoil(0.3, RS * 2, 0.12, 0.07), M.carbon, { p: V3(-1.92, 0.8, 0), r: [0, 0, -8 * D2R] });
+  for (const s of [-1, 1]) {
+    const ep = new THREE.Shape(); ep.moveTo(-1.86, 0.62); ep.lineTo(-2.42, 0.58); ep.lineTo(-2.46, 1.16); ep.quadraticCurveTo(-2.2, 1.2, -1.95, 1.02); ep.lineTo(-1.86, 0.62);
+    add(rw, new THREE.ExtrudeGeometry(ep, { depth: 0.014, bevelEnabled: false }).translate(0, 0, s * (RS + 0.007) - 0.007), M.carbon);
+  }
+  const pil = new THREE.Shape(); pil.moveTo(-2.05, 0.3); pil.lineTo(-2.25, 0.3); pil.lineTo(-2.2, 0.86); pil.lineTo(-2.1, 0.86);
+  add(rw, new THREE.ExtrudeGeometry(pil, { depth: 0.03, bevelEnabled: false }).translate(0, 0, -0.015), M.carbon);
+  const rflaps = part('rflaps', { explode: V3(-1.2, 0.8, 0) });
+  flap(rflaps, flaps.rear, { pivot: V3(-2.37, 1.0, 0), chord: 0.2, span: RS * 2 - 0.02, corner: -30, straight: -4, te: true });
+  flap(rflaps, flaps.rear, { pivot: V3(-2.45, 1.1, 0), chord: 0.13, span: RS * 2 - 0.02, corner: -44, straight: -8, te: true });
+  /* --- 2025 only: the beam wing under the rear wing (removed for 2026) --- */
+  const beam = part('beam', { explode: V3(-0.8, -0.3, 0) });
+  add(beam, airfoil(0.16, RS * 2, 0.12, 0.05), M.carbon, { p: V3(-2.02, 0.42, 0), r: [0, 0, -10 * D2R] });
+  add(beam, airfoil(0.12, RS * 2, 0.12, 0.05), M.carbon, { p: V3(-2.14, 0.5, 0), r: [0, 0, -24 * D2R] });
+  /* --- actuators (shown in X-ray): front in the nose, rear in the pylon head --- */
+  const acts = part('actuators', { explode: V3(0, 0, 0) });
+  const links = [];
+  const fa = add(acts, cyl(0.03, 0.22, 16).rotateZ(Math.PI / 2), M.act, { p: V3(2.72, 0.25, 0) });
+  const ra = add(acts, cyl(0.035, 0.26, 16).rotateZ(Math.PI / 2), M.act, { p: V3(-2.15, 0.9, 0) });
+  const ln = (from, f, side) => { const m = rod(V3(), V3(0, 0.1, 0), 0.008, M.link); acts.add(m); links.push({ m, from, f, side }); };
+  for (const s of [-1, 1]) { ln(V3(2.62, 0.25, s * 0.05), flaps.front[0], s * 0.16); ln(V3(2.62, 0.25, s * 0.05), flaps.front[1], s * 0.22); }
+  ln(V3(-2.15, 0.93, 0.03), flaps.rear[0], 0.03); ln(V3(-2.15, 0.93, -0.03), flaps.rear[1], -0.03);
+  return { root, parts, flaps, WH, links, pick, acts: [fa, ra] };
+}
+/* generic race number decal (canvas) */
+function numberMat(txt) {
+  const t = canvasTex(256, 128, (g, w, h) => {
+    g.fillStyle = '#f2f2f0'; g.fillRect(0, 0, w, h); g.fillStyle = '#d80f27'; g.fillRect(0, 0, 18, h);
+    g.fillStyle = '#0a0a0c'; g.font = 'italic 800 104px Saira, "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, w / 2 + 8, h / 2 + 4);
+  }, 1);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.repeat.set(1, 1);
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.5 });
+}
+/* ==========================================================================
+   SCENE: rolling road / track surface, the hero car and the car ahead (chase)
+   ========================================================================== */
+const GroundShader = {
+  uniforms: { uOff: { value: 0 }, uRoad: { value: 1 }, uFade: { value: V3(0, 0, 0) }, uRed: { value: new THREE.Color('#d80f27') } },
+  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `uniform float uOff; uniform float uRoad; uniform vec3 uFade; uniform vec3 uRed; varying vec3 vW;
+    float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    void main(){
+      float x = vW.x + uOff, z = abs(vW.z);
+      // asphalt: fine aggregate + long streaks
+      float g = h(floor(vec2(x, vW.z) * 40.)) * .035 + h(floor(vec2(x * .5, vW.z * 9.))) * .02;
+      vec3 road = vec3(.055, .056, .062) + g;
+      float edge = smoothstep(.05, .0, abs(z - 6.6));                                     // white edge line
+      float kerbZone = step(6.75, z) * step(z, 7.5);
+      float kerb = step(.5, fract(x / 1.6));
+      road = mix(road, vec3(.78), edge * .85);
+      road = mix(road, mix(vec3(.8), uRed * .8, kerb), kerbZone);
+      // wind-tunnel rolling road: a lighter belt with transverse marks and a floor grid
+      float belt = step(z, 1.25);
+      float marks = smoothstep(.02, 0., abs(fract(x / 1.2) - .5) - .47);
+      vec3 tun = vec3(.035, .036, .04) + g * .5;
+      float grid = max(smoothstep(.015, 0., abs(fract(vW.x) - .5) - .48), smoothstep(.015, 0., abs(fract(vW.z) - .5) - .48));
+      tun += grid * .03;
+      tun = mix(tun, vec3(.11, .115, .125) + marks * .06 + g, belt);
+      tun = mix(tun, vec3(.5), smoothstep(.03, 0., abs(z - 1.25)) * .7);
+      vec3 c = mix(tun, road, uRoad);
+      float d = length(vW.xz - uFade.xz);
+      float a = 1. - smoothstep(9., 26., d);
+      gl_FragColor = vec4(c, a);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+};
+const groundMat = new THREE.ShaderMaterial({ ...GroundShader, uniforms: THREE.UniformsUtils.clone(GroundShader.uniforms), transparent: true });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 60).rotateX(-Math.PI / 2), groundMat);
+ground.renderOrder = -1; scene.add(ground);
+const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 20).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.55 }));
+shadowCatcher.position.y = 0.002; shadowCatcher.receiveShadow = true; scene.add(shadowCatcher);
+
+const CAR = buildCar(true);
+scene.add(CAR.root);
+const PARTS = CAR.parts, PICKABLE = CAR.pick;
+for (const p of Object.values(PARTS)) p.base.copy(p.g.position);
+const leadMat = M.primer.clone(); leadMat.color.set('#4a4d55');
+const LEAD = buildCar(false, leadMat);
+LEAD.root.visible = false; scene.add(LEAD.root);
+/* X-ray: every hero mesh gets a ghost twin; the actuators and links keep their real material */
+const GHOSTS = [];
+CAR.root.traverse(o => {
+  if (!o.isMesh || o.userData.ghost) return;
+  const inAct = (() => { for (let q = o; q; q = q.parent) if (q.name === 'actuators') return true; return false; })();
+  if (inAct) { o.userData.keep = true; return; }
+  const gm = ghostMat(o.userData.flapEdge ? '#ff6070' : '#cfd6e2'); const gh = new THREE.Mesh(o.geometry, gm);
+  gh.userData.ghost = true; gh.userData.noAO = true; gh.visible = false; gh.renderOrder = 5; gh.userData.part = o.userData.part; gm.userData.base = gm.uniforms.uCol.value.clone();
+  o.add(gh); GHOSTS.push({ real: o, gh });
+});
+/* ------------------------------------------------------------------ car animation */
+const _a = V3(), _b = V3();
+function setRod(m, a, b) {
+  const d = _b.copy(b).sub(a), L = d.length();
+  m.position.copy(a).addScaledVector(d, 0.5); m.scale.set(1, L / 0.1, 1); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize());
+}
+/* flap angles for one car. front/rear: 0 = corner, 1 = open. 2025 rules: only the top rear flap (DRS). */
+function poseFlaps(car, era25, front, rear) {
+  car.flaps.front.forEach(f => { f.ang = lerp(f.corner, f.straight, era25 ? 0 : front); f.pv.rotation.z = f.ang * D2R; });
+  car.flaps.rear.forEach((f, i) => {
+    const open = era25 ? (i === 1 ? rear : 0) : rear;
+    const target = era25 && i === 1 ? -2 : f.straight;
+    f.ang = lerp(f.corner, target, open); f.pv.rotation.z = f.ang * D2R;
+  });
+}
+function updateLinks(car) {
+  car.root.updateMatrixWorld(true);
+  const acts = car.parts.actuators.g;
+  for (const l of car.links) {
+    _a.copy(l.from); acts.localToWorld(_a);
+    const loc = V3(l.f.te ? l.f.chord * 0.55 : -l.f.chord * 0.35, 0, l.side);
+    l.f.pv.localToWorld(loc);
+    acts.worldToLocal(_a); acts.worldToLocal(loc);
+    setRod(l.m, _a, loc);
+  }
+}
+/* 2025 ⇄ 2026 body morph: longer wheelbase, wider, beam wing + front wheel arches back, wake boards gone */
+function applyEra(car, t) {
+  car.root.scale.set(1 + 0.055 * t, 1, 1 + 0.052 * t);
+  car.parts.beam.g.visible = t > 0.5; car.parts.arches.g.visible = t > 0.5; car.parts.boards.g.visible = t < 0.5;
+}
+function spinWheels(car, dist) { for (const w of car.WH) w.spin.rotation.z = -dist / TR; }
+/* ==========================================================================
+   AIRFLOW — streak particles advected through a hand-built velocity field.
+   Not CFD: potential-flow doublets for the body and wheels, a bound vortex +
+   upwash + tip vortices per wing, underfloor acceleration, and a noisy wake.
+   Colour = pressure from Bernoulli (Cp = 1 − (|v|/U)²): red high, blue low;
+   violet = turbulent wake ("dirty air").
+   ========================================================================== */
+const FLOW = { N: LOWQ ? 700 : 1400, K: 16 };
+const BODIES = [   // [cx, cy, cz, rx, ry, rz]
+  [1.9, 0.36, 0, 1.3, 0.2, 0.22], [0.1, 0.5, 0, 1.2, 0.36, 0.38], [-1.3, 0.5, 0, 1.0, 0.34, 0.26],
+  [-0.35, 0.34, 0.52, 0.95, 0.22, 0.26], [-0.35, 0.34, -0.52, 0.95, 0.22, 0.26],
+  [FX, TR, ZF, TR + 0.03, TR + 0.03, WF / 2 + 0.05], [FX, TR, -ZF, TR + 0.03, TR + 0.03, WF / 2 + 0.05],
+  [RX, TR, ZR, TR + 0.03, TR + 0.03, WR / 2 + 0.05], [RX, TR, -ZR, TR + 0.03, TR + 0.03, WR / 2 + 0.05]
+];
+/* wing load share per car (0..1 of the car's corner-mode value); filled every frame */
+function wingState(era, front, rear) {
+  const f = era === 2025 ? 1 : 1 - 0.8 * front;       // front flaps flatten in 2026 only
+  const r = era === 2025 ? 1 - 0.45 * rear : 1 - 0.85 * rear;
+  return { f, r };
+}
+const FS_ = { cars: [] };    // per-frame: [{ox, wf, wr, wake}]
+const _v = V3(), _q = V3();
+function fieldAdd(p, t, car, out) {
+  const x = p.x - car.ox, y = p.y, z = p.z - car.oz;
+  // body + wheels: doublet around each ellipsoid (in scaled space)
+  for (const b of BODIES) {
+    const qx = (x - b[0]) / b[3], qy = (y - b[1]) / b[4], qz = (z - b[2]) / b[5];
+    const r2 = qx * qx + qy * qy + qz * qz; if (r2 > 9) continue;
+    const r2c = Math.max(r2, 1), r3 = r2c * Math.sqrt(r2c), k = 0.5 / r3;
+    // U∞ = (−1,0,0): v = U∞ − (1/2r³)[3(U∞·r̂)r̂ − U∞]
+    const inv = 1 / Math.sqrt(r2c), rx = qx * inv, ry = qy * inv, rz = qz * inv, ud = -rx;
+    out.x += -k * (3 * ud * rx + 1) * b[3] / b[3]; out.y += -k * 3 * ud * ry * (b[4] / b[3]); out.z += -k * 3 * ud * rz * (b[5] / b[3]);
+    if (r2 < 1) { const push = (1 - r2) * 4; out.x += rx * push * 0.2; out.y += ry * push; out.z += rz * push; }
+  }
+  // wings: [x of quarter chord, y, half-span, strength]
+  const W = [[3.18, 0.16, 0.88, 0.55 * car.wf], [-2.05, 0.93, 0.5, 1.0 * car.wr]];
+  for (const [wx, wy, hs, st] of W) {
+    const dx = x - wx, dy = y - wy, az = Math.abs(z);
+    const span = 1 - smooth(hs - 0.1, hs + 0.15, az);
+    if (span > 0) {
+      const r2 = dx * dx + dy * dy + 0.012, G = -0.11 * st * span;
+      out.x += G * (-dy) / r2; out.y += G * dx / r2;               // bound vortex (downforce: faster underneath)
+      if (dx < 0) out.y += (wx > 0 ? 0.35 : 1.25) * st * span * smooth(0, -0.3, dx) * Math.exp(dx / (wx > 0 ? 0.7 : 3.0)) * Math.exp(-((dy + 0.15 * dx) ** 2) / 0.05); // upwash behind the wing
+    }
+    if (dx < 0.1 && st > 0.05) {                                    // tip vortices trailing from the wing tips
+      for (const s of [-1, 1]) {
+        const ty = y - (wy - 0.02), tz = z - s * hs, r2 = ty * ty + tz * tz + 0.004;
+        const sw = 0.05 * st * Math.exp(dx / 6) / r2 * Math.exp(-r2 / 0.09);
+        out.y += -s * tz * sw; out.z += s * ty * sw;
+      }
+    }
+  }
+  // underfloor: accelerated (low pressure); diffuser lifts the flow out at the back
+  if (y < 0.1 && Math.abs(z) < 0.7 && x < 1.4 && x > -1.8) out.x -= 0.55 * smooth(1.4, 0.6, x) * (1 - smooth(0.05, 0.1, y));
+  if (x < -1.2 && x > -2.6 && Math.abs(z) < 0.55 && y < 0.5) out.y += 0.45 * smooth(-1.2, -1.8, x) * (1 - smooth(-2.0, -2.6, x));
+  // wake: turbulence + velocity deficit behind the car, growing with downforce
+  let wk = 0;
+  if (x < -2.2) {
+    const d = -2.2 - x, wz = 0.9 + d * 0.08, wy = 1.25 + d * 0.06;
+    wk = car.wake * (1 - smooth(wz, wz + 0.5, Math.abs(z))) * (1 - smooth(wy, wy + 0.5, y)) * Math.exp(-d / 28);
+    if (wk > 0.001) {
+      const a = wk * 0.9;
+      out.x += a * (0.5 * Math.sin(2.1 * y + 3.3 * t + x * 0.9) + 0.35);
+      out.y += a * (Math.sin(1.7 * x + 2.9 * t + z * 2.3) * 0.8 + Math.sin(3.1 * z - 1.9 * t) * 0.4 + 0.25 * car.wr);
+      out.z += a * (Math.sin(1.3 * x - 2.3 * t + y * 3.1) * 0.8 + Math.cos(2.7 * y + 1.7 * t) * 0.4);
+    }
+  }
+  return wk;
+}
+function field(p, t, out) {
+  out.set(-1, 0, 0); let wk = 0;
+  for (const c of FS_.cars) wk += fieldAdd(p, t, c, out);
+  return wk;
+}
+const flowGeo = new THREE.BufferGeometry();
+const fPos = new Float32Array(FLOW.N * (FLOW.K - 1) * 6), fCol = new Float32Array(FLOW.N * (FLOW.K - 1) * 6);
+flowGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3).setUsage(THREE.DynamicDrawUsage));
+flowGeo.setAttribute('color', new THREE.BufferAttribute(fCol, 3).setUsage(THREE.DynamicDrawUsage));
+const flowMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 1 });
+const flowLines = new THREE.LineSegments(flowGeo, flowMat);
+flowLines.frustumCulled = false; flowLines.userData.noAO = true; flowLines.renderOrder = 6; scene.add(flowLines);
+const PT = { p: new Float32Array(FLOW.N * 3), tr: new Float32Array(FLOW.N * FLOW.K * 3), col: new Float32Array(FLOW.N * FLOW.K * 3), head: new Uint8Array(FLOW.N) };
+const prng = rnd(42);
+function seed(i, xs, scatter) {
+  const r = prng();
+  let y, z;
+  if (r < 0.25) { y = 0.04 + prng() * 0.36; z = (prng() * 2 - 1) * 1.0; }          // front-wing band
+  else if (r < 0.5) { y = 0.7 + prng() * 0.55; z = (prng() * 2 - 1) * 0.6; }        // rear-wing band
+  else if (r < 0.62) { y = 0.02 + prng() * 0.07; z = (prng() * 2 - 1) * 0.65; }     // underfloor
+  else { y = 0.05 + prng() * 1.5; z = (prng() * 2 - 1) * 1.5; }
+  const x = xs + (scatter ? -prng() * scatter : prng() * 0.6);
+  PT.p[i * 3] = x; PT.p[i * 3 + 1] = y; PT.p[i * 3 + 2] = z;
+  for (let k = 0; k < FLOW.K; k++) { const o = (i * FLOW.K + k) * 3; PT.tr[o] = x; PT.tr[o + 1] = y; PT.tr[o + 2] = z; PT.col[o] = PT.col[o + 1] = PT.col[o + 2] = 0; }
+}
+const HI_C = new THREE.Color(PAL.hi), LO_C = new THREE.Color(PAL.lo), MID_C = new THREE.Color('#6a707e'), WK_C = new THREE.Color(PAL.wake);
+let flowSeedX = 5.5, flowInit = false; const _fc = new THREE.Color();
+function updateFlow(dt, t, vis, uVis) {
+  flowLines.visible = vis > 0.01;
+  if (!flowLines.visible) return;
+  const N = FLOW.N, K = FLOW.K, xs = flowSeedX, xEnd = -12;
+  if (!flowInit) { for (let i = 0; i < N; i++) seed(i, xs, xs - xEnd); flowInit = true; }
+  const sub = 2, h = dt * uVis / sub;
+  for (let i = 0; i < N; i++) {
+    const o = i * 3; _q.set(PT.p[o], PT.p[o + 1], PT.p[o + 2]);
+    let wk = 0;
+    for (let s = 0; s < sub; s++) { wk = field(_q, t, _v); _q.addScaledVector(_v, h); if (_q.y < 0.015) _q.y = 0.015; }
+    if (_q.x < xEnd || _q.x > xs + 3 || _q.y > 3.2 || Math.abs(_q.z) > 3) { seed(i, xs, 0); continue; }
+    PT.p[o] = _q.x; PT.p[o + 1] = _q.y; PT.p[o + 2] = _q.z;
+    // pressure colour from local speed; wake tint by turbulence
+    const sp = _v.length(), cp = clamp(1 - sp * sp, -1.2, 1);
+    const c = cp > 0 ? _fc.copy(MID_C).lerp(HI_C, Math.min(1, cp * 2.2)) : _fc.copy(MID_C).lerp(LO_C, Math.min(1, -cp * 2.0));
+    c.lerp(WK_C, clamp(wk * 2.2, 0, 1));
+    const hd = PT.head[i] = (PT.head[i] + 1) % K, tp = (i * K + hd) * 3;
+    PT.tr[tp] = _q.x; PT.tr[tp + 1] = _q.y; PT.tr[tp + 2] = _q.z; PT.col[tp] = c.r; PT.col[tp + 1] = c.g; PT.col[tp + 2] = c.b;
+  }
+  // write trails as segments, fading toward the tail
+  let w = 0;
+  for (let i = 0; i < N; i++) for (let j = 0; j < K - 1; j++) {
+    const a = (i * K + (PT.head[i] - j + K) % K) * 3, b = (i * K + (PT.head[i] - j - 1 + K) % K) * 3;
+    const fa = (1 - j / (K - 1)) * vis * 0.6, fb = (1 - (j + 1) / (K - 1)) * vis * 0.6;
+    fPos[w] = PT.tr[a]; fPos[w + 1] = PT.tr[a + 1]; fPos[w + 2] = PT.tr[a + 2];
+    fPos[w + 3] = PT.tr[b]; fPos[w + 4] = PT.tr[b + 1]; fPos[w + 5] = PT.tr[b + 2];
+    fCol[w] = PT.col[a] * fa; fCol[w + 1] = PT.col[a + 1] * fa; fCol[w + 2] = PT.col[a + 2] * fa;
+    fCol[w + 3] = PT.col[a] * fb; fCol[w + 4] = PT.col[a + 1] * fb; fCol[w + 5] = PT.col[a + 2] * fb;
+    w += 6;
+  }
+  flowGeo.attributes.position.needsUpdate = true; flowGeo.attributes.color.needsUpdate = true;
+}
+/* ==========================================================================
+   LAP SIMULATION — same test circuit as part 1. Straight Mode is armed in
+   activation zones (straights, marked from corner exit), and drops back to
+   Corner Mode whenever the car brakes. 2025: DRS only in the two DRS zones
+   and only when "within 1 s" is on.
+   ========================================================================== */
+const TRACK_PTS = [[0, 0], [520, 0], [1040, 0], [1170, 14], [1225, 80], [1195, 160], [1105, 178], [960, 160], [820, 195], [720, 270], [668, 370], [682, 480], [760, 565], [880, 600],
+  [1010, 640], [1085, 725], [1065, 822], [985, 858], [760, 865], [520, 868], [330, 852], [260, 800], [282, 722], [214, 660], [120, 646], [30, 606], [-60, 520], [-118, 402], [-140, 262], [-112, 118], [-62, 28]];
+const TRACK = (() => {
+  const c = new THREE.CatmullRomCurve3(TRACK_PTS.map(([x, y]) => V3(x, 0, y)), true, 'centripetal', 0.5);
+  const N = Math.round(c.getLength()), pts = c.getSpacedPoints(N).slice(0, N);
+  const hd = pts.map((p, i) => { const q = pts[(i + 1) % N]; return Math.atan2(q.z - p.z, q.x - p.x); });
+  const R = new Float32Array(N), W = 14;
+  for (let i = 0; i < N; i++) { let d = hd[(i + W) % N] - hd[(i - W + N) % N]; d = Math.atan2(Math.sin(d), Math.cos(d)); R[i] = 1 / Math.max(Math.abs(d) / (2 * W), 1e-5); }
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; pts.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); });
+  return { pts, N, R, box: [x0, x1, z0, z1] };
+})();
+/* speed envelopes for each aero setup: corner limit + braking pass (1 m steps) */
+function envelope(era, c) {
+  const N = TRACK.N, VL = new Float32Array(N), VB = new Float32Array(N), A = AERO[era];
+  for (let i = 0; i < N; i++) VL[i] = cornerSpeed(era, c, TRACK.R[i]);
+  const aB = v => (MU * (A.mass * G + forceN(c.ClA, v)) + forceN(c.CdA, v)) / A.mass * 0.92;
+  VB.set(VL);
+  for (let pass = 0; pass < 2; pass++) for (let i = N - 1; i >= 0; i--) { const nx = VB[(i + 1) % N]; VB[i] = Math.min(VL[i], Math.sqrt(nx * nx + 2 * aB(nx))); }
+  return VB;
+}
+const ENV = {
+  '2026c': envelope(2026, AERO[2026].corner), '2026s': envelope(2026, AERO[2026].straight),
+  '2025c': envelope(2025, AERO[2025].corner), '2025s': envelope(2025, AERO[2025].drs)
+};
+/* activation zones: straight stretches (no corner limit) longer than ~3 s at speed, starting 60 m after the exit */
+const ZONE = new Uint8Array(TRACK.N), DRSZ = new Uint8Array(TRACK.N);
+(() => {
+  const N = TRACK.N, st = i => TRACK.R[i] > 700, runs = [];
+  let i0 = -1;
+  for (let k = 0; k < 2 * N; k++) { const i = k % N; if (st(i) && i0 < 0) i0 = k; if ((!st(i) || k === 2 * N - 1) && i0 >= 0) { runs.push([i0, k]); i0 = -1; } }
+  const uniq = runs.filter(([a, b]) => a < N && b - a > 220);
+  for (const [a, b] of uniq) for (let k = a + 60; k < b - 20; k++) ZONE[k % N] = 1;
+  uniq.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0])).slice(0, 2).forEach(([a, b]) => { for (let k = a + 90; k < b - 20; k++) DRSZ[k % N] = 1; });
+})();
+const GEAR_TOP = [100, 132, 162, 192, 224, 258, 296, 350];
+const SIM = {
+  s: 0, v: 250 / 3.6, dist: 0, lapT: 0, lapN: 0, brake: false, goal: 0, soc: 3.0, k: 0, lapHarv: 0, lapDep: 0, ovtE: 0,
+  df: 0, drag: 0, gear: 8, traceV: new Float32Array(Math.ceil(TRACK.N / 5)).fill(-1), traceA: new Float32Array(Math.ceil(TRACK.N / 5)), prev: null
+};
+const SEC = { i: 0, start: 0, cur: [null, null, null], cls: ['', '', ''], prev: [null, null, null], best: {}, dirty: true, last: null, bestLap: {} };
+function secKey() { return S.era + S.aero + (S.chasing ? 'c' : ''); }
+function secClose() {
+  const j = SEC.i; if (j > 2) return;
+  const t = SIM.lapT - SEC.start, best = SEC.best[secKey()] || (SEC.best[secKey()] = [Infinity, Infinity, Infinity]);
+  let cls = '';
+  if (!SEC.dirty) { cls = t < best[j] - 1e-3 ? 'p' : SEC.prev[j] != null && t < SEC.prev[j] - 1e-3 ? 'g' : 'y'; best[j] = Math.min(best[j], t); SEC.prev[j] = t; }
+  SEC.cur[j] = t; SEC.cls[j] = cls; SEC.start = SIM.lapT; SEC.i = j + 1;
+}
+function resetLap() { SIM.lapT = 0; SIM.lapHarv = 0; SIM.lapDep = 0; SEC.start = 0; SEC.i = Math.floor(3 * (SIM.s % TRACK.N) / TRACK.N); SEC.dirty = true; SEC.cur = [null, null, null]; SEC.cls = ['', '', '']; }
+function aeroGoal(i, brake) {
+  if (S.aero === 'corner') return 0;
+  if (S.aero === 'straight') return 1;
+  if (S.scene === 'studio') return Math.floor(S.t / 3.5) % 2;          // tunnel: Auto cycles the two modes
+  if (S.era === 2025) return DRSZ[i] && S.chasing && !brake ? 1 : 0;
+  return ZONE[i] && !brake ? 1 : 0;
+}
+function simStep(dt) {
+  const era = S.era, A = AERO[era], N = TRACK.N, i = Math.floor(SIM.s) % N;
+  const envKey = era + (S.aero === 'straight' ? 's' : 'c'), VB = ENV[envKey];
+  const vNext = VB[(i + 3) % N];
+  SIM.brake = SIM.v > vNext + 0.3;
+  SIM.goal = aeroGoal(i, SIM.brake);
+  const c = coeffs(era, S.aeroT, S.partial);
+  const vk = SIM.v * 3.6, ovt = S.overtake && (S.chasing || S.scene === 'chase') && SIM.ovtE > 0;
+  let kW = 0;
+  if (SIM.brake) {
+    kW = -Math.min(era === 2026 ? 350 : 120, (era === 2026 ? 8.5 : 2.0) - SIM.lapHarv > 0 ? 400 : 0);
+    if (SIM.soc >= 4.0) kW = 0;
+  } else {
+    kW = SIM.soc > 0.05 ? kCeil(era, vk, ovt) * clamp(SIM.soc / 1.2, 0.3, 1) : 0;   // simple strategy: ease off as the battery runs low
+    if (era === 2025 && SIM.lapDep >= 4.0) kW = 0;
+  }
+  const E = kW * dt / 1000;                                  // MJ
+  if (kW > 0) { SIM.soc -= E; SIM.lapDep += E; if (ovt) SIM.ovtE = Math.max(0, SIM.ovtE - E); }
+  else { SIM.soc -= E; SIM.lapHarv -= E; }
+  SIM.soc = clamp(SIM.soc, 0, 4.0);
+  SIM.k = kW;
+  const tow = S.scene === 'chase' ? towGain(CH.eff) : 0, loss = S.scene === 'chase' ? wakeLoss(era, CH.eff) : 0;
+  const drag = forceN(c.CdA, SIM.v) * (1 - tow), df = forceN(c.ClA, SIM.v) * (1 - loss);
+  SIM.df = df; SIM.drag = drag;
+  let a;
+  if (SIM.brake) a = -(MU * (A.mass * G + df) + drag) / A.mass * 0.92;
+  else {
+    const P = (A.ice + Math.max(0, kW)) * 1000, Ftr = Math.min(P / Math.max(SIM.v, 5), MU * (A.mass * G + df) * 0.55);
+    a = (Ftr - drag - CRR * (A.mass * G + df)) / A.mass;
+  }
+  SIM.v = Math.max(15, SIM.v + a * dt);
+  if (SIM.brake) SIM.v = Math.max(SIM.v, vNext);
+  const vLim = cornerSpeed(era, c, TRACK.R[i], loss); if (SIM.v > vLim) SIM.v = vLim;    // grip limit with the current setup
+  const ds = SIM.v * dt; SIM.s += ds; SIM.dist += ds; SIM.lapT += dt;
+  const g = GEAR_TOP.findIndex(t => vk < t); SIM.gear = g < 0 ? 8 : g + 1;
+  const ti = Math.floor((SIM.s % N) / 5); SIM.traceV[ti] = vk; SIM.traceA[ti] = S.aeroT;
+  const sec = Math.floor(3 * (SIM.s % N) / N); if (sec > SEC.i && SEC.i < 3) secClose();
+  if (SIM.s >= N) {
+    SIM.s -= N; secClose();
+    if (!SEC.dirty) { SEC.last = SIM.lapT; const k = secKey(); SEC.bestLap[k] = Math.min(SEC.bestLap[k] ?? Infinity, SIM.lapT); }
+    SIM.prev = { v: SIM.traceV.slice(), a: SIM.traceA.slice() }; SIM.traceV.fill(-1);
+    SIM.lapT = 0; SIM.lapHarv = 0; SIM.lapDep = 0; SIM.lapN++; SEC.i = 0; SEC.start = 0; SEC.dirty = false; SEC.cur = [null, null, null]; SEC.cls = ['', '', ''];
+    if (S.overtake) SIM.ovtE = 0.5;
+  }
+}
+/* chase state: the car ahead sits CH.gap metres in front; Overtake closes the gap and the follower pulls out to pass */
+const CH = { gap: S.gap, lane: 0, passing: false, done: 0, get eff() { return this.lane < -1.2 || this.gap < 0 ? 99 : this.gap; } };
+/* per-part material copies on the hero car so a lesson can make one part glow */
+for (const p of Object.values(PARTS)) {
+  const cache = new Map();
+  p.g.traverse(o => {
+    if (!o.isMesh || o.userData.ghost || !o.material.isMeshStandardMaterial) return;
+    if (!cache.has(o.material)) { const m = o.material.clone(); m.userData.baseEm = m.emissive.clone(); cache.set(o.material, m); p.mats.push(m); }
+    o.material = cache.get(o.material);
+  });
+}
+const HI = new THREE.Color('#d4ff33'), _hc = new THREE.Color();
+let xrayFade = 0, dist = 0;
+function speedNow() { return S.scene === 'studio' ? S.vSet / 3.6 : SIM.v; }
+function updateScene(dt, t) {
+  // aero mode: animate towards the goal (the rules' actuation window is reported as ≈0.4 s)
+  const goal = S.scene === 'studio' ? aeroGoal(0, false) : SIM.goal;
+  S.aeroGoal = goal;
+  S.aeroT += clamp(goal - S.aeroT, -dt * 2.6, dt * 2.6);
+  S.eraT += clamp((S.era === 2025 ? 1 : 0) - S.eraT, -dt * 2.2, dt * 2.2);
+  const e25 = S.era === 2025, fT = S.partial ? S.aeroT : S.aeroT, rT = S.partial ? 0 : S.aeroT;
+  poseFlaps(CAR, e25, fT, rT); applyEra(CAR, S.eraT);
+  const v = speedNow(); dist += v * dt;
+  spinWheels(CAR, dist);
+  groundMat.uniforms.uOff.value = dist % 1000;
+  groundMat.uniforms.uRoad.value += ((S.scene === 'studio' ? 0 : 1) - groundMat.uniforms.uRoad.value) * Math.min(1, dt * 4);
+  groundMat.uniforms.uFade.value.copy(controls.target);
+  // chase: place the car ahead; Overtake closes the gap and the follower moves over to pass
+  const chase = S.scene === 'chase';
+  LEAD.root.visible = chase;
+  if (chase) {
+    if (CH.passing) {
+      const close = S.aeroT > 0.5 ? 5 : 2.5;                                   // m/s closing speed (illustrative)
+      CH.gap -= close * dt;
+      CH.lane = lerp(CH.lane, CH.gap < 14 ? -2.3 : 0, Math.min(1, dt * 1.6));
+      if (CH.gap < -9) { CH.passing = false; CH.done = 2.5; toast(L().passDone, 2800); }
+    } else if (CH.done > 0) { CH.done -= dt; if (CH.done <= 0) { CH.gap = S.gap; } }
+    else { CH.gap += (S.gap - CH.gap) * Math.min(1, dt * 2); CH.lane *= 1 - Math.min(1, dt * 1.5); }
+    LEAD.root.position.set(CH.gap + 5.8, 0, 0); CAR.root.position.z = CH.lane;
+    poseFlaps(LEAD, e25, fT, rT); applyEra(LEAD, S.eraT); spinWheels(LEAD, dist);
+  } else { CAR.root.position.z *= 1 - Math.min(1, dt * 3); CH.passing = false; }
+  // airflow field: one entry per car
+  const c = coeffs(S.era, S.aeroT, S.partial), cMax = AERO[S.era].corner.ClA;
+  const ws = wingState(S.era, fT, rT), wake = 0.08 + Math.pow(c.ClA / 3.3, 1.6);
+  FS_.cars.length = 0;
+  FS_.cars.push({ ox: 0, oz: CAR.root.position.z, wf: ws.f, wr: ws.r, wake });
+  if (chase) FS_.cars.push({ ox: LEAD.root.position.x, oz: 0, wf: ws.f, wr: ws.r, wake: wake * 1.2 });
+  flowSeedX = chase ? LEAD.root.position.x + 5.5 : 5.5;
+  const uVis = 2.2 + v / 28;
+  updateFlow(dt, t, S.flow ? clamp(1 - S.explT * 2.5, 0, 1) : 0, uVis);
+  // exploded view
+  S.explT += clamp(S.expl - S.explT, -dt * 1.6, dt * 1.6);
+  const ex = smooth(0, 1, S.explT);
+  for (const p of Object.values(PARTS)) p.g.position.copy(p.base).addScaledVector(p.explode, ex);
+  for (const w of CAR.WH) w.g.position.z = w.s * ((w.front ? ZF : ZR) + ex * 0.55);
+  // X-ray: ghost shells in, solid parts out, actuators stay solid and glow
+  xrayFade += clamp((S.xray ? 1 : 0) - xrayFade, -dt * 3, dt * 3);
+  // the same shells double as the lesson highlight: a pulsing lime rim over the focused parts
+  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+  for (const { real, gh } of GHOSTS) {
+    const pid = gh.userData.part, foc = xrayFade < 0.5 && (FOCUS.has(pid) || S.hover === pid);
+    real.material.visible = xrayFade <= 0.5;
+    gh.visible = xrayFade > 0.01 || foc;
+    const u = gh.material.uniforms;
+    if (foc) { u.uCol.value.copy(HI); u.uA.value = FOCUS.has(pid) ? 0.35 + 0.45 * pulse : 0.3; }
+    else { u.uCol.value.copy(gh.material.userData.base); u.uA.value = xrayFade * (real.userData.flapEdge ? 1.6 : 1); }
+  }
+  for (const a of CAR.acts) a.material.emissive.setRGB(0.5 * xrayFade, 0.3 * xrayFade, 0.05 * xrayFade);
+  updateLinks(CAR);
+}
+const FOCUS = new Set();
+/* ==========================================================================
+   COPY (English / 繁體中文)
+   ========================================================================== */
+const T = { en: {
+  h1a: 'Inside', h1b: 'two-mode', h1c: 'wings', kicker: '2026 rules · active aerodynamics · interactive lab · part 2', series: '◂ Part 1: power unit',
+  view: 'View', aero: 'Aero', rules: 'Rules', scene: 'Scene', m_corner: 'Corner', m_straight: 'Straight', m_auto: 'Auto (lap logic)',
+  sc_studio: 'Tunnel', sc_lap: 'Lap', sc_chase: 'Chase', v_flow: 'Airflow', v_expl: 'Explode', v_xray: 'X-ray · actuators',
+  tunnelSpeed: 'Tunnel speed', gap: 'Gap to car ahead', attack: 'Attack', ovt: 'Overtake (+0.5 MJ)', chasing: 'Within 1 s of car ahead',
+  flowKey: 'Airflow key', dkFoot: 'Drag to orbit · scroll to zoom · click a part to open its chapter · press ? for all keys',
+  telemetry: 'Telemetry', speed: 'Speed', gear: 'Gear', modeShort: 'Mode', flapF: 'Front flap', flapR: 'Rear flap',
+  c_forces: 'Forces', illus: 'ILLUSTRATIVE', df: 'Downforce', dr: 'Drag', c_speeds: 'Speed limits', vmax: 'Top', vcor: 'Corner',
+  capNote: 'white tick = 2025 car, Corner setup · corner = 120 m radius', c_energy: 'Energy', lap: 'Lap', last: 'Last', best: 'Best',
+  dfShort: 'DF kN', drShort: 'Drag kN', lessons: 'Seven things to know', introKick: 'Part 2 · active aero', introT1: 'Wings that', introT2: 'change shape',
+  sub: 'From 2026 the front and rear wing flaps move: flat on the straights to cut drag, angled in the corners for grip. Flip the modes, watch the air, run a lap and chase another car.',
+  towerNo: 'No.', towerLesson: 'Lesson', towerStatus: 'Status', towerNew: 'new', towerSeen: 'seen',
+  introNote: 'Rule facts follow the FIA 2026 regulations and official explainers (see README). Forces, speeds and airflow are an illustrative model, not team data.',
+  helpT: 'Controls', helpP: 'Drag to orbit, right-drag or two-finger drag to pan, scroll or pinch to zoom. Hover a part to name it; click it to open its lesson.',
+  loading: 'Laying up carbon…', uiHidden: 'Interface hidden — press / to bring it back', cineOn: 'Cinematic camera — Esc to leave', cine: 'Two-mode wings', cineSub: '2026 active aerodynamics',
+  sndOn: 'Sound on', sndOff: 'Sound off', passDone: 'Overtake complete — the car ahead is reset',
+  modeName: { corner: 'CORNER', straight: 'STRAIGHT', drs: 'DRS OPEN', partial: 'PARTIAL' },
+  toastMode: { corner: '<b>Corner Mode</b> — flaps closed, full downforce', straight: '<b>Straight Mode</b> — flaps open, drag cut', auto: '<b>Auto</b> — Straight Mode in activation zones, back to Corner on the brakes' },
+  toastEra: { 2025: '<b>2025 rules</b> — bigger, heavier car; DRS: rear flap only, only when within 1 s, only in DRS zones', 2026: '<b>2026 rules</b> — both wings move, every car, every activation zone' },
+  toastScene: { studio: '<b>Wind tunnel</b> — fixed speed; Auto cycles the modes', lap: '<b>Lap</b> — the car runs the test circuit', chase: '<b>Chase</b> — follow another car through its wake' },
+  straightLap: 'Straight Mode locked on: the car has too little grip for the corners — watch the lap time',
+  ovtNeed: 'Overtake needs you within 1 s of the car ahead (turn on "Within 1 s" or use Chase)',
+  chips: { zone: 'ACTIVATION ZONE', drsz: 'DRS ZONE', brake: 'BRAKING', deploy: 'DEPLOY', harvest: 'HARVEST', ovt: 'OVERTAKE', dirty: 'DIRTY AIR −{n}%', tow: 'TOW −{n}% DRAG', flat: 'BATTERY FLAT', noDRS: 'NO DRS (>1 s)' },
+  parts: {
+    chassis: ['Monocoque & nose', 'survival cell, crash structure'], sidepods: ['Sidepods', 'radiator inlets, coke-bottle taper'], halo: ['Halo', 'titanium head protection'],
+    floor: ['Floor', '2026: flatter, 150 mm narrower'], diffuser: ['Diffuser', 'lower-powered in 2026'], wheels: ['Tyres', '2026: 25 / 30 mm narrower'], susp: ['Suspension', 'wishbones + push rods'],
+    boards: ['Wheel-wake boards', '2026: steer tyre wake inboard'], arches: ['Front wheel arches', '2025 only'], fwing: ['Front wing', 'main plane fixed'],
+    fflaps: ['Front flaps', 'active: flatten in Straight Mode'], rwing: ['Rear wing', 'main plane + endplates + pylon'], rflaps: ['Rear flaps', 'active: open in Straight Mode'],
+    beam: ['Beam wing', '2025 only — removed for 2026'], actuators: ['Flap actuators', 'move the flaps, ≈0.4 s (approx.)'], helmet: ['Driver', '']
+  },
+  help: [['1 … 7', 'open a lesson'], ['C S A', 'Corner / Straight / Auto aero mode'], ['Y', '2025 ⇄ 2026 rules'], ['T L K', 'Tunnel / Lap / Chase scene'], ['F', 'airflow on / off'], ['E', 'exploded view'], ['X', 'X-ray (actuators)'],
+    ['O', 'Overtake (Chase, or within 1 s)'], ['G', 'toggle "within 1 s of car ahead"'], ['↑ ↓', 'tunnel speed'], ['[ ]', 'gap to car ahead'], ['M', 'sound'], ['V', 'cinematic camera'], ['/', 'hide the interface'], ['I', 'English ⇄ 中文'], ['H ?', 'this help'], ['Esc', 'close / back to overview']],
+  cards: [
+    { t: 'Downforce: an upside-down wing', h: `<p>An aircraft wing is curved so that the air over the top moves faster, pressure there drops, and the wing is pulled <b>up</b>. A racing car turns the idea upside down: its wings and floor make <span class="dfc">low pressure underneath</span> and <span class="r">higher pressure on top</span>, so the car is pushed <b>down</b> into the road.</p><p>That extra load lets the tyres grip harder. At corner speed an F1-style car makes more downforce than its own weight (illustrative model: ~9–13 kN at 250 km/h).</p>{pkey}`, look: 'Blue streaks under the wings and floor = fast air, low pressure. Red at the nose and wing leading edges = air stopping, high pressure.' },
+    { t: 'The price: drag', h: `<p>Downforce is not free. Turning the air upwards leaves a wide, swirling <span class="wk">wake</span> behind the car, and the car has to push that air aside — that is <span class="drg">drag</span>. Drag grows with the square of speed, and the power needed to beat it with the <b>cube</b>.</p><p>In a corner, grip is worth the drag. On a straight it isn't: all the downforce does there is slow you down and burn energy.</p>{flip}`, look: 'Flip Corner ⇄ Straight and watch the Drag bar and the violet wake behind the rear wing.' },
+    { t: '2026: two modes, both wings', h: `<p>The 2026 rules make the wings <b>active</b>. In <b>Corner Mode</b> the flaps sit at their normal, steep angle for maximum downforce. In <b>Straight Mode</b> the <b>front and rear wing flaps</b> swing flatter to cut drag.</p><p>The FIA marks <b>activation zones</b> on each circuit's straights. There the driver can switch to Straight Mode; braking (or lifting) sends the car back to Corner Mode automatically. Actuators in the nose and in the rear-wing pylon move the flaps — the transition is reported as about <b>0.4 s</b>. In bad conditions race control can allow only a <b>partial</b> mode (front flaps only).</p>`, look: 'X-ray is on: the gold actuators and bright links drive the red-edged flaps. The tunnel cycles the two modes.' },
+    { t: 'Not the old DRS', h: `<p>From 2011 to 2025, <b>DRS</b> let a car open a slot in its <b>rear</b> wing — but only in <b>DRS zones</b>, and only if it was <b>within one second</b> of the car ahead at a detection point. It was an overtaking aid.</p>{vs}<p>In 2026 Straight Mode is part of every lap for <b>every</b> car. The overtaking aid became electrical: <b>Overtake</b> mode.</p>{eras}`, look: 'In 2025 mode the lap only opens the rear flap in the two DRS zones, and only with "Within 1 s" on.' },
+    { t: 'Smaller, lighter, less floor', h: `<p>The 2026 car is <b>200 mm shorter</b> in wheelbase (3.4 m), <b>100 mm narrower</b> (1.9 m) and has a minimum mass of about <b>768 kg</b> (2025: 800 kg). Tyres are 25 mm (front) and 30 mm (rear) narrower.</p><p>The floor is flatter and the diffuser less powerful, so the car relies less on <b>ground effect</b>. The FIA aimed for about <b>30 % less downforce</b> and much less drag; later figures quote roughly 15–30 % and ~40 %.</p>{dims}{eras}`, look: 'Switch 2025 ⇄ 2026: the body stretches, the beam wing and wheel arches come back, the wake boards go.' },
+    { t: 'Dirty air and the chase', h: `<p>The car ahead leaves a wake of slow, turbulent air. The follower's wings see less clean flow, so it <span class="wk">loses downforce</span> and slides in corners. On the straights the same wake is a <span class="drg">tow</span>: less drag.</p><p>2026 cars were designed to disturb the air less (narrower car, wheel-wake boards, less floor suction). In this lab's model the follower loses about <b>{l26}</b> of its downforce at 10 m, against <b>{l25}</b> for 2025 (illustrative).</p><p><b>Overtake</b> replaces DRS: within one second of the car ahead you get extra electrical energy (+0.5 MJ) and keep full 350 kW deployment to higher speed.</p>{ovt}`, look: 'Violet streaks are the leader\'s wake. Press Overtake and watch the follower close and pull out to pass.' },
+    { t: 'Aero + electric: one strategy', h: `<p>About half of a 2026 car's power is electric (350 kW MGU-K), but the battery is small. Every kilonewton of drag costs energy: holding 300 km/h for one kilometre takes roughly:</p>{energy}<p>Straight Mode stretches the battery further down each straight, so it runs flat later. Corner Mode on the brakes helps harvest — see how the power unit does it in <a href="../f1-2026-power-unit/" style="color:var(--live)">part 1</a>.</p>`, look: 'Lap view: the trace shows Straight Mode (white) and Corner Mode (red) under the speed line; watch SoC fall and recover.' }
+  ]
+},
+zh: {
+  h1a: '拆解', h1b: '雙模式', h1c: '翼片', kicker: '2026 規則 · 主動空力 · 互動實驗室 · 第二集', series: '◂ 第一集：動力單元',
+  view: '檢視', aero: '空力', rules: '規則', scene: '場景', m_corner: '彎道', m_straight: '直道', m_auto: '自動（單圈邏輯）',
+  sc_studio: '風洞', sc_lap: '單圈', sc_chase: '追車', v_flow: '氣流', v_expl: '爆炸圖', v_xray: 'X 光 · 致動器',
+  tunnelSpeed: '風洞風速', gap: '與前車距離', attack: '進攻', ovt: '超車模式（+0.5 MJ）', chasing: '距前車 1 秒內',
+  flowKey: '氣流圖例', dkFoot: '拖曳旋轉 · 滾輪縮放 · 點零件開啟對應章節 · 按 ? 看全部按鍵',
+  telemetry: '遙測', speed: '速度', gear: '檔位', modeShort: '模式', flapF: '前翼襟翼', flapR: '尾翼襟翼',
+  c_forces: '空氣力', illus: '示意', df: '下壓力', dr: '阻力', c_speeds: '速度上限', vmax: '極速', vcor: '過彎',
+  capNote: '白色刻度 = 2025 賽車彎道設定 · 過彎 = 半徑 120 m', c_energy: '能量', lap: '單圈', last: '上圈', best: '最佳',
+  dfShort: '下壓 kN', drShort: '阻力 kN', lessons: '七件你該知道的事', introKick: '第二集 · 主動空力', introT1: '會變形的', introT2: '翼片',
+  sub: '2026 年起，前翼和尾翼的襟翼會動：直道放平減阻，彎道立起抓地。切換模式、看氣流、跑一圈，再跟車試試看。',
+  towerNo: '編號', towerLesson: '章節', towerStatus: '狀態', towerNew: '未讀', towerSeen: '已讀',
+  introNote: '規則內容依據 FIA 2026 技術規則與官方解說（見 README）。力、速度與氣流為示意模型，不是車隊數據。',
+  helpT: '操作說明', helpP: '拖曳旋轉，右鍵或雙指拖曳平移，滾輪或雙指縮放。滑過零件顯示名稱，點擊開啟對應章節。',
+  loading: '碳纖維積層中…', uiHidden: '介面已隱藏，按 / 顯示', cineOn: '電影鏡頭，按 Esc 離開', cine: '雙模式翼片', cineSub: '2026 主動空力',
+  sndOn: '聲音開啟', sndOff: '聲音關閉', passDone: '超車完成，前車重新就位',
+  modeName: { corner: '彎道', straight: '直道', drs: 'DRS 開', partial: '部分' },
+  toastMode: { corner: '<b>彎道模式</b>：襟翼閉合，下壓力全開', straight: '<b>直道模式</b>：襟翼打開，阻力降低', auto: '<b>自動</b>：在啟用區切直道模式，踩煞車自動回彎道模式' },
+  toastEra: { 2025: '<b>2025 規則</b>：車更大更重；DRS 只開尾翼、只在 DRS 區、只有落後 1 秒內能用', 2026: '<b>2026 規則</b>：前後翼都會動，每台車在每個啟用區都能用' },
+  toastScene: { studio: '<b>風洞</b>：固定風速，自動模式會輪流切換', lap: '<b>單圈</b>：賽車跑測試賽道', chase: '<b>追車</b>：跟在另一台車的尾流裡' },
+  straightLap: '強制直道模式：過彎抓地力不足，注意看圈速變慢',
+  ovtNeed: '超車模式需要距前車 1 秒內（打開「距前車 1 秒內」或使用追車場景）',
+  chips: { zone: '啟用區', drsz: 'DRS 區', brake: '煞車', deploy: '放電', harvest: '回收', ovt: '超車模式', dirty: '亂流 −{n}%', tow: '尾流拖曳 阻力 −{n}%', flat: '電池耗盡', noDRS: '無 DRS（>1 秒）' },
+  parts: {
+    chassis: ['單體殼與鼻錐', '安全艙、防撞結構'], sidepods: ['側箱', '散熱進氣口、可樂瓶收窄'], halo: ['Halo 護環', '鈦合金頭部保護'],
+    floor: ['底板', '2026：更平、窄 150 mm'], diffuser: ['擴散器', '2026 效力降低'], wheels: ['輪胎', '2026：前窄 25 mm、後窄 30 mm'], susp: ['懸吊', '三角臂與推桿'],
+    boards: ['輪胎尾流導板', '2026：把輪胎亂流往內導'], arches: ['前輪拱', '僅 2025'], fwing: ['前翼', '主翼固定'],
+    fflaps: ['前翼襟翼', '主動：直道模式時放平'], rwing: ['尾翼', '主翼、端板與支架'], rflaps: ['尾翼襟翼', '主動：直道模式時打開'],
+    beam: ['下層小翼（beam wing）', '僅 2025，2026 取消'], actuators: ['襟翼致動器', '驅動襟翼，約 0.4 秒'], helmet: ['車手', '']
+  },
+  help: [['1 … 7', '開啟章節'], ['C S A', '彎道／直道／自動模式'], ['Y', '2025 ⇄ 2026 規則'], ['T L K', '風洞／單圈／追車'], ['F', '氣流開關'], ['E', '爆炸圖'], ['X', 'X 光（致動器）'],
+    ['O', '超車模式（追車或 1 秒內）'], ['G', '切換「距前車 1 秒內」'], ['↑ ↓', '風洞風速'], ['[ ]', '與前車距離'], ['M', '聲音'], ['V', '電影鏡頭'], ['/', '隱藏介面'], ['I', 'English ⇄ 中文'], ['H ?', '本說明'], ['Esc', '關閉／回到總覽']],
+  cards: [
+    { t: '下壓力：翻過來的機翼', h: `<p>飛機翼的形狀讓上方的空氣跑得比較快，壓力變低，機翼被往<b>上</b>吸。賽車把這個想法翻過來：翼片和底板在<span class="dfc">下方製造低壓</span>、<span class="r">上方維持較高壓</span>，車子就被往<b>下</b>壓在路面上。</p><p>多出來的負載讓輪胎抓得更牢。過彎時這類賽車產生的下壓力可以超過車重（示意模型：250 km/h 約 9–13 kN）。</p>{pkey}`, look: '翼片和底板下方的藍色流線 = 高速、低壓；鼻錐與翼片前緣的紅色 = 氣流被擋住、高壓。' },
+    { t: '代價：阻力', h: `<p>下壓力不是免費的。把空氣往上翻，車後會留下一大片翻騰的<span class="wk">尾流</span>，車子必須推開這些空氣，這就是<span class="drg">阻力</span>。阻力跟速度平方成正比，對抗它需要的功率則跟速度<b>三次方</b>成正比。</p><p>彎道裡，為了抓地值得付出阻力；直道上就不值得了，那些下壓力只會拖慢你、多耗能量。</p>{flip}`, look: '切換彎道 ⇄ 直道，看阻力條和尾翼後方紫色尾流的變化。' },
+    { t: '2026：兩種模式、前後翼一起動', h: `<p>2026 規則讓翼片變成<b>主動式</b>。<b>彎道模式</b>時襟翼維持正常的大角度，下壓力最大；<b>直道模式</b>時<b>前翼與尾翼的襟翼</b>一起轉平，減少阻力。</p><p>FIA 會在每條賽道的直道上劃定<b>啟用區</b>，車手在區內可以切換到直道模式；一踩煞車（或收油）就自動回到彎道模式。襟翼由鼻錐內和尾翼支架上的致動器驅動，切換時間據報導約 <b>0.4 秒</b>。天候不佳時賽會可以只允許<b>部分模式</b>（只動前翼）。</p>`, look: 'X 光已開啟：金色致動器和亮色連桿帶動紅色邊緣的襟翼。風洞會輪流切換兩種模式。' },
+    { t: '跟 DRS 不一樣', h: `<p>2011 到 2025 年的 <b>DRS</b> 讓車手打開<b>尾翼</b>上的縫隙，但只能在 <b>DRS 區</b>、而且只有在偵測點<b>落後前車 1 秒內</b>才能用。它是超車輔助。</p>{vs}<p>2026 年的直道模式是<b>每台車</b>每一圈都會用的東西。超車輔助改成電力的<b>超車模式</b>（Overtake）。</p>{eras}`, look: '2025 模式下，單圈只會在兩個 DRS 區打開尾翼，而且要打開「距前車 1 秒內」。' },
+    { t: '更小、更輕、地面效應變少', h: `<p>2026 賽車軸距<b>縮短 200 mm</b>（3.4 m）、車寬<b>窄 100 mm</b>（1.9 m），最低重量約 <b>768 kg</b>（2025：800 kg）。輪胎前窄 25 mm、後窄 30 mm。</p><p>底板更平、擴散器效力降低，車子比較不依賴<b>地面效應</b>。FIA 的目標是下壓力少約 <b>30%</b>、阻力大幅降低；後來的數字約為 15–30% 和 40% 左右。</p>{dims}{eras}`, look: '切換 2025 ⇄ 2026：車身拉長，下層小翼和前輪拱回來，輪胎尾流導板消失。' },
+    { t: '亂流與追車', h: `<p>前車留下一團又慢又亂的尾流。後車的翼片吃不到乾淨的氣流，<span class="wk">下壓力變少</span>，過彎容易滑。到了直道，同一團尾流反而變成<span class="drg">拖曳效應</span>：阻力變小。</p><p>2026 賽車的設計是要少擾亂一點空氣（車更窄、輪胎尾流導板、底板吸力變小）。在本實驗的模型中，距離 10 m 時後車損失約 <b>{l26}</b> 下壓力，2025 則約 <b>{l25}</b>（示意）。</p><p><b>超車模式</b>取代 DRS：落後前車 1 秒內可以多用 0.5 MJ 電能，並在更高車速下維持 350 kW 輸出。</p>{ovt}`, look: '紫色流線是前車的尾流。按下超車模式，看後車逼近、切出去超車。' },
+    { t: '空力 + 電力：同一套策略', h: `<p>2026 賽車大約一半的動力來自電力（350 kW MGU-K），但電池很小。每一點阻力都要花能量：以 300 km/h 跑一公里大約需要：</p>{energy}<p>直道模式讓電池在每段直道撐得更久，比較晚才耗盡；彎道模式配合煞車回收能量。動力單元怎麼做，請看<a href="../f1-2026-power-unit/" style="color:var(--live)">第一集</a>。</p>`, look: '單圈檢視：速度線下方的色帶顯示直道模式（白）和彎道模式（紅）；注意電量怎麼下降又回升。' }
+  ]
+} };
+const L = () => T[S.lang];
+/* ==========================================================================
+   LESSONS — each one flies the camera to its part and sets the scene
+   ========================================================================== */
+const POSES = {
+  home: { pos: V3(6.4, 3.7, 10.4), tgt: V3(0, 0.3, 0) },
+  side: { pos: V3(0.4, 2.6, 10.4), tgt: V3(0.3, 0.45, 0) },
+  wake: { pos: V3(-7.8, 3.4, 5.6), tgt: V3(-1.6, 0.7, 0) },
+  flaps: { pos: V3(1.2, 3.4, 9.4), tgt: V3(0.3, 0.5, 0) },
+  rear: { pos: V3(-5.8, 2.7, 5.0), tgt: V3(-1.6, 0.75, 0) },
+  top: { pos: V3(0.4, 10.5, 3.2), tgt: V3(0.1, 0, 0) },
+  chase: { pos: V3(-8, 4.4, 6.5), tgt: V3(8, 0.4, 0) },
+  lap: { pos: V3(6.4, 2.8, 7.0), tgt: V3(-0.4, 0.4, 0) },
+  explode: { pos: V3(6.8, 5.4, 11.5), tgt: V3(0.1, 0.6, 0) }
+};
+const CARD_ACT = [
+  { pose: 'side', parts: ['fwing', 'fflaps', 'rwing', 'rflaps', 'floor', 'diffuser'], labels: ['fwing', 'rwing', 'floor', 'diffuser'], scene: 'studio', aero: 'corner', flow: true },
+  { pose: 'wake', parts: ['rwing', 'rflaps'], labels: ['rflaps', 'rwing'], scene: 'studio', aero: 'corner', flow: true },
+  { pose: 'flaps', parts: ['fflaps', 'rflaps', 'actuators'], labels: ['fflaps', 'rflaps', 'actuators'], scene: 'studio', aero: 'auto', xray: true, flow: false },
+  { pose: 'rear', parts: ['rflaps'], labels: ['rflaps', 'beam'], scene: 'lap', aero: 'auto', flow: true },
+  { pose: 'top', parts: ['floor', 'diffuser', 'boards', 'arches'], labels: ['floor', 'boards', 'arches', 'wheels', 'diffuser'], scene: 'studio', aero: 'corner', flow: false },
+  { pose: 'chase', parts: [], labels: [], scene: 'chase', aero: 'auto', flow: true },
+  { pose: 'lap', parts: [], labels: [], scene: 'lap', aero: 'auto', flow: true }
+];
+/* clicking a part opens the lesson that explains it */
+const PART_CARD = { fwing: 0, floor: 0, diffuser: 4, rwing: 1, fflaps: 2, rflaps: 2, actuators: 2, beam: 3, boards: 4, arches: 4, wheels: 4, chassis: 4, sidepods: 4, susp: 4, halo: 4, helmet: 6 };
+const TOWER_COL = [PAL.dfc, PAL.drg, PAL.red, '#ffffff', PAL.txt2, PAL.wake, PAL.elec];
+const SEEN = new Set();
+const cardList = $('#cardlist');
+function pkeyHTML() {
+  return `<div id="pkey"><div class="pgrad"></div><div class="pgl"><span>${S.lang === 'zh' ? '低壓（快）' : 'low pressure (fast)'}</span><span>${S.lang === 'zh' ? '自由流' : 'free stream'}</span><span>${S.lang === 'zh' ? '高壓（慢）' : 'high pressure (slow)'}</span></div>
+    <div class="legend"><span><i style="background:var(--wake)"></i>${S.lang === 'zh' ? '亂流尾流' : 'turbulent wake'}</span></div></div>`;
+}
+function flipHTML() { return `<div class="cbtns"><button data-aero="corner">${L().m_corner}</button><button data-aero="straight">${L().m_straight}</button><button data-aero="auto">${L().m_auto}</button></div>`; }
+function erasHTML() { return `<div class="cbtns"><button data-era="2025">${S.lang === 'zh' ? '看 2025' : 'See 2025'}</button><button data-era="2026">${S.lang === 'zh' ? '看 2026' : 'See 2026'}</button></div>`; }
+function vsHTML() {
+  const z = S.lang === 'zh';
+  const rows = z ? [['誰能用', '只有落後 1 秒內的車', '每台車'], ['哪裡', 'DRS 區（每站 1–3 個）', '每段直道的啟用區'], ['動什麼', '只有尾翼襟翼', '前翼 + 尾翼襟翼'], ['目的', '超車輔助', '減阻、省電；超車改靠電力'], ['關閉', '放開按鈕或煞車', '煞車／收油自動回彎道模式']]
+    : [['Who', 'only a car within 1 s', 'every car'], ['Where', 'DRS zones (1–3 per track)', 'activation zones on the straights'], ['What moves', 'rear-wing flap only', 'front + rear flaps'], ['Purpose', 'overtaking aid', 'cut drag, save energy; overtaking goes electric'], ['Closes', 'button released or brakes', 'brakes / lift → Corner Mode']];
+  return `<table class="vs"><tr><th></th><th>2025 DRS</th><th>2026 ${z ? '主動空力' : 'active aero'}</th></tr>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`;
+}
+function dimsHTML() {
+  const z = S.lang === 'zh';
+  const rows = [[z ? '軸距' : 'Wheelbase', '3.6 m', '3.4 m'], [z ? '車寬' : 'Width', '2.0 m', '1.9 m'], [z ? '最低重量' : 'Min. mass', '800 kg', z ? '約 768 kg' : '≈768 kg'], [z ? '底板寬' : 'Floor width', '—', '−150 mm'], [z ? '下壓力' : 'Downforce', '100 %', z ? '約 −30%（目標）' : '≈ −30 % (target)']];
+  return `<table class="vs"><tr><th></th><th>2025</th><th>2026</th></tr>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`;
+}
+function ovtHTML() { return `<div class="cbtns"><button data-ovt="1">${L().ovt}</button><button data-era="2025">2025</button><button data-era="2026">2026</button></div>`; }
+function energyHTML() {
+  const v = 300 / 3.6, e = c => forceN(c.CdA, v) * 1000 / 1e6;
+  const rows = [['2026 S', e(AERO[2026].straight), '#fff'], ['2026 C', e(AERO[2026].corner), PAL.red], ['2025 C', e(AERO[2025].corner), PAL.mute]];
+  const mx = Math.max(...rows.map(r => r[1]));
+  return `<div class="mini-bars">${rows.map(r => `<span>${r[0]}</span><div class="bar"><span style="width:${(r[1] / mx * 100).toFixed(0)}%;background:${r[2]}"></span></div><b>${r[1].toFixed(1)} MJ</b>`).join('')}</div>
+    <div class="lg2">${S.lang === 'zh' ? '只算空氣阻力（示意）。電池可用窗口約 4 MJ。' : 'Aero drag only (illustrative). The battery\'s usable window is about 4 MJ.'}</div>`;
+}
+function buildCards() {
+  const l = L(), pct = x => Math.round(x * 100) + '%';
+  cardList.innerHTML = l.cards.map((c, i) => {
+    const h = c.h.replace('{pkey}', pkeyHTML()).replace('{flip}', flipHTML()).replace('{vs}', vsHTML()).replace(/\{eras\}/g, erasHTML()).replace('{dims}', dimsHTML())
+      .replace('{ovt}', ovtHTML()).replace('{energy}', energyHTML()).replace('{l26}', pct(wakeLoss(2026, 10))).replace('{l25}', pct(wakeLoss(2025, 10)));
+    return `<li class="card${S.card === i ? ' on' : ''}" data-i="${i}"><button aria-expanded="${S.card === i}"><span class="n">${i + 1}</span><span class="t">${c.t}</span></button>
+      <div class="body"><div><div class="inner">${h}<div class="look"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></svg><span>${c.look}</span></div></div></div></div></li>`;
+  }).join('');
+  $$('.card>button', cardList).forEach(b => b.addEventListener('click', () => { const i = +b.parentElement.dataset.i; setCard(S.card === i ? -1 : i); }));
+  $$('[data-era]', cardList).forEach(b => b.addEventListener('click', () => setEra(+b.dataset.era)));
+  $$('[data-aero]', cardList).forEach(b => b.addEventListener('click', () => setAero(b.dataset.aero)));
+  $$('[data-ovt]', cardList).forEach(b => b.addEventListener('click', () => setOvertake(!S.overtake)));
+  $('#flowkey').innerHTML = `<div class="pgrad"></div><div class="pgl"><span>${S.lang === 'zh' ? '低壓' : 'low p'}</span><span>${S.lang === 'zh' ? '自由流' : 'free'}</span><span>${S.lang === 'zh' ? '高壓' : 'high p'}</span></div><div class="legend" style="margin-top:6px"><span><i style="background:var(--wake)"></i>${S.lang === 'zh' ? '亂流尾流' : 'turbulent wake'}</span></div>`;
+  $('#chapters').innerHTML = `<div class="lead"><span class="capt">${l.lessons}</span></div>` + l.cards.map((c, i) => `<button class="ch${S.card === i ? ' on' : ''}" data-n="${i}" title="${c.t.replace(/"/g, '&quot;')}"><b>0${i + 1}</b><span>${c.t}</span></button>`).join('');
+  $('#toc').innerHTML = l.cards.map((c, i) => `<li><button data-n="${i}" class="${SEEN.has(i) ? 'seen' : ''}"><b>${i + 1}</b><u style="background:${TOWER_COL[i]}"></u><span>${c.t}</span><em>${SEEN.has(i) ? l.towerSeen : l.towerNew}</em></button></li>`).join('');
+  $$('#chapters .ch').forEach(b => b.classList.toggle('seen', SEEN.has(+b.dataset.n)));
+  $$('#chapters .ch, #toc button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; setCard(S.card === n ? -1 : n); }));
+  $('#mnav').innerHTML = `<button data-n="-1" aria-label="previous">‹</button>${l.cards.map((c, i) => `<button data-n="${i}" class="${S.card === i ? 'on' : ''}">${i + 1}</button>`).join('')}<button data-n="+1" aria-label="next">›</button><button class="lang2" data-lang2>${S.lang === 'en' ? '中文' : 'EN'}</button>`;
+  $$('#mnav button').forEach(b => b.addEventListener('click', () => {
+    if (b.hasAttribute('data-lang2')) return setLang(S.lang === 'en' ? 'zh' : 'en');
+    const n = b.dataset.n; if (n === '-1') setCard(S.card <= 0 ? 6 : S.card - 1); else if (n === '+1') setCard(S.card >= 6 ? 0 : S.card + 1); else setCard(+n);
+  }));
+  syncCardWidgets();
+}
+function syncCardWidgets() {
+  $$('[data-era]', cardList).forEach(b => b.classList.toggle('on', +b.dataset.era === S.era));
+  $$('[data-aero]', cardList).forEach(b => b.classList.toggle('on', b.dataset.aero === S.aero));
+  $$('[data-ovt]', cardList).forEach(b => b.classList.toggle('on', S.overtake));
+}
+function applyI18n() {
+  const l = L();
+  document.documentElement.lang = S.lang === 'zh' ? 'zh-Hant' : 'en';
+  $$('[data-i]').forEach(el => { const v = l[el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  $$('.lang button').forEach(b => b.classList.toggle('on', b.dataset.lang === S.lang));
+  $('#helpdl').innerHTML = l.help.map(([k, d]) => `<dt>${k.split(' ').filter(Boolean).map(x => `<kbd>${x}</kbd>`).join('')}</dt><dd>${d}</dd>`).join('');
+  buildCards(); buildLabels();
+}
+function setLang(l) { S.lang = l; applyI18n(); segSync(); }
+/* ==========================================================================
+   LABELS (DOM) with leader lines — same look as part 1
+   ========================================================================== */
+const labelsEl = $('#labels'), leaders = $('#leaders');
+const LBL_AT = {
+  chassis: V3(1.6, 0.62, 0), sidepods: V3(0.2, 0.56, 0.62), halo: V3(0.3, 1.02, 0), floor: V3(-0.4, 0.08, 0.7), diffuser: V3(-1.8, 0.3, 0.4),
+  wheels: V3(FX, TR * 2, ZF), susp: V3(FX - 0.2, 0.5, 0.55), boards: V3(0.95, 0.45, 0.72), arches: V3(FX, TR * 2 + 0.04, -ZF), fwing: V3(3.2, 0.1, -0.8),
+  fflaps: V3(2.95, 0.28, 0.6), rwing: V3(-2.1, 0.62, -0.5), rflaps: V3(-2.4, 1.14, 0.3), beam: V3(-2.1, 0.5, 0.45), actuators: V3(-2.15, 0.95, 0), helmet: V3(0.02, 0.96, 0)
+};
+const EXPL_LABELS = ['chassis', 'sidepods', 'halo', 'floor', 'diffuser', 'fwing', 'fflaps', 'rwing', 'rflaps', 'susp', 'boards', 'beam', 'arches'];
+const LBL = {};
+function buildLabels() {
+  labelsEl.innerHTML = ''; leaders.innerHTML = '';
+  for (const id of Object.keys(LBL_AT)) {
+    const [t, sm] = L().parts[id] || [id, ''];
+    const el = document.createElement('div'); el.className = 'lbl';
+    el.innerHTML = `${t}${sm ? `<small>${sm}</small>` : ''}`;
+    labelsEl.appendChild(el);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); leaders.appendChild(line);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); dot.setAttribute('r', 2.5); leaders.appendChild(dot);
+    LBL[id] = { el, line, dot, x: 0, y: 0 };
+  }
+}
+const _p = V3();
+function screenOf(v) { _p.copy(v).project(camera); return { x: (_p.x * 0.5 + 0.5) * innerWidth, y: (-_p.y * 0.5 + 0.5) * innerHeight, ok: _p.z < 1 && _p.z > -1 }; }
+function labelVisible(id) {
+  if (id === 'beam' || id === 'arches') { if (S.era !== 2025) return false; }
+  if (id === 'boards' && S.era === 2025) return false;
+  if (S.cine) return false;
+  if (S.explT > 0.6) return EXPL_LABELS.includes(id);
+  if (S.card >= 0) return CARD_ACT[S.card].labels.includes(id);
+  return S.hover === id;
+}
+function updateLabels() {
+  const used = [];
+  for (const id in LBL) {
+    const o = LBL[id], on = labelVisible(id);
+    o.el.classList.toggle('on', on); o.el.classList.toggle('hi', FOCUS.has(id));
+    if (!on) { o.line.setAttribute('visibility', 'hidden'); o.dot.setAttribute('visibility', 'hidden'); continue; }
+    const p = PARTS[id]; const w = LBL_AT[id].clone().add(p.g.position).sub(p.base);
+    CAR.root.localToWorld(w);
+    const s = screenOf(w); if (!s.ok) { o.el.classList.remove('on'); continue; }
+    // push labels up and away from each other, clamp to the free drawing area
+    let lx = s.x + (s.x > (FREE.l + FREE.r) / 2 ? 34 : -34), ly = s.y - 44;
+    for (const u of used) if (Math.abs(u.x - lx) < 200 && Math.abs(u.y - ly) < 40) ly = u.y - 42;
+    lx = clamp(lx, FREE.l + 80, FREE.r - 80); ly = clamp(ly, FREE.t + 40, FREE.b - 4);
+    used.push({ x: lx, y: ly });
+    o.el.style.transform = `translate(${lx}px,${ly}px) translate(-50%,-100%)`;
+    o.line.setAttribute('visibility', 'visible'); o.dot.setAttribute('visibility', 'visible');
+    o.line.setAttribute('x1', s.x); o.line.setAttribute('y1', s.y); o.line.setAttribute('x2', lx); o.line.setAttribute('y2', ly);
+    o.dot.setAttribute('cx', s.x); o.dot.setAttribute('cy', s.y);
+  }
+}
+
+/* ==========================================================================
+   SETTERS
+   ========================================================================== */
+const toastEl = $('#toast'); let toastT = 0;
+function toast(html, ms = 2600) { toastEl.innerHTML = `<span>${html}</span>`; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), ms); }
+function segSync() {
+  $$('#seg-aero button').forEach(b => b.classList.toggle('on', b.dataset.v === S.aero));
+  $$('#seg-era button').forEach(b => b.classList.toggle('on', +b.dataset.v === S.era));
+  $$('#seg-scene button').forEach(b => b.classList.toggle('on', b.dataset.v === S.scene));
+  const tg = (id, on) => { const b = $(id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); };
+  tg('#b-flow', S.flow); tg('#b-expl', !!S.expl); tg('#b-xray', S.xray); tg('#b-ovt', S.overtake); tg('#b-chasing', S.chasing || S.scene === 'chase');
+  $('#b-ovt').classList.add('ovt');
+  $('#b-snd').classList.toggle('on', S.sound); $('#b-cine').classList.toggle('on', S.cine);
+  $('#g-speed').style.display = S.scene === 'studio' ? '' : 'none';
+  $('#g-gap').style.display = S.scene === 'chase' ? '' : 'none';
+  $('#b-ovt').disabled = S.era === 2025;
+  const l = L();
+  $('#tb-view').textContent = S.xray ? 'X-RAY' : S.expl ? (S.lang === 'zh' ? '爆炸' : 'EXPLODED') : S.flow ? (S.lang === 'zh' ? '氣流' : 'AIRFLOW') : (S.lang === 'zh' ? '實體' : 'SOLID');
+  $('#tb-rules').textContent = S.era;
+  $('#tb-scene').textContent = l['sc_' + S.scene].toUpperCase();
+  $('#live-src').textContent = l['sc_' + S.scene].toUpperCase();
+  $('#t-src').textContent = S.scene === 'studio' ? 'TUNNEL' : 'LAP SIM';
+  syncCardWidgets();
+}
+function setAero(m, quiet) {
+  if (S.aero === m) return segSync();
+  S.aero = m; resetLap(); segSync();
+  if (!quiet) toast(m === 'straight' && S.scene !== 'studio' ? L().straightLap : L().toastMode[m], 3400);
+}
+function setEra(e, quiet) {
+  if (S.era === e) return segSync();
+  S.era = e; if (e === 2025) S.overtake = false; resetLap(); segSync(); buildCards();
+  if (!quiet) toast(L().toastEra[e], 4200);
+}
+function setScene(sc, quiet) {
+  if (S.scene === sc) return segSync();
+  S.scene = sc; resetLap(); if (sc !== 'chase') CH.passing = false; else CH.gap = S.gap;
+  flowInit = false; segSync(); frameView();
+  if (!quiet) { toast(L().toastScene[sc], 3000); if (S.card < 0 || CARD_ACT[S.card].scene !== sc) flyTo(sc === 'chase' ? POSES.chase : POSES.home); }
+}
+function setOvertake(on) {
+  if (on && S.era === 2025) return;
+  if (on && !(S.chasing || S.scene === 'chase')) { toast(L().ovtNeed, 3400); return; }
+  S.overtake = on; if (on) { SIM.ovtE = 0.5; if (S.scene === 'chase' && !CH.passing && CH.done <= 0) CH.passing = true; }
+  segSync();
+}
+function setChasing(on) { S.chasing = on; if (!on && S.scene !== 'chase') S.overtake = false; resetLap(); segSync(); }
+function setFlow(on) { S.flow = on; segSync(); }
+function setXray(on) { S.xray = on; segSync(); }
+function setExplode(on) { S.expl = on ? 1 : 0; if (on) flyTo(POSES.explode, 1.4); segSync(); }
+function setSound(on) { S.sound = on; audioSet(on); segSync(); toast(on ? L().sndOn : L().sndOff, 1800); }
+function setCard(i) {
+  S.card = i; FOCUS.clear();
+  $('#app').classList.toggle('has-card', i >= 0);
+  $$('.card', cardList).forEach((c, k) => { c.classList.toggle('on', k === i); c.querySelector('button').setAttribute('aria-expanded', k === i); });
+  $$('#chapters .ch').forEach(b => b.classList.toggle('on', +b.dataset.n === i));
+  $$('#mnav button[data-n]').forEach(b => b.classList.toggle('on', +b.dataset.n === i));
+  $('#dpos').textContent = i >= 0 ? `0${i + 1} / 07` : '— / 07';
+  if (i < 0) { flyTo(POSES.home); return; }
+  SEEN.add(i);
+  const a = CARD_ACT[i];
+  a.parts.forEach(p => FOCUS.add(p));
+  if (S.expl) S.expl = 0;
+  setScene(a.scene, true); setAero(a.aero, true); S.xray = !!a.xray; S.flow = a.flow; if (i === 5 && S.era === 2026) S.overtake = false;
+  segSync(); flyTo(POSES[a.pose]);
+  $$('#chapters .ch').forEach(b => b.classList.toggle('seen', SEEN.has(+b.dataset.n)));
+  const li = $$('#toc button')[i]; if (li) { li.classList.add('seen'); li.querySelector('em').textContent = L().towerSeen; }
+  const card = $$('.card', cardList)[i]; if (card && !small()) card.scrollIntoView({ block: 'nearest' });
+}
+/* ==========================================================================
+   CAMERA: fly-to tweens + cinematic mode
+   ========================================================================== */
+let tween = null;
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function portraitPose(pos, tgt) { const d = pos.clone().sub(tgt); pos.copy(tgt).add(d.multiplyScalar(innerWidth < innerHeight ? 1.45 : 1.2)); tgt.y -= 0.35; }
+function flyTo(pose, dur = 1.5) {
+  if (!pose) return;
+  const pos = pose.pos.clone(), tgt = pose.tgt.clone();
+  if (pose === POSES.chase) { tgt.x = Math.min(S.gap, 30) * 0.5 + 2; pos.x = -10 - Math.min(S.gap, 30) * 0.12; pos.y = 4.6 + Math.min(S.gap, 30) * 0.06; pos.z = 5.2; }
+  if (small()) portraitPose(pos, tgt);
+  tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, s: performance.now(), d: dur * 1000 };
+}
+function stepTween(now) {
+  if (!tween) return;
+  const k = clamp((now - tween.s) / tween.d, 0, 1), e = ease(k);
+  camera.position.lerpVectors(tween.p0, tween.p1, e);
+  camera.position.y += Math.sin(Math.PI * k) * tween.p0.distanceTo(tween.p1) * 0.05;
+  controls.target.lerpVectors(tween.t0, tween.t1, e);
+  if (k >= 1) tween = null;
+}
+const SHOTS = [
+  { tgt: V3(0, 0.45, 0), r: 7.5, h: 2.4, az: [40, 85], id: 'overview' },
+  { tgt: V3(3.0, 0.2, 0), r: 2.6, h: 0.6, az: [20, 60], id: 'fflaps' },
+  { tgt: V3(-2.2, 0.9, 0), r: 2.8, h: 0.9, az: [130, 175], id: 'rflaps' },
+  { tgt: V3(-1.5, 0.6, 0), r: 8.0, h: 2.8, az: [150, 210], id: 'diffuser' },
+  { tgt: V3(0.2, 0.3, 0), r: 6.0, h: 0.5, az: [95, 120], id: 'floor' },
+];
+const cine = { i: 0, t: 0, from: null, fromT: null };
+function setCine(on) {
+  if (on === S.cine) return;
+  S.cine = on; $('#app').classList.toggle('cine', on); segSync(); frameView();
+  if (on) { cine.i = 0; cine.t = 0; cine.from = camera.position.clone(); cine.fromT = controls.target.clone(); tween = null; toast(L().cineOn, 2600); }
+  else { $('#caption').classList.remove('on'); flyTo(POSES.home, 1.4); }
+}
+function stepCine(dt) {
+  const sh = SHOTS[cine.i], D = 7;
+  cine.t += dt;
+  if (cine.t > D) { cine.from = camera.position.clone(); cine.fromT = controls.target.clone(); cine.i = (cine.i + 1) % SHOTS.length; cine.t = 0; return; }
+  const k = cine.t / D, az = lerp(sh.az[0], sh.az[1], k) * D2R;
+  const p = V3(sh.tgt.x + sh.r * Math.cos(az), sh.tgt.y + sh.h + Math.sin(k * Math.PI) * 0.3, sh.tgt.z + sh.r * Math.sin(az));
+  const b = smooth(0, 2.0, cine.t);
+  camera.position.lerpVectors(cine.from, p, b); controls.target.lerpVectors(cine.fromT, sh.tgt, b);
+  const lab = sh.id === 'overview' ? [L().cine, L().cineSub] : L().parts[sh.id];
+  $('#cap-t').textContent = lab[0]; $('#cap-s').textContent = lab[1] || '';
+  $('#caption').classList.toggle('on', cine.t > 0.8 && cine.t < D - 0.6);
+}
+
+/* ==========================================================================
+   SOUND — wind noise that follows speed × drag, plus a servo whirr on each flap move
+   ========================================================================== */
+const AUD = { ctx: null };
+function audioInit() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); AUD.ctx = ctx;
+  const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let b = 0; for (let i = 0; i < len; i++) { b = 0.97 * b + 0.03 * (Math.random() * 2 - 1); d[i] = b * 4; }  // brown-ish noise
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7; bp.frequency.value = 500;
+  const g = ctx.createGain(); g.gain.value = 0;
+  src.connect(bp).connect(g).connect(ctx.destination); src.start();
+  const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 180;
+  const og = ctx.createGain(); og.gain.value = 0; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+  osc.connect(lp).connect(og).connect(ctx.destination); osc.start();
+  Object.assign(AUD, { bp, g, osc, og, lastT: S.aeroT });
+}
+function audioSet(on) {
+  try { if (on && !AUD.ctx) audioInit(); if (AUD.ctx) (on ? AUD.ctx.resume() : AUD.ctx.suspend()); } catch (e) { S.sound = false; }
+}
+function audioUpdate(dt) {
+  if (!S.sound || !AUD.ctx) return;
+  const v = speedNow(), c = coeffs(S.era, S.aeroT, S.partial), now = AUD.ctx.currentTime;
+  AUD.g.gain.setTargetAtTime(Math.min(0.5, 0.05 + (v / 90) ** 2 * c.CdA * 0.25), now, 0.1);
+  AUD.bp.frequency.setTargetAtTime(250 + v * 9, now, 0.1);
+  const moving = Math.abs(S.aeroT - AUD.lastT) / Math.max(dt, 1e-3); AUD.lastT = S.aeroT;
+  AUD.og.gain.setTargetAtTime(Math.min(0.06, moving * 0.03), now, 0.03);
+  AUD.osc.frequency.setTargetAtTime(160 + moving * 90, now, 0.05);
+}
+/* ==========================================================================
+   INPUT
+   ========================================================================== */
+$$('#seg-aero button').forEach(b => b.addEventListener('click', () => setAero(b.dataset.v)));
+$$('#seg-era button').forEach(b => b.addEventListener('click', () => setEra(+b.dataset.v)));
+$$('#seg-scene button').forEach(b => b.addEventListener('click', () => setScene(b.dataset.v)));
+$('#b-flow').addEventListener('click', () => setFlow(!S.flow));
+$('#b-expl').addEventListener('click', () => setExplode(!S.expl));
+$('#b-xray').addEventListener('click', () => setXray(!S.xray));
+$('#b-ovt').addEventListener('click', () => setOvertake(!S.overtake));
+$('#b-chasing').addEventListener('click', () => { if (S.scene !== 'chase') setChasing(!S.chasing); });
+$('#b-snd').addEventListener('click', () => setSound(!S.sound));
+$('#b-cine').addEventListener('click', () => setCine(!S.cine));
+$('#b-help').addEventListener('click', () => $('#help').classList.toggle('on'));
+$('#help-x').addEventListener('click', () => $('#help').classList.remove('on'));
+$('#help').addEventListener('click', e => { if (e.target.id === 'help') $('#help').classList.remove('on'); });
+$('#b-hide').addEventListener('click', () => toggleUI());
+$$('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+$('#d-prev').addEventListener('click', () => setCard(S.card <= 0 ? 6 : S.card - 1));
+$('#d-next').addEventListener('click', () => setCard(S.card >= 6 ? 0 : S.card + 1));
+function toggleUI() { S.noui = !S.noui; $('#app').classList.toggle('noui', S.noui); frameView(); if (S.noui) toast(L().uiHidden, 2400); }
+$$('#dock .dr').forEach(r => { const f = () => r.classList.toggle('end', r.scrollLeft + r.clientWidth >= r.scrollWidth - 2); r.addEventListener('scroll', f, { passive: true }); addEventListener('resize', f); f(); });
+/* sliders: tunnel speed and gap to the car ahead */
+function makeSlider(el, min, max, step, get, set, fmtv, marks) {
+  for (const [v, txt] of marks) {
+    const t = document.createElement('div'); t.className = 'tk'; t.style.left = ((v - min) / (max - min) * 100) + '%'; el.appendChild(t);
+    const m = document.createElement('div'); m.className = 'mk'; m.style.left = t.style.left; m.textContent = txt; el.appendChild(m);
+  }
+  const draw = () => { const f = (get() - min) / (max - min) * 100; el.querySelector('.fl').style.width = f + '%'; el.querySelector('.kn').style.left = f + '%'; el.setAttribute('aria-valuenow', get()); fmtv(get()); };
+  const from = e => { const r = el.getBoundingClientRect(); set(Math.round(clamp(min + (e.clientX - r.left) / r.width * (max - min), min, max) / step) * step); draw(); };
+  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); from(e); el.onpointermove = from; });
+  el.addEventListener('pointerup', () => { el.onpointermove = null; });
+  el.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { set(clamp(get() + step, min, max)); draw(); e.preventDefault(); e.stopPropagation(); } if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { set(clamp(get() - step, min, max)); draw(); e.preventDefault(); e.stopPropagation(); } });
+  draw(); return draw;
+}
+const drawSpd = makeSlider($('#spd'), 60, 360, 10, () => S.vSet, v => { S.vSet = v; }, v => { $('#spdv').innerHTML = `${v}<small>km/h</small>`; }, [[60, '60'], [200, '200'], [360, '360']]);
+const drawGap = makeSlider($('#gap'), 5, 60, 1, () => S.gap, v => { S.gap = v; }, v => { $('#gapv').innerHTML = `${v}<small>m</small>`; }, [[5, '5'], [30, '30 m'], [60, '60']]);
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'Escape') { if ($('#help').classList.contains('on')) return $('#help').classList.remove('on'); if (S.cine) return setCine(false); if (S.noui) return toggleUI(); if (S.expl) return setExplode(false); if (S.card >= 0) return setCard(-1); return; }
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  if (k >= '1' && k <= '7') return setCard(S.card === +k - 1 ? -1 : +k - 1);
+  const map = {
+    c: () => setAero('corner'), s: () => setAero('straight'), a: () => setAero('auto'), y: () => setEra(S.era === 2026 ? 2025 : 2026),
+    t: () => setScene('studio'), l: () => setScene('lap'), k: () => setScene('chase'), f: () => setFlow(!S.flow), e: () => setExplode(!S.expl), x: () => setXray(!S.xray),
+    o: () => setOvertake(!S.overtake), g: () => { if (S.scene !== 'chase') setChasing(!S.chasing); }, m: () => setSound(!S.sound), v: () => setCine(!S.cine), '/': () => toggleUI(),
+    i: () => setLang(S.lang === 'en' ? 'zh' : 'en'), h: () => $('#help').classList.toggle('on'), '?': () => $('#help').classList.toggle('on'),
+    ArrowUp: () => { S.vSet = clamp(S.vSet + 10, 60, 360); drawSpd(); }, ArrowDown: () => { S.vSet = clamp(S.vSet - 10, 60, 360); drawSpd(); },
+    '[': () => { S.gap = clamp(S.gap - 2, 5, 60); drawGap(); }, ']': () => { S.gap = clamp(S.gap + 2, 5, 60); drawGap(); }
+  };
+  const fn = map[k] || map[k.toLowerCase()];
+  if (fn) { e.preventDefault(); fn(); }
+});
+/* hover + click on parts */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let ptr = null, downAt = null;
+const tip = $('#tip');
+function pick(x, y) {
+  ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(PICKABLE.filter(m => { for (let q = m; q; q = q.parent) if (!q.visible) return false; return true; }), false);
+  return hits.length ? hits[0].object.userData.part : null;
+}
+canvas.addEventListener('pointermove', e => { ptr = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerleave', () => { ptr = null; S.hover = null; tip.classList.remove('on'); });
+canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; canvas.classList.add('drag'); tween = null; });
+canvas.addEventListener('pointerup', e => {
+  canvas.classList.remove('drag');
+  if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 5) {
+    const id = pick(e.clientX, e.clientY), ci = PART_CARD[id] ?? -1;
+    if (id && ci >= 0) setCard(ci);
+  }
+  downAt = null;
+});
+let hoverFrame = 0;
+function updateHover() {
+  if (IS_TOUCH || !ptr || S.cine || downAt || ++hoverFrame % 3) return;
+  const id = pick(ptr.x, ptr.y); S.hover = id;
+  canvas.classList.toggle('hot', !!id);
+  if (id) { const [t, sm] = L().parts[id]; tip.innerHTML = `${t}${sm ? `<small>${sm}</small>` : ''}`; tip.style.left = ptr.x + 'px'; tip.style.top = ptr.y + 'px'; tip.classList.add('on'); }
+  else tip.classList.remove('on');
+}
+/* ==========================================================================
+   TELEMETRY
+   ========================================================================== */
+const el = id => document.getElementById(id);
+const lapFmt = t => t == null ? '—' : `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+const trace = el('trace'), tctx = trace.getContext('2d');
+function sizeTrace() { const r = trace.getBoundingClientRect(); trace.width = Math.max(10, r.width * DPR); trace.height = Math.max(10, r.height * DPR); }
+function drawTrace() {
+  const w = trace.width, h = trace.height, g = tctx, d = DPR;
+  g.clearRect(0, 0, w, h);
+  const mono = `${9 * d}px "JetBrains Mono", monospace`;
+  if (S.scene === 'studio') {
+    // forces against speed for the current setup (solid) and the other mode (dashed)
+    const X = v => 30 * d + (v - 60) / 300 * (w - 38 * d), Y = kn => h - 12 * d - kn / 16 * (h - 20 * d);
+    g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+    for (const kn of [4, 8, 12]) { g.beginPath(); g.moveTo(X(60), Y(kn)); g.lineTo(X(360), Y(kn)); g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.font = mono; g.fillText('kN', 4 * d, Y(12) + 3 * d); for (const kn of [4, 8, 12]) g.fillText(kn, 12 * d, Y(kn) + 3 * d);
+    g.fillText('km/h →', X(300), h - 2 * d);
+    const cur = coeffs(S.era, S.aeroT, S.partial), oth = coeffs(S.era, S.aeroGoal > 0.5 ? 0 : 1, S.partial);
+    const curve = (cA, col, dash) => { g.strokeStyle = col; g.lineWidth = 2 * d; g.setLineDash(dash ? [4 * d, 4 * d] : []); g.beginPath(); for (let v = 60; v <= 360; v += 5) { const y = Y(forceN(cA, v / 3.6) / 1000); v === 60 ? g.moveTo(X(v), y) : g.lineTo(X(v), y); } g.stroke(); g.setLineDash([]); };
+    curve(oth.ClA, 'rgba(90,125,255,.4)', true); curve(oth.CdA, 'rgba(255,138,28,.4)', true);
+    curve(cur.ClA, PAL.dfc, false); curve(cur.CdA, PAL.drg, false);
+    g.strokeStyle = PAL.live; g.globalAlpha = 0.7; g.beginPath(); g.moveTo(X(S.vSet), 4 * d); g.lineTo(X(S.vSet), h - 12 * d); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = PAL.dfc; g.fillText(S.lang === 'zh' ? '下壓力' : 'downforce', X(70), Y(forceN(cur.ClA, 150 / 3.6) / 1000) - 6 * d);
+    g.fillStyle = PAL.drg; g.fillText(S.lang === 'zh' ? '阻力' : 'drag', X(250), Y(forceN(cur.CdA, 250 / 3.6) / 1000) - 6 * d);
+    return;
+  }
+  const mapW = h * 1.05, pad = 7 * d;
+  const [x0, x1, z0, z1] = TRACK.box, sc = Math.min((mapW - 2 * pad) / (x1 - x0), (h - 2 * pad) / (z1 - z0));
+  const mx = p => pad + (p.x - x0) * sc, my = p => pad + (p.z - z0) * sc;
+  const zone = S.era === 2025 ? DRSZ : ZONE;
+  g.lineWidth = 3 * d; g.lineCap = 'round';
+  for (let i = 0; i < TRACK.N; i += 5) {
+    const a = TRACK.pts[i], b = TRACK.pts[(i + 5) % TRACK.N];
+    g.strokeStyle = zone[i] ? '#ffffff' : 'rgba(227,16,42,.75)';
+    g.beginPath(); g.moveTo(mx(a), my(a)); g.lineTo(mx(b), my(b)); g.stroke();
+  }
+  for (let j = 0; j < 3; j++) {
+    const i = Math.floor(j * TRACK.N / 3), a = TRACK.pts[i], b = TRACK.pts[(i + 4) % TRACK.N];
+    const ang = Math.atan2(my(b) - my(a), mx(b) - mx(a)) + Math.PI / 2, Lh = 5 * d;
+    g.strokeStyle = j ? '#ffd21f' : PAL.live; g.lineWidth = 1.5 * d; g.lineCap = 'butt';
+    g.beginPath(); g.moveTo(mx(a) - Math.cos(ang) * Lh, my(a) - Math.sin(ang) * Lh); g.lineTo(mx(a) + Math.cos(ang) * Lh, my(a) + Math.sin(ang) * Lh); g.stroke();
+  }
+  const car = TRACK.pts[Math.floor(SIM.s) % TRACK.N];
+  g.fillStyle = PAL.live; g.beginPath(); g.arc(mx(car), my(car), 3.6 * d, 0, 7); g.fill();
+  // speed trace + mode strip
+  const tx = mapW + 6 * d, tw = w - tx - 4 * d, n = SIM.traceV.length, strip = 6 * d;
+  const Y = v => h - strip - 8 * d - (v / 380) * (h - strip - 16 * d);
+  g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
+  for (const v of [100, 200, 300]) { g.beginPath(); g.moveTo(tx, Y(v)); g.lineTo(tx + tw, Y(v)); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.4)'; g.font = mono; g.fillText('300', tx + 2, Y(300) - 3 * d); g.fillText('km/h', tx + 2, Y(200) - 3 * d);
+  if (SIM.prev) { g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1.2 * d; g.beginPath(); for (let i = 0; i < n; i++) { const x = tx + i / n * tw, y = Y(SIM.prev.v[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+  g.lineWidth = 2 * d; g.lineCap = 'round'; g.strokeStyle = '#f4f4f2'; g.beginPath(); let pen = false;
+  for (let i = 0; i < n; i++) { if (SIM.traceV[i] < 0) { pen = false; continue; } const x = tx + i / n * tw, y = Y(SIM.traceV[i]); pen ? g.lineTo(x, y) : g.moveTo(x, y); pen = true; }
+  g.stroke();
+  for (let i = 0; i < n; i++) {
+    const has = SIM.traceV[i] >= 0, a = has ? SIM.traceA[i] : SIM.prev ? SIM.prev.a[i] : -1; if (a < 0) continue;
+    g.fillStyle = a > 0.5 ? (has ? '#fff' : 'rgba(255,255,255,.3)') : (has ? PAL.red : 'rgba(227,16,42,.3)');
+    g.fillRect(tx + i / n * tw, h - strip - 2 * d, tw / n + 0.5, strip);
+  }
+  const cx = tx + (SIM.s % TRACK.N) / TRACK.N * tw; g.strokeStyle = PAL.live; g.globalAlpha = 0.6; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, 4 * d); g.lineTo(cx, h - 2 * d); g.stroke(); g.globalAlpha = 1;
+}
+const setBar = (id, frac) => { el(id).firstElementChild.style.width = (clamp(frac, 0, 1) * 100).toFixed(1) + '%'; };
+const setCap = (id, frac) => { el(id).style.left = (clamp(frac, 0, 1) * 100).toFixed(1) + '%'; };
+function modeKey() {
+  if (S.aeroT < 0.5) return 'corner';
+  if (S.era === 2025) return 'drs';
+  return S.partial ? 'partial' : 'straight';
+}
+function updateTele() {
+  const l = L(), v = speedNow(), vk = v * 3.6, era = S.era, c = coeffs(era, S.aeroT, S.partial);
+  const chase = S.scene === 'chase', loss = chase ? wakeLoss(era, CH.eff) : 0, tow = chase ? towGain(CH.eff) : 0;
+  const df = forceN(c.ClA, v) * (1 - loss) / 1000, dr = forceN(c.CdA, v) * (1 - tow) / 1000;
+  const c25 = AERO[2025].corner;
+  el('t-v').innerHTML = `${Math.round(vk)}<small>km/h</small>`;
+  el('t-gear').textContent = S.scene === 'studio' ? '–' : SIM.gear;
+  const mk = modeKey(), tm = el('t-mode');
+  tm.textContent = { corner: 'C', straight: 'S', drs: 'D', partial: 'P' }[mk]; tm.className = { corner: 'c', straight: 's', drs: 'd', partial: 'p' }[mk];
+  el('tb-mode').textContent = l.modeName[mk];
+  const fr = (f) => (f.ang - f.corner) / (f.straight - f.corner);
+  setBar('f-front', era === 2025 ? 0 : fr(CAR.flaps.front[0])); setBar('f-rear', clamp((CAR.flaps.rear[1].ang - CAR.flaps.rear[1].corner) / (-2 - CAR.flaps.rear[1].corner), 0, 1));
+  const ref = 16;
+  setBar('r-df', df / ref); el('t-df').textContent = df.toFixed(1) + ' kN'; setCap('c-df', forceN(c25.ClA, v) / 1000 / ref);
+  setBar('r-dr', dr / 6); el('t-dr').textContent = dr.toFixed(2) + ' kN'; setCap('c-dr', forceN(c25.CdA, v) / 1000 / 6);
+  setBar('r-ld', (df / Math.max(dr, 0.01)) / 5); el('t-ld').textContent = (df / Math.max(dr, 0.01)).toFixed(1);
+  const vmax = topSpeed(era, { ClA: c.ClA, CdA: c.CdA * (1 - tow) }, S.overtake) * 3.6, vcor = cornerSpeed(era, c, 120, loss) * 3.6;
+  setBar('r-vmax', (vmax - 200) / 200); el('t-vmax').textContent = Math.round(vmax) + ' km/h'; setCap('c-vmax', (topSpeed(2025, c25) * 3.6 - 200) / 200);
+  setBar('r-vcor', (vcor - 100) / 160); el('t-vcor').textContent = Math.round(vcor) + ' km/h'; setCap('c-vcor', (cornerSpeed(2025, c25, 120) * 3.6 - 100) / 160);
+  const soc = SIM.soc / 4; el('t-battf').style.width = (soc * 100).toFixed(0) + '%'; el('t-batt').classList.toggle('low', soc < 0.15); el('t-soc').innerHTML = `${SIM.soc.toFixed(2)}<small> MJ</small>`;
+  const kf = SIM.k / 350, kb = el('r-k').firstElementChild;
+  kb.style.width = (Math.abs(kf) * 50).toFixed(1) + '%'; kb.style.left = kf >= 0 ? '50%' : (50 - Math.abs(kf) * 50) + '%'; kb.style.background = kf >= 0 ? PAL.elec : PAL.harv;
+  el('t-k').textContent = (S.scene === 'studio' ? 0 : Math.round(SIM.k)) + ' kW';
+  // status chips
+  const ch = l.chips, chips = [], i = Math.floor(SIM.s) % TRACK.N;
+  if (S.scene !== 'studio') {
+    if (era === 2026 && ZONE[i]) chips.push(['on-w', ch.zone]);
+    if (era === 2025 && DRSZ[i]) chips.push([S.chasing ? 'on-w' : '', S.chasing ? ch.drsz : ch.noDRS]);
+    if (SIM.brake) chips.push(['on-a', ch.brake]);
+    if (SIM.k > 5) chips.push(['on-e', ch.deploy]); else if (SIM.k < -5) chips.push(['on-h', ch.harvest]);
+    if (SIM.soc < 0.06) chips.push(['on-w', ch.flat]);
+  }
+  if (S.overtake && SIM.ovtE > 0) chips.push(['on-e', ch.ovt]);
+  if (chase) { chips.push(['on-v', ch.dirty.replace('{n}', Math.round(loss * 100))]); chips.push(['', ch.tow.replace('{n}', Math.round(tow * 100))]); }
+  const html = chips.map(([k, t]) => `<span class="chip ${k}">${t}</span>`).join('');
+  if (el('t-status').innerHTML !== html) el('t-status').innerHTML = html;
+  // sectors + lap
+  const secs = $$('#t-secs div');
+  for (let j = 0; j < 3; j++) {
+    const t = SEC.cur[j], run = S.scene !== 'studio' && j === SEC.i;
+    secs[j].className = (SEC.cls[j] || '') + (run ? ' run' : '');
+    secs[j].querySelector('b').textContent = t != null ? t.toFixed(2) : run ? (SIM.lapT - SEC.start).toFixed(1) : '—';
+  }
+  el('t-lapt').textContent = S.scene === 'studio' ? '—' : lapFmt(SIM.lapT) + (SEC.dirty ? '*' : '');
+  el('t-last').textContent = lapFmt(SEC.last);
+  el('t-best').textContent = lapFmt(SEC.bestLap[secKey()]);
+  // mobile chips
+  el('mc-v').textContent = Math.round(vk); el('mc-mode').textContent = l.modeName[mk]; el('mc-df').textContent = df.toFixed(1); el('mc-dr').textContent = dr.toFixed(2);
+  el('mc-soc').textContent = SIM.soc.toFixed(1); el('mc-lap').textContent = S.scene === 'studio' ? '—' : lapFmt(SIM.lapT);
+}
+/* ==========================================================================
+   MAIN LOOP
+   ========================================================================== */
+const clock = new THREE.Timer(); clock.connect?.(document);
+let frame = 0, perfAcc = 0, perfN = 0, perfStage = 0, time = 0;
+/* The drawing area is whatever the panels leave free: labels are clamped to it and a camera
+   view offset centres the car in it (as in part 1). */
+const FREE = { l: 8, r: innerWidth - 8, t: 8, b: innerHeight - 8 };
+function frameView() {
+  const w = innerWidth, h = innerHeight, full = S.cine || S.noui;
+  const rOf = sel => { const e = $(sel); return e && e.offsetParent !== null ? e.getBoundingClientRect() : null; };
+  let l = 0, r = w, t = 0, b = h;
+  if (!full) {
+    if (small()) { const mc = rOf('#mchips'), dk = rOf('#dock'); t = mc ? mc.bottom : 90; b = dk ? dk.top : h - 110; }
+    else { const dk = rOf('#dock'), cd = rOf('#cards'), te = rOf('#tele'), ch = rOf('#chapters'); l = dk ? dk.right : 0; r = cd ? cd.left : w; t = ch ? ch.bottom : 0; b = te ? te.top : h; }
+  }
+  Object.assign(FREE, { l: l + 10, r: r - 10, t: t + 10, b: b - (small() && !full && S.card >= 0 ? 200 : 10) });
+  const dx = full ? 0 : (l + r) / 2 - w / 2, dy = full ? 0 : small() ? (S.card >= 0 ? -150 : -40) : (t + b) / 2 - h / 2;
+  camera.zoom = full || small() ? 1 : clamp(Math.min((r - l) / (w * 0.74), (b - t) / (h * 0.86)), 0.6, 1);
+  if (Math.abs(dx) + Math.abs(dy) < 0.5) camera.clearViewOffset(); else camera.setViewOffset(w, h, -dx, -dy, w, h);
+  camera.updateProjectionMatrix();
+}
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h; camera.fov = w < h ? 50 : 34;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  frameView(); sizeTrace(); carbonBackground(w, h);
+}
+addEventListener('resize', resize);
+function simAdvance(dt) { if (S.scene === 'studio') return; const n = Math.ceil(dt / (1 / 240)); for (let i = 0; i < n; i++) simStep(dt / n); }
+function tick() {
+  requestAnimationFrame(tick);
+  clock.update(); const dt = Math.min(0.05, clock.getDelta());
+  time += dt; S.t = time;
+  simAdvance(dt);
+  updateScene(dt, time);
+  const now = performance.now();
+  if (S.cine) stepCine(dt); else stepTween(now);
+  controls.update();
+  updateHover();
+  composer.render(dt);
+  updateLabels();
+  if (frame % 3 === 0) updateTele();
+  if (frame % 6 === 0) drawTrace();
+  audioUpdate(dt);
+  if (frame > 30) {                      // adaptive quality: drop AO, then resolution, if the frame rate sags
+    perfAcc += dt; perfN++;
+    if (perfN === 90) {
+      const fps = perfN / perfAcc; window.__fps = Math.round(fps); perfAcc = 0; perfN = 0;
+      if (fps < 38 && perfStage === 0 && gtao) { gtao.enabled = false; perfStage = 1; }
+      else if (fps < 34 && perfStage <= 1 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); composer.setPixelRatio(1); resize(); perfStage = 2; }
+    }
+  }
+  frame++;
+  if (frame === 3) $('#loader').classList.add('done');
+}
+
+/* ==========================================================================
+   BOOT
+   ========================================================================== */
+applyI18n();
+$('#app').classList.toggle('has-card', S.card >= 0);
+segSync();
+resize();
+if (QS.has('warm')) { const n = +QS.get('warm') || 5; for (let i = 0; i < n * 30; i++) { simAdvance(1 / 30); updateScene(1 / 30, i / 30); } }
+if (S.card >= 0) { const c = S.card; S.card = -1; setCard(c); if (QS.has('instant') && tween) { camera.position.copy(tween.p1); controls.target.copy(tween.t1); tween = null; } }
+if (S.expl) { const p = POSES.explode; camera.position.copy(p.pos); controls.target.copy(p.tgt); }
+if (QS.has('cam')) { const v = QS.get('cam').split(',').map(Number); camera.position.set(v[0], v[1], v[2]); if (v.length >= 6) controls.target.set(v[3], v[4], v[5]); }
+if (small() && S.card < 0 && !QS.has('cam')) portraitPose(camera.position, controls.target);
+controls.update();
+tick();
+window.AA = { S, SIM, CH, PARTS, CAR, LEAD, scene, camera, controls, setCard, setAero, setEra, setScene, setOvertake, setChasing, setXray, setExplode, setFlow, setLang, setCine, flyTo, toggleUI, simAdvance };
+</script>
+</body>
+</html>
