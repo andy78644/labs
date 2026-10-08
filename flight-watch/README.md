@@ -63,6 +63,8 @@ If you use both the server and GitHub Actions, they keep separate data unless yo
    - Discord: `DISCORD_WEBHOOK_URL`
    - Optionally, add a *variable* `FLIGHT_WATCH_DASHBOARD_URL` so alerts link to the dashboard.
 
+   To check the setup, run the workflow by hand with **只發一則測試通知** ticked. It sends one test message and doesn't scan.
+
    With no secrets set, the scan still runs. Alerts then only appear in the Actions run summary.
 3. **Schedule.** [`.github/workflows/flight-watch.yml`](../.github/workflows/flight-watch.yml) runs at minute 17 every 6 hours (UTC). GitHub only runs scheduled workflows from the default branch, so the workflow must be on `main`. You can also start a scan by hand from the Actions tab (*Run workflow*).
 4. **Dashboard:** https://andy78644.com/labs/flight-watch/ (once merged and Pages has deployed).
