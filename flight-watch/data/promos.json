@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-08T07:00:11+00:00",
+ "updated_at": "2026-10-08T07:34:36+00:00",
  "items": [
   {
    "id": "4f63010ec0e54bab",
@@ -93,6 +93,42 @@
     "BKK"
    ],
    "first_seen": "2026-10-08T03:48:23+00:00",
+   "notified": true
+  },
+  {
+   "id": "7784bc491e18f7f2",
+   "title": "10月長榮航空機票優惠！必搶曼谷、沖繩買一送一，全航線最低５折起 - 食尚玩家",
+   "link": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE9salFXcF9qTjhBMkV6X1hkT25ydXhILWtEQzhXMWZjMnkxdThpYWdoVzQwM1Q4WXhQVkNzVGdfVk9raExJTDh5Mkh4cUpMZWVJQ2dmVTluRdIBXEFVX3lxTE5KQi10ZVhfcTgwaWpoU3J2MjJUWm8xREFOZUZNNko4LWRSXzRiZnJlODYxTlZoZFpOc3hGcFZtZjNfVzF2LWpGdGFNYnJIYmUzeVJrRlJVcXRfdUFC?oc=5",
+   "source": "食尚玩家",
+   "published": "2026-09-29T07:00:00+00:00",
+   "routes": [
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-10-08T07:34:36+00:00",
+   "notified": true
+  },
+  {
+   "id": "ee71ceadcd33ec7f",
+   "title": "寒假、櫻花季機票開搶！曼谷、沖繩等航點買1送1 飛美國一口價16888元 - 知新聞",
+   "link": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5MRUxZZE5EQzNETUw5ZFB5RkRoanBLZzJtSnRhZHhEX3VnOHM5eGNkNmNYV2trU1FkWjVWbGtjYjB5LVVrdnRNNnliWGx2VDN0YWlKZVJsUlJuZTVRYWNYUVNad01Jdkl3MTNnS0VJZw?oc=5",
+   "source": "知新聞",
+   "published": "2026-09-29T02:30:00+00:00",
+   "routes": [
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-10-08T07:34:36+00:00",
+   "notified": true
+  },
+  {
+   "id": "b43589e6ba1b342b",
+   "title": "雄獅攜手長榮航空機票大促銷！曼谷、沖繩、河內、吉隆坡及香港指定航點買一送一- 理財 - 工商時報",
+   "link": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE1ucmlWWVVoSHlNMi1ydGtsN0Vqb2I3UGctQ2NBbEtYdHRZdWZnbHUtbEZpX25FWnF3VDN3dFlkaEVQczZiajNCeGt2UXU4WXFCYWFmcG5Jd0tJYi11NGxV?oc=5",
+   "source": "工商時報",
+   "published": "2026-09-29T01:54:00+00:00",
+   "routes": [
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-10-08T07:34:36+00:00",
    "notified": true
   }
  ]
