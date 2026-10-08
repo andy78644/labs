@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Watch 搜尋</title>
+<link rel="stylesheet" href="common.css">
+<style>
+:root {
+  --step-1: #cde2fb; --step-2: #9ec5f4; --step-3: #5598e7; --step-4: #256abf; --step-5: #104281;
+  --sel: #eb6834;
+}
+form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); align-items: end; }
+label, .field-label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+input, select, button {
+  font: inherit; color: var(--ink); background: var(--page);
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; width: 100%;
+}
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
+button { cursor: pointer; width: auto; }
+button.primary { background: var(--series); color: #fff; border-color: transparent; font-weight: 600; padding: 8px 18px; }
+button.primary:disabled { opacity: 0.5; cursor: progress; }
+button.ghost { background: transparent; }
+button.danger { color: var(--critical); background: transparent; white-space: nowrap; flex: none; }
+.wide { grid-column: 1 / -1; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg label {
+  margin: 0; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 38px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  color: var(--ink-2); cursor: pointer; font-size: 13px; user-select: none;
+}
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg input:checked + span { color: var(--ink); font-weight: 600; }
+.seg label:has(input:checked) { border-color: var(--series); background: var(--wash); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--series); }
+.form-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.notice { border-left: 3px solid var(--series); padding: 10px 14px; background: var(--surface); border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+.err { color: var(--critical); font-size: 13px; min-height: 1.2em; }
+.progress { height: 6px; background: var(--grid); border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
+.progress div { height: 100%; width: 0; background: var(--series); transition: width .3s; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; margin-bottom: 12px; }
+.summary .big { font-size: 28px; font-weight: 650; }
+.months { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.month h3 { font-size: 14px; margin: 0 0 6px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal .dow { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
+.day {
+  aspect-ratio: 1 / 0.9; border-radius: 6px; border: 1px solid var(--grid); background: var(--surface);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 3px 4px;
+  font-size: 11px; color: var(--muted); position: relative; min-width: 0;
+}
+.day .d { line-height: 1; }
+.day .p { font-size: 11.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+button.day { width: auto; padding: 3px 4px; cursor: pointer; text-align: left; border-color: transparent; }
+.day.q1 { background: var(--step-1); color: #0b0b0b; }
+.day.q2 { background: var(--step-2); color: #0b0b0b; }
+.day.q3 { background: var(--step-3); color: #fff; }
+.day.q4 { background: var(--step-4); color: #fff; }
+.day.q5 { background: var(--step-5); color: #fff; }
+.day.pending { background: repeating-linear-gradient(135deg, var(--surface) 0 4px, var(--grid) 4px 5px); }
+.day.none { color: var(--muted); }
+.day.sel { box-shadow: 0 0 0 2px var(--sel); }
+.day.sel::after { content: "★"; position: absolute; top: 2px; right: 4px; font-size: 10px; color: var(--sel); }
+.day.cur { outline: 2px solid var(--ink); outline-offset: 1px; }
+.legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); flex-wrap: wrap; margin: 10px 0 0; }
+.legend i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.detail { margin-top: 16px; border-top: 1px solid var(--grid); padding-top: 12px; }
+.opt { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 14px; }
+.opt .price { min-width: 92px; }
+.cheap-list { display: grid; gap: 4px; font-size: 14px; }
+.cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.watch-row { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+.watch-row:last-child { border-bottom: 0; }
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+.log { font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); max-height: 160px; overflow: auto; margin-top: 8px; white-space: pre-wrap; }
+@media (max-width: 480px) { .day .p { font-size: 10px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>✈️ Flight Watch 機票監控</h1>
+    <nav><a href="./">儀表板</a><a href="search.html" aria-current="page">搜尋與監控</a></nav>
+  </header>
+
+  <div class="notice" id="static-notice" hidden>
+    這個頁面要連到 <code>server.py</code> 才能用（GitHub Pages 上只有儀表板）。在 flight-watch 資料夾執行
+    <code>python server.py</code>，再打開 <code>http://127.0.0.1:8000/search.html</code>。
+  </div>
+
+  <section class="card" id="search-card">
+    <form id="form" autocomplete="off">
+      <div><label for="origin">出發地</label><input id="origin" name="origin" maxlength="3" required list="airports" placeholder="TPE"></div>
+      <div><label for="to">目的地</label><input id="to" name="to" maxlength="3" required list="airports" placeholder="例如 NRT"></div>
+      <div>
+        <span class="field-label">行程</span>
+        <div class="seg" id="trip">
+          <label><input type="radio" name="trip" value="round-trip" checked><span>來回</span></label>
+          <label><input type="radio" name="trip" value="one-way"><span>單程</span></label>
+        </div>
+      </div>
+      <div><label for="stops">轉機</label>
+        <select id="stops" name="max_stops">
+          <option value="0">只要直飛</option><option value="1" selected>最多 1 次</option><option value="any">不限</option>
+        </select>
+      </div>
+      <div><label for="start">最早出發</label><input type="date" id="start" name="start" required></div>
+      <div><label for="end">最晚出發</label><input type="date" id="end" name="end" required></div>
+      <div id="nights-field"><label for="nights">停留幾晚（可填多個，用逗號分開）</label><input id="nights" name="nights" value="4" inputmode="numeric" placeholder="例如 3,5"></div>
+      <div class="wide">
+        <span class="field-label">出發星期</span>
+        <div class="seg" id="weekdays"></div>
+      </div>
+      <div class="wide form-foot">
+        <span class="meta" id="count"></span>
+        <button class="primary" id="go" type="submit">搜尋票價</button>
+      </div>
+      <div class="wide err" id="form-err" role="alert"></div>
+    </form>
+    <datalist id="airports"></datalist>
+  </section>
+
+  <section id="results-section" hidden>
+    <h2 id="results-title">結果</h2>
+    <div class="card">
+      <div class="progress" id="progress-wrap"><div id="progress"></div></div>
+      <div class="meta" id="progress-text"></div>
+      <div class="summary" id="summary"></div>
+      <div class="months" id="months"></div>
+      <div class="legend" id="legend" hidden>
+        便宜 <i style="background:var(--step-5)"></i><i style="background:var(--step-4)"></i><i style="background:var(--step-3)"></i><i style="background:var(--step-2)"></i><i style="background:var(--step-1)"></i> 貴
+        <span style="margin-left:12px">（顏色依這次結果分五級）· 點日期看細節 · ★ = 選來監控的日期</span>
+      </div>
+      <div class="detail" id="detail" hidden></div>
+    </div>
+
+    <div class="cols" style="margin-top:16px">
+      <div class="card">
+        <h2 style="margin-top:0">最便宜的日期</h2>
+        <div class="cheap-list" id="cheapest"></div>
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0">加入監控</h2>
+        <form id="watch-form" style="grid-template-columns: 1fr 1fr">
+          <div><label for="w-name">名稱</label><input id="w-name" maxlength="30" placeholder="例如 東京跨年"></div>
+          <div><label for="w-target">目標價（低於就通知）</label><input id="w-target" inputmode="numeric"></div>
+          <div class="wide meta" id="w-dates"></div>
+          <div class="wide form-foot"><span class="err" id="w-err" role="alert"></span><button class="primary" type="submit">加入監控</button></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <h2>監控清單</h2>
+  <div class="cols">
+    <div class="card"><div id="watchlist"><div class="meta">載入中…</div></div></div>
+    <div class="card">
+      <div class="form-foot">
+        <div><strong>完整掃描</strong><div class="meta" id="scan-status"></div></div>
+        <button class="ghost" id="scan-now" type="button">立即掃描全部</button>
+      </div>
+      <div class="log" id="scan-log"></div>
+    </div>
+  </div>
+  <div id="token-box" class="card" style="margin-top:16px" hidden>
+    <label for="token">存取密碼（伺服器有設定 --token）</label>
+    <input id="token" type="password" autocomplete="current-password">
+  </div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const WD = ["一", "二", "三", "四", "五", "六", "日"];   // Monday first, like Python's weekday()
+const AIRPORTS = [
+  ["TPE", "台北桃園"], ["TSA", "台北松山"], ["KHH", "高雄"], ["RMQ", "台中"],
+  ["NRT", "東京成田"], ["HND", "東京羽田"], ["KIX", "大阪關西"], ["NGO", "名古屋"], ["FUK", "福岡"],
+  ["OKA", "沖繩"], ["CTS", "札幌"], ["SDJ", "仙台"], ["HKD", "函館"], ["KMJ", "熊本"], ["KOJ", "鹿兒島"],
+  ["ICN", "首爾仁川"], ["GMP", "首爾金浦"], ["PUS", "釜山"], ["CJU", "濟州"],
+  ["HKG", "香港"], ["MFM", "澳門"], ["BKK", "曼谷"], ["CNX", "清邁"], ["HKT", "普吉"],
+  ["SGN", "胡志明市"], ["HAN", "河內"], ["DAD", "峴港"], ["MNL", "馬尼拉"], ["CEB", "宿霧"],
+  ["SIN", "新加坡"], ["KUL", "吉隆坡"], ["DPS", "峇里島"], ["PNH", "金邊"],
+  ["LAX", "洛杉磯"], ["SFO", "舊金山"], ["SEA", "西雅圖"], ["JFK", "紐約"], ["YVR", "溫哥華"],
+  ["LHR", "倫敦"], ["CDG", "巴黎"], ["AMS", "阿姆斯特丹"], ["FRA", "法蘭克福"], ["MUC", "慕尼黑"],
+  ["VIE", "維也納"], ["PRG", "布拉格"], ["FCO", "羅馬"], ["IST", "伊斯坦堡"],
+  ["SYD", "雪梨"], ["MEL", "墨爾本"], ["BNE", "布里斯本"], ["AKL", "奧克蘭"],
+];
+const NAMES = Object.fromEntries(AIRPORTS);
+let STATE = null, JOB = null, SELECTED = new Set(), CURRENT = null, POLL = null;
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (k === "class") n.className = v;
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+}
+const money = (p) => `${STATE?.currency || ""} ${Number(p).toLocaleString("en-US")}`;
+const short = (p) => p >= 10000 ? (p / 1000).toFixed(1).replace(/\.0$/, "") + "k" : Number(p).toLocaleString("en-US");
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parse = (s) => new Date(s + "T00:00:00");
+const pyWeekday = (d) => (d.getDay() + 6) % 7;
+const md = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}（${WD[pyWeekday(d)]}）`; };
+const stops = (n) => n === 0 ? "直飛" : `轉 ${n} 次`;
+const dur = (m) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+const storage = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json" };
+  const tok = $("#token").value || storage.get("fw-token");
+  if (tok) headers["X-Token"] = tok;
+  const r = await fetch("api/" + path, { ...opts, headers, body: opts.body && JSON.stringify(opts.body) });
+  let data = null;
+  try { data = await r.json(); } catch {}
+  if (!r.ok) throw new Error((data && data.error) || `HTTP ${r.status}`);
+  return data;
+}
+
+/* ---------- form ---------- */
+function setupForm() {
+  $("#airports").replaceChildren(...AIRPORTS.map(([c, n]) => el("option", { value: c }, n)));
+  $("#weekdays").replaceChildren(...WD.map((w, i) =>
+    el("label", {}, el("input", { type: "checkbox", name: "weekdays", value: i, checked: true }), el("span", {}, w))));
+  const today = new Date();
+  const plus = (n) => { const d = new Date(today); d.setDate(d.getDate() + n); return iso(d); };
+  $("#start").value = plus(14); $("#end").value = plus(41);
+  $("#start").min = plus(1); $("#end").min = plus(1); $("#end").max = plus(330);
+  $("#origin").value = storage.get("fw-origin") || "";
+  ["input", "change"].forEach((ev) => $("#form").addEventListener(ev, updateCount));
+  $("#form").addEventListener("submit", (e) => { e.preventDefault(); runSearch(); });
+  $("#watch-form").addEventListener("submit", (e) => { e.preventDefault(); addWatch(); });
+  $("#scan-now").addEventListener("click", scanNow);
+  $("#token").value = storage.get("fw-token") || "";
+  $("#token").addEventListener("change", () => storage.set("fw-token", $("#token").value));
+}
+
+function formParams() {
+  const f = new FormData($("#form"));
+  const trip = f.get("trip");
+  return {
+    origin: (f.get("origin") || "").toUpperCase().trim(),
+    to: (f.get("to") || "").toUpperCase().trim(),
+    trip, start: f.get("start"), end: f.get("end"),
+    weekdays: f.getAll("weekdays").map(Number),
+    nights: trip === "round-trip" ? String(f.get("nights")).split(/[,\s，、]+/).map(Number).filter((n) => n > 0) : [],
+    max_stops: f.get("max_stops"),
+  };
+}
+
+function countPairs(p) {
+  if (!p.start || !p.end) return 0;
+  let n = 0;
+  for (let d = parse(p.start); d <= parse(p.end); d.setDate(d.getDate() + 1)) if (p.weekdays.includes(pyWeekday(d))) n++;
+  return p.trip === "round-trip" ? n * Math.max(1, p.nights.length) : n;
+}
+
+function updateCount() {
+  const p = formParams();
+  $("#nights-field").hidden = p.trip !== "round-trip";
+  const n = countPairs(p), max = STATE?.max_queries || 80;
+  const secs = Math.ceil(n / 3) * 4;
+  $("#count").textContent = n > max ? `${n} 組日期，超過一次 ${max} 組的上限` :
+    `將查詢 ${n} 組日期，約 ${secs < 60 ? secs + " 秒" : Math.ceil(secs / 60) + " 分鐘"}`;
+  $("#go").disabled = !n || n > max || (JOB && JOB.status === "running");
+}
+
+/* ---------- search ---------- */
+async function runSearch() {
+  $("#form-err").textContent = "";
+  const p = formParams();
+  storage.set("fw-origin", p.origin);
+  try {
+    JOB = await api("search", { method: "POST", body: p });
+  } catch (e) { $("#form-err").textContent = e.message; return; }
+  SELECTED = new Set(); CURRENT = null;
+  $("#results-section").hidden = false;
+  $("#detail").hidden = true;
+  $("#w-name").value = NAMES[p.to] || p.to;
+  $("#w-target").value = "";
+  $("#results-title").textContent = `${p.origin} → ${p.to} ${NAMES[p.to] || ""}`;
+  updateCount(); render();
+  $("#results-section").scrollIntoView({ behavior: "smooth", block: "start" });
+  clearInterval(POLL);
+  POLL = setInterval(poll, 1200);
+}
+
+async function poll() {
+  try { JOB = await api("jobs/" + JOB.id); } catch (e) { clearInterval(POLL); $("#progress-text").textContent = e.message; return; }
+  render();
+  if (JOB.status !== "running") { clearInterval(POLL); updateCount(); }
+}
+
+/* Cheapest fare per departure date (across stay lengths). */
+function byDepart() {
+  const m = {};
+  for (const f of JOB.results) (m[f.depart] ||= []).push(f);
+  for (const k in m) m[k].sort((a, b) => a.price - b.price);
+  return m;
+}
+
+function quintiles(prices) {
+  const s = [...prices].sort((a, b) => a - b);
+  return (p) => {
+    if (s.length < 3) return 5;
+    const rank = s.filter((x) => x < p).length / s.length;   // 0 = cheapest
+    return 5 - Math.min(4, Math.floor(rank * 5));
+  };
+}
+
+function render() {
+  const p = JOB.params;
+  const pct = Math.round((JOB.done / JOB.total) * 100);
+  $("#progress").style.width = pct + "%";
+  $("#progress-wrap").hidden = JOB.status !== "running";
+  $("#progress-text").textContent = JOB.status === "running"
+    ? `查詢中 ${JOB.done} / ${JOB.total}…（每次查詢會實際連到 Google Flights）`
+    : `完成：${JOB.results.length} 組有票價` + (JOB.missing.length ? `，${JOB.missing.length} 組查不到` : "") +
+      (JOB.errors.length ? `（${JOB.errors.length} 個錯誤）` : "");
+
+  const days = byDepart();
+  const prices = Object.values(days).map((l) => l[0].price);
+  const level = quintiles(prices);
+  const best = JOB.results.length ? JOB.results.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+
+  const sum = $("#summary");
+  sum.replaceChildren();
+  if (best) {
+    sum.append(el("div", {}, el("div", { class: "meta" }, "最低"), el("div", { class: "big" }, money(best.price))));
+    sum.append(el("div", { class: "sub" }, `${md(best.depart)}` + (best.return ? ` → ${md(best.return)}` : "") +
+      ` · ${best.airline} · ${stops(best.stops)}`));
+    const sorted = [...prices].sort((a, b) => a - b);
+    sum.append(el("div", { class: "sub" }, `中位數 ${money(sorted[Math.floor(sorted.length / 2)])}`));
+  }
+
+  // Calendar months covering the searched range.
+  const months = $("#months");
+  months.replaceChildren();
+  const start = parse(p.start), end = parse(p.end);
+  for (let m = new Date(start.getFullYear(), start.getMonth(), 1); m <= end; m.setMonth(m.getMonth() + 1)) {
+    const box = el("div", { class: "month" }, el("h3", {}, `${m.getFullYear()} 年 ${m.getMonth() + 1} 月`));
+    const cal = el("div", { class: "cal" }, ...WD.map((w) => el("div", { class: "dow" }, w)));
+    const first = new Date(m);
+    for (let i = 0; i < pyWeekday(first); i++) cal.append(el("div"));
+    for (let d = new Date(first); d.getMonth() === m.getMonth(); d.setDate(d.getDate() + 1)) {
+      const key = iso(d);
+      const inRange = d >= start && d <= end && p.weekdays.includes(pyWeekday(d));
+      const fares = days[key];
+      if (fares) {
+        const q = level(fares[0].price);
+        cal.append(el("button", {
+          type: "button", class: `day q${q}` + (SELECTED.has(key) ? " sel" : "") + (CURRENT === key ? " cur" : ""),
+          "aria-label": `${md(key)} ${money(fares[0].price)}`, "aria-pressed": SELECTED.has(key) ? "true" : "false",
+          title: `${md(key)} ${money(fares[0].price)} ${fares[0].airline}`,
+          onclick: () => { CURRENT = key; render(); },
+        }, el("span", { class: "d" }, d.getDate()), el("span", { class: "p" }, short(fares[0].price))));
+      } else {
+        const pending = inRange && JOB.status === "running";
+        cal.append(el("div", { class: "day" + (pending ? " pending" : inRange ? " none" : "") ,
+          style: inRange ? null : "opacity:.35" },
+          el("span", { class: "d" }, d.getDate()), el("span", { class: "p" }, inRange && !pending ? "—" : "")));
+      }
+    }
+    box.append(cal);
+    months.append(box);
+  }
+  $("#legend").hidden = !prices.length;
+
+  renderDetail(days);
+
+  const cheap = $("#cheapest");
+  cheap.replaceChildren();
+  [...JOB.results].sort((a, b) => a.price - b.price).slice(0, 8).forEach((f) => {
+    cheap.append(el("div", { class: "opt" },
+      el("a", { class: "price", href: f.url, target: "_blank", rel: "noopener" }, money(f.price)),
+      el("span", {}, md(f.depart) + (f.return ? ` → ${md(f.return)}` : "")),
+      el("span", { class: "sub" }, `${f.airline} · ${stops(f.stops)}`)));
+  });
+  if (!JOB.results.length) cheap.append(el("div", { class: "meta" }, JOB.status === "running" ? "等待結果…" : "沒有結果"));
+
+  if (best && !$("#w-target").value && JOB.status !== "running") {
+    $("#w-target").value = Math.floor(best.price * 0.95 / 100) * 100;
+  }
+  const searched = Object.keys(days).length;
+  $("#w-dates").textContent = SELECTED.size
+    ? `會監控你選的 ${SELECTED.size} 個出發日：${[...SELECTED].sort().map(md).join("、")}`
+    : `會監控這次查到的全部 ${searched} 個出發日（點日期 → 「選這天」可以只監控部分日期）`;
+}
+
+function renderDetail(days) {
+  const box = $("#detail");
+  if (!CURRENT || !days[CURRENT]) { box.hidden = true; return; }
+  box.hidden = false;
+  const on = SELECTED.has(CURRENT);
+  box.replaceChildren(
+    el("div", { class: "form-foot" },
+      el("strong", {}, `${md(CURRENT)} 出發`),
+      el("button", { type: "button", class: "ghost", onclick: () => { on ? SELECTED.delete(CURRENT) : SELECTED.add(CURRENT); render(); } },
+        on ? "★ 取消選這天" : "☆ 選這天來監控")),
+    ...days[CURRENT].map((f) => el("div", { class: "opt" },
+      el("a", { class: "price", href: f.url, target: "_blank", rel: "noopener" }, money(f.price)),
+      el("span", {}, f.return ? `回程 ${md(f.return)}` : "單程"),
+      el("span", { class: "sub" }, `${f.airline} · ${stops(f.stops)} · ${f.depart_time} 出發 · ${dur(f.duration_min)}`))));
+}
+
+/* ---------- watchlist ---------- */
+async function addWatch() {
+  $("#w-err").textContent = "";
+  const p = JOB.params;
+  const dates = SELECTED.size ? [...SELECTED] : Object.keys(byDepart());
+  try {
+    await api("watch", { method: "POST", body: {
+      origin: p.origin, to: p.to, trip: p.trip, nights: p.nights, max_stops: p.max_stops,
+      name: $("#w-name").value, alert_below: Number($("#w-target").value) || null, dates } });
+    $("#w-err").textContent = "";
+    $("#w-dates").textContent = "✓ 已加入監控清單，下次掃描就會開始記錄。";
+    await loadState();
+  } catch (e) { $("#w-err").textContent = e.message; }
+}
+
+async function removeWatch(key) {
+  if (!confirm(`從監控清單移除 ${key}？`)) return;
+  try { await api("watch/" + encodeURIComponent(key), { method: "DELETE" }); await loadState(); }
+  catch (e) { alert(e.message); }
+}
+
+async function scanNow() {
+  try { await api("scan", { method: "POST" }); } catch (e) { alert(e.message); return; }
+  await loadState();
+}
+
+function renderWatchlist() {
+  const box = $("#watchlist");
+  box.replaceChildren();
+  for (const r of STATE.routes) {
+    let when;
+    if (r.dates) {
+      const ds = [...r.dates].sort();
+      when = ds.length === 1 ? md(ds[0]) : `${md(ds[0])} – ${md(ds[ds.length - 1])}，${ds.length} 天`;
+    } else when = "設定檔的固定規則";
+    const left = el("div", {},
+      el("strong", {}, r.name), el("span", { class: "tag" }, `${r.origin}→${r.to}`),
+      el("span", { class: "tag" }, r.source === "ui" ? "網頁新增" : "config.yml"),
+      el("div", { class: "sub" }, when + (r.alert_below ? ` · 目標 ${money(r.alert_below)}` : "") +
+        (r.stay_nights && r.trip !== "one-way" ? ` · 住 ${[].concat(r.stay_nights).join("/")} 晚` : "")));
+    box.append(el("div", { class: "watch-row" }, left,
+      r.source === "ui" ? el("button", { type: "button", class: "danger", onclick: () => removeWatch(r.key) }, "移除") : null));
+  }
+  const s = STATE.scan;
+  const fmt = (t) => new Date(t).toLocaleString("zh-TW", { hour12: false, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  $("#scan-status").textContent = s.running ? "掃描中…（完成後儀表板會更新）" :
+    [s.last ? `上次 ${fmt(s.last)}` : "這台伺服器還沒掃描過", s.next ? `下次 ${fmt(s.next)}` : "沒有開排程（--scan-every）",
+     s.last_error ? `錯誤：${s.last_error}` : null].filter(Boolean).join(" · ");
+  $("#scan-now").disabled = s.running;
+  $("#scan-log").textContent = STATE.scan_log.join("\n");
+}
+
+async function loadState() {
+  STATE = await api("state");
+  $("#token-box").hidden = !STATE.needs_token;
+  if (!$("#origin").value) $("#origin").value = STATE.origin;
+  renderWatchlist();
+  updateCount();
+  if (STATE.scan.running) setTimeout(loadState, 5000);
+}
+
+setupForm();
+loadState().catch(() => {
+  $("#static-notice").hidden = false;
+  $("#search-card").hidden = true;
+  $("#watchlist").replaceChildren(el("div", { class: "meta" }, "需要 server.py"));
+});
+</script>
+</body>
+</html>
