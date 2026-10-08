@@ -176,18 +176,20 @@ def run(args):
         cutoff = (now - timedelta(days=cfg.get("history_days", 180))).isoformat()
         history["routes"][key] = [s for s in scans if s["t"] >= cutoff]
 
-    promo_items, new_promos = [], []
+    promo_items = []
     pcfg = cfg.get("promotions", {})
     if pcfg.get("enabled", True) and not args.skip_promos:
         found, perr = promos.scan_promotions(pcfg, routes, now)
         errors += perr
         stored = load_json(data_dir / "promos.json", {"items": []})["items"]
         stored = promos.refilter(pcfg, routes, stored)
-        promo_items, new_promos = promos.merge_promotions(
-            stored, found, now, pcfg.get("lookback_days", 14) * 2
-        )
+        promo_items, _ = promos.merge_promotions(stored, found, now, pcfg.get("lookback_days", 14) * 2)
+    # Promotions not yet delivered to any channel (kept until a send succeeds).
+    pending_promos = [p for p in promo_items if not p.get("notified")]
 
-    fresh = deals_mod.select_new_alerts(all_deals, alert_state, today)
+    # Work on a copy: deals only count as alerted once a message is delivered.
+    new_state = dict(alert_state)
+    fresh = deals_mod.select_new_alerts(all_deals, new_state, today)
     latest = {
         "generated_at": now.isoformat(),
         "provider": provider.name,
@@ -198,7 +200,7 @@ def run(args):
         "errors": errors,
     }
 
-    message = notify.build_message(fresh, new_promos, currency, os.environ.get("DASHBOARD_URL"))
+    message = notify.build_message(fresh, pending_promos, currency, os.environ.get("DASHBOARD_URL"))
     print(message or "No new alerts.")
     if errors:
         print("\n".join(["Errors:"] + errors), file=sys.stderr)
@@ -210,15 +212,21 @@ def run(args):
         raise NoFaresError("No fares at all: the provider is probably blocked or broken.")
     save_json(data_dir / "latest.json", latest)
     save_json(data_dir / "history.json", history)
-    save_json(data_dir / "alert_state.json", alert_state)
-    if promo_items or new_promos:
-        save_json(data_dir / "promos.json", {"updated_at": now.isoformat(), "items": promo_items})
-    if not args.no_notify:
+    delivered = False
+    if message and not args.no_notify:
         sent, nerr = notify.send(message)
-        if sent:
-            print("Sent to: " + ", ".join(sent))
+        delivered = bool(sent)
+        print(("Sent to: " + ", ".join(sent)) if sent else "Not delivered to any channel; will retry next scan.")
         for e in nerr:
             print("Notify error: " + e, file=sys.stderr)
+    if delivered or not message:
+        alert_state = new_state  # with no message this only drops past dates
+    if delivered:
+        for p in pending_promos:
+            p["notified"] = True
+    save_json(data_dir / "alert_state.json", alert_state)
+    if promo_items:
+        save_json(data_dir / "promos.json", {"updated_at": now.isoformat(), "items": promo_items})
     return latest
 
 

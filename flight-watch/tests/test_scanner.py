@@ -89,3 +89,48 @@ class Promos(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AlertDelivery(unittest.TestCase):
+    """Deals and promotions only count as alerted once a message is delivered."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        (self.dir / "config.yml").write_text(
+            "origin: TPE\nsearch: {window_days: [14, 28], depart_weekdays: [fri]}\n"
+            "routes: [{to: NRT, name: 東京, alert_below: 999999}]\n"
+            "promotions: {keywords: [優惠], require_any: [機票]}\n", encoding="utf-8")
+        (self.dir / "promos.json").write_text(
+            '{"items": [{"id": "p1", "title": "東京機票優惠", "link": "x", "first_seen": "2099-01-01"}]}', encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def scan(self, sent):
+        import json
+        from argparse import Namespace
+        from unittest import mock
+        from scanner import notify, scan as scan_mod
+        args = Namespace(config=self.dir / "config.yml", data_dir=self.dir, provider="demo", only=None,
+                         dry_run=False, no_notify=False, skip_promos=False)
+        with mock.patch.object(notify, "send", return_value=(sent, [] if sent else ["telegram: 401"])) as m, \
+                mock.patch.object(scan_mod.promos, "scan_promotions", return_value=([], [])):
+            scan_mod.run(args)
+        state = json.loads((self.dir / "alert_state.json").read_text())
+        promos_ = json.loads((self.dir / "promos.json").read_text())["items"]
+        return m.call_args, state, promos_
+
+    def test_failed_send_is_retried_then_marked(self):
+        call, state, items = self.scan(sent=[])
+        self.assertIn("東京機票優惠", call.args[0])
+        self.assertEqual(state, {})
+        self.assertFalse(items[0].get("notified"))
+        call, state, items = self.scan(sent=["telegram"])
+        self.assertIn("機票降價提醒", call.args[0])
+        self.assertTrue(state)
+        self.assertTrue(items[0]["notified"])
+        call, _, _ = self.scan(sent=["telegram"])
+        self.assertIsNone(call)  # nothing new: no message at all
