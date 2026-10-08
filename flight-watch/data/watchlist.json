@@ -1,9 +1,6 @@
 {
  "routes": [
   {
-   "origin": "TPE",
-   "to": "NRT",
-   "name": "東京（NRT）",
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -12,13 +9,19 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-NRT",
-   "group": "聖誕節"
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "NRT",
+    "HND"
+   ],
+   "name": "東京",
+   "group": "聖誕節",
+   "key": "TPE+TSA-NRT+HND"
   },
   {
-   "origin": "TPE",
-   "to": "HND",
-   "name": "東京（HND）",
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -27,13 +30,19 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-HND",
-   "group": "聖誕節"
-  },
-  {
-   "origin": "TPE",
-   "to": "ICN",
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "ICN",
+    "GMP"
+   ],
    "name": "首爾",
+   "group": "聖誕節",
+   "key": "TPE+TSA-ICN+GMP"
+  },
+  {
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -42,8 +51,17 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-ICN",
-   "group": "聖誕節"
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "BKK",
+    "DMK"
+   ],
+   "name": "曼谷",
+   "group": "聖誕節",
+   "key": "TPE+TSA-BKK+DMK"
   }
  ]
 }
