@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Watch 設定</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.route { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--grid); }
+.route:last-child { border-bottom: 0; }
+.route .actions { display: flex; gap: 6px; flex: none; }
+.route .actions button { padding: 5px 12px; font-size: 13px; }
+.route-title { font-weight: 600; }
+.route.editing { background: var(--wash); margin: 0 -16px; padding: 12px 16px; }
+.editor { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: end; margin-top: 4px; }
+.editor .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.editor .row input[type=number] { width: 84px; }
+.editor .row input[type=date] { width: auto; flex: 1 1 140px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 4px 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); }
+.chip button { border: 0; background: transparent; padding: 0 5px; color: var(--muted); font-size: 14px; line-height: 1; }
+.savebar {
+  position: sticky; bottom: 0; z-index: 5; margin-top: 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+.warn { color: #9a5b00; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .warn { color: #fab219; } }
+.ok { color: var(--good-text); }
+.help { font-size: 14px; color: var(--ink-2); }
+.help ol { padding-left: 20px; margin: 8px 0; }
+.help li { margin: 4px 0; }
+.conn { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); align-items: end; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); margin: 0; }
+.check input { width: auto; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>✈️ Flight Watch 機票監控</h1>
+    <nav><a href="./">儀表板</a><a href="settings.html" aria-current="page">設定</a><a href="search.html">搜尋</a></nav>
+  </header>
+
+  <section class="card">
+    <div class="form-foot">
+      <strong>連線到 GitHub</strong>
+      <span class="meta" id="conn-status">尚未連線：可以看設定，但不能儲存</span>
+    </div>
+    <p class="help" style="margin:6px 0 12px">這個頁面沒有伺服器，存檔是用你的 GitHub token 直接改 repo 裡的 <code>flight-watch/data/watchlist.json</code>。Token 只會存在這個瀏覽器裡。</p>
+    <div class="conn">
+      <div><label for="repo">Repo</label><input id="repo" value="andy78644/labs" spellcheck="false"></div>
+      <div><label for="token">GitHub token</label><input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div class="btn-row">
+        <label class="check"><input type="checkbox" id="remember" checked> 記住在這台裝置</label>
+        <button class="primary" id="connect" type="button">連線</button>
+        <button class="ghost" id="forget" type="button" hidden>登出</button>
+      </div>
+    </div>
+    <details class="help" style="margin-top:10px">
+      <summary>怎麼拿 token？（一次就好）</summary>
+      <ol>
+        <li>打開 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → Settings → Fine-grained tokens → Generate new token</a>。</li>
+        <li>名稱隨便取（例如 flight-watch），到期日可以選一年。</li>
+        <li><b>Repository access</b> 選 <i>Only select repositories</i>，只勾 <code>labs</code>。</li>
+        <li><b>Permissions → Repository permissions</b>：<i>Contents</i> 設 <b>Read and write</b>；想用「立即掃描」按鈕的話，<i>Actions</i> 也設 <b>Read and write</b>。</li>
+        <li>按 Generate，複製 <code>github_pat_</code> 開頭的那串，貼到上面。</li>
+      </ol>
+      這個 token 只能改 labs 這個 repo。手機上也可以照做，每台裝置貼一次就好。不要在公用電腦勾「記住」。
+    </details>
+  </section>
+
+  <h2>監控的航線</h2>
+  <div class="card">
+    <div id="routes"><div class="meta">載入中…</div></div>
+    <div style="margin-top:12px"><button class="ghost" id="add" type="button">＋ 新增航線</button></div>
+  </div>
+
+  <div class="savebar">
+    <div class="form-foot">
+      <div>
+        <div id="dirty" class="meta">沒有未儲存的變更</div>
+        <div id="total" class="meta"></div>
+      </div>
+      <div class="btn-row">
+        <button class="ghost" id="scan" type="button" disabled title="需要 Actions 權限">立即掃描</button>
+        <button class="ghost" id="test" type="button" disabled title="需要 Actions 權限">發測試通知</button>
+        <button class="primary" id="save" type="button" disabled>儲存</button>
+      </div>
+    </div>
+    <div id="save-msg" class="meta" role="status" style="margin-top:6px"></div>
+  </div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const PATH = "flight-watch/data/watchlist.json";
+const WORKFLOW = "flight-watch.yml";
+const BRANCH = "main";
+const WK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const WD = ["一", "二", "三", "四", "五", "六", "日"];
+// Same defaults as config.yml `search:`; a route without a field inherits these.
+const DEFAULTS = { trip: "round-trip", stay_nights: [4], depart_weekdays: ["fri"], window_days: [14, 90], max_stops: 1 };
+const NAMES = {
+  NRT: "東京", HND: "東京", KIX: "大阪", NGO: "名古屋", FUK: "福岡", OKA: "沖繩", CTS: "札幌", ICN: "首爾", GMP: "首爾",
+  PUS: "釜山", CJU: "濟州", HKG: "香港", MFM: "澳門", BKK: "曼谷", CNX: "清邁", HKT: "普吉", SGN: "胡志明市", HAN: "河內",
+  DAD: "峴港", MNL: "馬尼拉", CEB: "宿霧", SIN: "新加坡", KUL: "吉隆坡", DPS: "峇里島", LAX: "洛杉磯", SFO: "舊金山",
+  SEA: "西雅圖", JFK: "紐約", YVR: "溫哥華", LHR: "倫敦", CDG: "巴黎", AMS: "阿姆斯特丹", FRA: "法蘭克福", VIE: "維也納",
+  PRG: "布拉格", FCO: "羅馬", IST: "伊斯坦堡", SYD: "雪梨", MEL: "墨爾本", AKL: "奧克蘭",
+};
+
+let ROUTES = [], SAVED = "[]", SHA = null, EDIT = null, DRAFT = null, AUTH = null;
+
+const store = {
+  get(k) { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v, keep) { try { (keep ? localStorage : sessionStorage).setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch {} },
+};
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (k === "class") n.className = v;
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+}
+
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parse = (s) => new Date(s + "T00:00:00");
+const pyWeekday = (d) => (d.getDay() + 6) % 7;
+const md = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}（${WD[pyWeekday(d)]}）`; };
+const money = (n) => Number(n).toLocaleString("en-US");
+const get = (r, k) => (r[k] !== undefined ? r[k] : DEFAULTS[k]);
+const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+/* How many Google queries one scan of this route makes (mirrors scanner.trip_dates). */
+function queries(r) {
+  const nights = [].concat(get(r, "stay_nights")).length;
+  const mult = get(r, "trip") === "round-trip" ? Math.max(1, nights) : 1;
+  if (r.dates) return r.dates.filter((d) => parse(d) > today()).length * mult;
+  const [lo, hi] = get(r, "window_days");
+  const days = new Set([].concat(get(r, "depart_weekdays")).map((w) => WK.indexOf(String(w).slice(0, 3))));
+  let n = 0;
+  for (let i = lo; i <= hi; i++) { const d = today(); d.setDate(d.getDate() + i); if (days.has(pyWeekday(d))) n++; }
+  return n * mult;
+}
+
+function describe(r) {
+  const parts = [];
+  if (r.dates) {
+    const future = r.dates.filter((d) => parse(d) > today()).sort();
+    parts.push(future.length ? (future.length <= 4 ? future.map(md).join("、") : `${md(future[0])} – ${md(future[future.length - 1])} 共 ${future.length} 天`) + " 出發"
+      : "指定的日期都已經過了");
+  } else {
+    const [lo, hi] = get(r, "window_days");
+    parts.push(`每週${[].concat(get(r, "depart_weekdays")).map((w) => WD[WK.indexOf(String(w).slice(0, 3))]).join("、")}出發，${lo}–${hi} 天內`);
+  }
+  parts.push(get(r, "trip") === "one-way" ? "單程" : `住 ${[].concat(get(r, "stay_nights")).join(" / ")} 晚`);
+  const st = get(r, "max_stops");
+  parts.push(st === 0 ? "只要直飛" : st == null ? "轉機不限" : `最多轉 ${st} 次`);
+  return parts.join(" · ");
+}
+
+/* ---------- GitHub API ---------- */
+async function gh(path, opts = {}) {
+  const r = await fetch(`https://api.github.com/repos/${AUTH.repo}/${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${AUTH.token}`, Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
+  });
+  if (r.status === 204) return null;
+  const data = await r.json().catch(() => null);
+  if (!r.ok) {
+    const msg = (data && data.message) || `HTTP ${r.status}`;
+    const hint = r.status === 401 ? "（token 錯了或過期了）" : r.status === 403 || r.status === 404 ? "（token 沒有這個 repo 的權限，或少了 Contents / Actions 權限）" : "";
+    const e = new Error(msg + hint); e.status = r.status; throw e;
+  }
+  return data;
+}
+const b64encode = (str) => { const b = new TextEncoder().encode(str); let s = ""; b.forEach((c) => (s += String.fromCharCode(c))); return btoa(s); };
+const b64decode = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+
+async function loadFromGitHub() {
+  try {
+    const f = await gh(`contents/${PATH}?ref=${BRANCH}`);
+    SHA = f.sha;
+    return JSON.parse(b64decode(f.content)).routes || [];
+  } catch (e) {
+    if (e.status === 404 && /Not Found/.test(e.message)) {
+      // The token may be fine and the file simply missing: check the repo itself.
+      await gh("");
+      SHA = null;
+      return [];
+    }
+    throw e;
+  }
+}
+
+async function loadPublic() {
+  const r = await fetch(`data/watchlist.json?v=${Date.now()}`).catch(() => null);
+  if (!r || !r.ok) return [];
+  return (await r.json()).routes || [];
+}
+
+/* ---------- connection ---------- */
+async function connect() {
+  const token = $("#token").value.trim(), repo = $("#repo").value.trim();
+  if (!token || !/^[\w.-]+\/[\w.-]+$/.test(repo)) { $("#conn-status").textContent = "請填 repo（帳號/名稱）和 token"; return; }
+  AUTH = { token, repo };
+  $("#conn-status").textContent = "連線中…";
+  try {
+    const routes = await loadFromGitHub();
+    const keep = $("#remember").checked;
+    store.set("fw-gh-token", token, keep); store.set("fw-gh-repo", repo, keep);
+    setRoutes(routes);
+    $("#conn-status").replaceChildren(el("span", { class: "ok" }, `✓ 已連線 ${repo}`));
+    $("#forget").hidden = false;
+    $("#scan").disabled = $("#test").disabled = false;
+  } catch (e) {
+    AUTH = null;
+    $("#conn-status").replaceChildren(el("span", { class: "err" }, "連線失敗：" + e.message));
+  }
+  render();
+}
+
+function forget() {
+  store.del("fw-gh-token"); AUTH = null; $("#token").value = "";
+  $("#forget").hidden = true; $("#scan").disabled = $("#test").disabled = true;
+  $("#conn-status").textContent = "已登出";
+  render();
+}
+
+/* ---------- editing ---------- */
+function setRoutes(routes) {
+  ROUTES = routes;
+  SAVED = JSON.stringify(routes);
+  EDIT = null; DRAFT = null;
+}
+
+function startEdit(i) {
+  EDIT = i;
+  const r = i === "new" ? {} : ROUTES[i];
+  DRAFT = {
+    name: r.name || "", origin: r.origin || "TPE", to: r.to || "", alert_below: r.alert_below || "",
+    trip: get(r, "trip"), stay_nights: [].concat(get(r, "stay_nights")).join(","),
+    mode: r.dates ? "dates" : "weekly",
+    depart_weekdays: [].concat(get(r, "depart_weekdays")).map((w) => String(w).slice(0, 3)),
+    window_days: [...get(r, "window_days")],
+    dates: [...(r.dates || [])].sort(),
+    max_stops: get(r, "max_stops") == null ? "any" : String(get(r, "max_stops")),
+  };
+  render();
+  document.querySelector(".route.editing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function draftToRoute() {
+  const d = DRAFT, errs = [];
+  const to = d.to.toUpperCase().trim(), origin = d.origin.toUpperCase().trim();
+  if (!/^[A-Z]{3}$/.test(origin) || !/^[A-Z]{3}$/.test(to)) errs.push("機場代碼要是 3 個英文字母");
+  if (origin === to) errs.push("出發地和目的地一樣");
+  const r = { origin, to, name: d.name.trim() || NAMES[to] || to };
+  if (d.alert_below) {
+    const t = parseInt(String(d.alert_below).replace(/[,\s]/g, ""), 10);
+    if (!(t > 0)) errs.push("目標價要是數字"); else r.alert_below = t;
+  }
+  r.trip = d.trip;
+  if (d.trip === "round-trip") {
+    const n = String(d.stay_nights).split(/[,\s，、]+/).map(Number).filter((x) => x > 0 && x < 60);
+    if (!n.length) errs.push("住幾晚要填 1–59 的數字"); r.stay_nights = [...new Set(n)];
+  }
+  if (d.mode === "dates") {
+    if (!d.dates.length) errs.push("至少加一個出發日期");
+    r.dates = d.dates;
+  } else {
+    if (!d.depart_weekdays.length) errs.push("至少選一個出發星期");
+    const [lo, hi] = d.window_days.map(Number);
+    if (!(lo >= 1 && hi > lo && hi <= 330)) errs.push("天數範圍要在 1–330 天之間，而且後面的數字比較大");
+    r.depart_weekdays = WK.filter((w) => d.depart_weekdays.includes(w));
+    r.window_days = [lo, hi];
+  }
+  r.max_stops = d.max_stops === "any" ? null : Number(d.max_stops);
+  return { route: r, errs };
+}
+
+function applyEdit() {
+  const { route, errs } = draftToRoute();
+  if (errs.length) { $("#edit-err").textContent = errs.join("；"); return; }
+  if (EDIT === "new") ROUTES.push(route); else ROUTES[EDIT] = route;
+  EDIT = null; DRAFT = null;
+  render();
+}
+
+function editor() {
+  const d = DRAFT;
+  const upd = (k) => (e) => { d[k] = e.target.value; renderCount(); };
+  const seg = (name, opts, cur, onpick, multi) => el("div", { class: "seg" }, ...opts.map(([v, label]) =>
+    el("label", {}, el("input", { type: multi ? "checkbox" : "radio", name, value: v, checked: multi ? cur.includes(v) : cur === v,
+      onchange: (e) => { onpick(v, e.target.checked); } }), el("span", {}, label))));
+
+  const nightsField = el("div", { hidden: d.trip !== "round-trip" },
+    el("label", { for: "e-nights" }, "住幾晚（多個用逗號）"), el("input", { id: "e-nights", value: d.stay_nights, inputmode: "numeric", oninput: upd("stay_nights") }));
+
+  const weekly = el("div", { class: "wide", hidden: d.mode !== "weekly" },
+    el("span", { class: "field-label" }, "出發星期"),
+    seg("e-wd", WK.map((w, i) => [w, WD[i]]), d.depart_weekdays, (v, on) => {
+      d.depart_weekdays = on ? [...d.depart_weekdays, v] : d.depart_weekdays.filter((x) => x !== v); renderCount();
+    }, true),
+    el("div", { class: "row", style: "margin-top:10px" }, "只查",
+      el("input", { type: "number", min: 1, max: 330, value: d.window_days[0], "aria-label": "最少幾天後", oninput: (e) => { d.window_days[0] = e.target.value; renderCount(); } }),
+      "到",
+      el("input", { type: "number", min: 2, max: 330, value: d.window_days[1], "aria-label": "最多幾天後", oninput: (e) => { d.window_days[1] = e.target.value; renderCount(); } }),
+      "天後出發的票"));
+
+  const chips = el("div", { class: "chips" });
+  const drawChips = () => chips.replaceChildren(...(d.dates.length ? d.dates.map((x) =>
+    el("span", { class: "chip" }, md(x), el("button", { type: "button", "aria-label": `移除 ${x}`, onclick: () => { d.dates = d.dates.filter((y) => y !== x); drawChips(); renderCount(); } }, "×")))
+    : [el("span", { class: "meta" }, "還沒有日期")]));
+  drawChips();
+  const addDates = (from, to) => {
+    if (!from) return;
+    const a = parse(from), b = parse(to || from);
+    for (let x = new Date(a); x <= b && d.dates.length < 120; x.setDate(x.getDate() + 1)) if (x > today()) d.dates.push(iso(x));
+    d.dates = [...new Set(d.dates)].sort(); drawChips(); renderCount();
+  };
+  const tomorrow = (() => { const x = today(); x.setDate(x.getDate() + 1); return iso(x); })();
+  const fromI = el("input", { type: "date", min: tomorrow, "aria-label": "從" });
+  const toI = el("input", { type: "date", min: tomorrow, "aria-label": "到（可不填）" });
+  const fixed = el("div", { class: "wide", hidden: d.mode !== "dates" },
+    el("span", { class: "field-label" }, "出發日期（只填第一格 = 單一天；兩格都填 = 範圍內每一天）"),
+    el("div", { class: "row" }, fromI, "到", toI,
+      el("button", { type: "button", class: "ghost", onclick: () => { addDates(fromI.value, toI.value); fromI.value = toI.value = ""; } }, "加入")),
+    chips);
+
+  return el("div", {},
+    el("div", { class: "editor" },
+      el("div", {}, el("label", { for: "e-name" }, "名稱"), el("input", { id: "e-name", value: d.name, maxlength: 30, placeholder: "例如 東京跨年", oninput: upd("name") })),
+      el("div", {}, el("label", { for: "e-origin" }, "出發地"), el("input", { id: "e-origin", value: d.origin, maxlength: 3, oninput: upd("origin") })),
+      el("div", {}, el("label", { for: "e-to" }, "目的地（機場代碼）"), el("input", { id: "e-to", value: d.to, maxlength: 3, placeholder: "NRT", list: "codes",
+        oninput: (e) => { d.to = e.target.value; const n = NAMES[d.to.toUpperCase()]; if (n && !d.name) { d.name = n; $("#e-name").value = n; } renderCount(); } })),
+      el("div", {}, el("label", { for: "e-target" }, "目標價（來回總價，低於就通知）"), el("input", { id: "e-target", value: d.alert_below, inputmode: "numeric", oninput: upd("alert_below") })),
+      el("div", {}, el("span", { class: "field-label" }, "行程"),
+        seg("e-trip", [["round-trip", "來回"], ["one-way", "單程"]], d.trip, (v) => { d.trip = v; nightsField.hidden = v !== "round-trip"; renderCount(); })),
+      nightsField,
+      el("div", {}, el("label", { for: "e-stops" }, "轉機"),
+        el("select", { id: "e-stops", onchange: upd("max_stops") },
+          ...[["0", "只要直飛"], ["1", "最多 1 次"], ["2", "最多 2 次"], ["any", "不限"]].map(([v, t]) => el("option", { value: v, selected: d.max_stops === v }, t)))),
+      el("div", { class: "wide" }, el("span", { class: "field-label" }, "要查哪些日期"),
+        seg("e-mode", [["weekly", "每週固定星期"], ["dates", "指定日期"]], d.mode, (v) => { d.mode = v; weekly.hidden = v !== "weekly"; fixed.hidden = v !== "dates"; renderCount(); })),
+      weekly, fixed),
+    el("div", { class: "form-foot", style: "margin-top:14px" },
+      el("span", { class: "meta", id: "edit-count" }),
+      el("div", { class: "btn-row" },
+        el("button", { type: "button", class: "ghost", onclick: () => { EDIT = null; DRAFT = null; render(); } }, "取消"),
+        el("button", { type: "button", class: "primary", onclick: applyEdit }, EDIT === "new" ? "加入" : "完成"))),
+    el("div", { class: "err", id: "edit-err", role: "alert" }));
+}
+
+function renderCount() {
+  const n = $("#edit-count");
+  if (!n || !DRAFT) return;
+  const { route, errs } = draftToRoute();
+  n.textContent = errs.length ? "" : `每次掃描會查 ${queries(route)} 組日期`;
+  $("#edit-err").textContent = "";
+}
+
+function render() {
+  const box = $("#routes");
+  box.replaceChildren();
+  if (!ROUTES.length && EDIT !== "new") box.append(el("div", { class: "meta" }, "還沒有航線，按「新增航線」開始。"));
+  ROUTES.forEach((r, i) => {
+    if (EDIT === i) { box.append(el("div", { class: "route editing" }, el("div", { style: "flex:1" }, editor()))); return; }
+    box.append(el("div", { class: "route" },
+      el("div", {},
+        el("div", { class: "route-title" }, `${r.name || r.to} `, el("span", { class: "tag" }, `${r.origin || "TPE"}→${r.to}`),
+          r.alert_below ? el("span", { class: "tag" }, `目標 ${money(r.alert_below)}`) : null),
+        el("div", { class: "sub" }, describe(r)),
+        el("div", { class: "meta" }, `每次掃描 ${queries(r)} 組日期`)),
+      el("div", { class: "actions" },
+        el("button", { type: "button", class: "ghost", disabled: EDIT !== null, onclick: () => startEdit(i) }, "編輯"),
+        el("button", { type: "button", class: "danger", disabled: EDIT !== null,
+          onclick: () => { if (confirm(`刪除「${r.name || r.to}」？（按儲存後才會生效）`)) { ROUTES.splice(i, 1); render(); } } }, "刪除"))));
+  });
+  if (EDIT === "new") box.append(el("div", { class: "route editing" }, el("div", { style: "flex:1" }, el("strong", {}, "新增航線"), editor())));
+  renderCount();
+  $("#add").disabled = EDIT !== null;
+
+  const dirty = JSON.stringify(ROUTES) !== SAVED;
+  const total = ROUTES.reduce((s, r) => s + queries(r), 0);
+  $("#dirty").replaceChildren(dirty ? el("span", { class: "warn" }, "● 有未儲存的變更") : document.createTextNode("沒有未儲存的變更"));
+  $("#total").replaceChildren(document.createTextNode(`每次掃描共查 ${total} 組日期（約 ${Math.max(1, Math.round(total * 4 / 60))} 分鐘）`),
+    total > 120 ? el("span", { class: "warn" }, "，有點多，容易被 Google 擋，建議 100 以內") : "");
+  $("#save").disabled = !AUTH || !dirty || EDIT !== null;
+  $("#save").title = !AUTH ? "先連線 GitHub" : EDIT !== null ? "先按「完成」結束編輯" : "";
+}
+
+/* Give every route a stable, unique key so its price history follows it. */
+function withKeys(routes) {
+  const used = new Set();
+  return routes.map((r) => {
+    let key = `${r.origin}-${r.to}`, n = 2;
+    while (used.has(key)) key = `${r.origin}-${r.to}-${n++}`;
+    used.add(key);
+    return { ...r, key };
+  });
+}
+
+async function save() {
+  const msg = $("#save-msg");
+  msg.textContent = "儲存中…";
+  $("#save").disabled = true;
+  try {
+    const routes = withKeys(ROUTES);
+    const body = { message: "flight-watch: update routes from settings page",
+      content: b64encode(JSON.stringify({ routes }, null, 1) + "\n"), branch: BRANCH };
+    if (SHA) body.sha = SHA;
+    const res = await gh(`contents/${PATH}`, { method: "PUT", body: JSON.stringify(body) });
+    SHA = res.content.sha;
+    setRoutes(routes);
+    msg.replaceChildren(el("span", { class: "ok" }, "✓ 已儲存。"),
+      " 下次排程掃描（每 6 小時）就會用新設定；想馬上看結果可以按「立即掃描」。 ",
+      el("a", { href: res.commit.html_url, target: "_blank", rel: "noopener" }, "看這次的修改"));
+  } catch (e) {
+    if (e.status === 409 || e.status === 422) {
+      msg.replaceChildren(el("span", { class: "err" }, "存檔失敗：檔案在你編輯時被改過了。重新整理頁面後再改一次。"));
+    } else msg.replaceChildren(el("span", { class: "err" }, "存檔失敗：" + e.message));
+  }
+  render();
+}
+
+async function dispatch(test) {
+  const msg = $("#save-msg");
+  try {
+    await gh(`actions/workflows/${WORKFLOW}/dispatches`, { method: "POST",
+      body: JSON.stringify({ ref: BRANCH, ...(test ? { inputs: { test_notify: "true" } } : {}) }) });
+    msg.replaceChildren(el("span", { class: "ok" }, test ? "✓ 已送出測試通知，約 1 分鐘內會收到。" : "✓ 已開始掃描，約 3–5 分鐘後儀表板會更新。"), " ",
+      el("a", { href: `https://github.com/${AUTH.repo}/actions/workflows/${WORKFLOW}`, target: "_blank", rel: "noopener" }, "看執行進度"));
+  } catch (e) {
+    msg.replaceChildren(el("span", { class: "err" }, (test ? "測試通知" : "掃描") + "失敗：" + e.message +
+      (e.status === 422 && test ? "（workflow 可能還不支援測試通知，先合併最新的更新）" : "")));
+  }
+}
+
+/* ---------- start ---------- */
+document.body.append(el("datalist", { id: "codes" }, ...Object.entries(NAMES).map(([c, n]) => el("option", { value: c }, n))));
+$("#connect").addEventListener("click", connect);
+$("#token").addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
+$("#forget").addEventListener("click", forget);
+$("#add").addEventListener("click", () => startEdit("new"));
+$("#save").addEventListener("click", save);
+$("#scan").addEventListener("click", () => dispatch(false));
+$("#test").addEventListener("click", () => dispatch(true));
+addEventListener("beforeunload", (e) => { if (JSON.stringify(ROUTES) !== SAVED) e.preventDefault(); });
+
+(async () => {
+  const tok = store.get("fw-gh-token");
+  $("#repo").value = store.get("fw-gh-repo") || $("#repo").value;
+  if (tok) { $("#token").value = tok; await connect(); }
+  else { setRoutes(await loadPublic()); render(); }
+})();
+</script>
+</body>
+</html>

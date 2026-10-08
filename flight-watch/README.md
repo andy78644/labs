@@ -22,6 +22,24 @@ config.yml ──▶ scanner (GitHub Actions, every 6 h) ──▶ data/*.json �
 - **Promotions.** The scanner searches Google News for `機票 優惠 <destination>`, plus any RSS/Atom feeds you list. It keeps headlines that name a destination and contain a sale keyword (`買一送一`, `早鳥`, `限時`, …). Syndicated copies of the same story are merged.
 - **Data** is committed back to the repo, so GitHub Pages serves the dashboard together with its data. `history.json` is pruned after `history_days`.
 
+## Settings page (no server needed)
+
+`settings.html` is where you choose what gets watched. It runs on GitHub Pages and saves straight to the repo through the GitHub API, using a token that stays in your browser.
+
+![settings](docs/screenshots/03-settings.png)
+
+- Add, edit and delete routes. For each route you set:
+  - name, origin, destination and target price;
+  - round trip or one way, nights and stops;
+  - which dates to check: either "every Friday 14–90 days out" or specific dates (a single day or a range).
+- Every route and the whole list show how many queries a scan will make. The page warns above about 120.
+- **儲存** commits `data/watchlist.json` to `main`, and the next scheduled scan uses it.
+- **立即掃描** starts a scan now. **發測試通知** checks the Telegram/Discord setup.
+
+One-time setup: create a [fine-grained token](https://github.com/settings/personal-access-tokens/new) that only covers this repo, with **Contents: Read and write**. For the scan and test buttons it also needs **Actions: Read and write**. Paste it into the page. The page keeps it in this browser's storage, which other pages on the same domain can read too, so don't tick "記住" on a shared computer.
+
+Routes are stored in `data/watchlist.json`. `config.yml` keeps the defaults (stay length, window, stops) and the alert and promotion settings. Routes written there still work, but the page can't edit them.
+
 ## Search page and running it on your own machine
 
 `server.py` runs everything in one process: the dashboard, a **search page** and an optional scheduler. Use it when you want to pick dates yourself, or to run the scans on your own computer or a server instead of GitHub Actions.
@@ -57,7 +75,7 @@ If you use both the server and GitHub Actions, they keep separate data unless yo
 
 ## Setup
 
-1. **Pick routes.** Edit [`config.yml`](config.yml): the origin, destinations, target prices, departure days and stay length. Any route can override the `search` settings. For example, a route with `dates: [2027-02-05]` checks only that date, and `stay_nights: [7, 10]` checks two trip lengths.
+1. **Pick routes** on the settings page (`settings.html`, see above), or edit `data/watchlist.json` by hand. Each route can set `dates: [2027-02-05]` to check only that date, or `stay_nights: [7, 10]` to check two trip lengths. The defaults are in [`config.yml`](config.yml).
 2. **Alerts (optional).** In the repo, open *Settings → Secrets and variables → Actions* and add:
    - Telegram: `TELEGRAM_BOT_TOKEN` (from @BotFather) and `TELEGRAM_CHAT_ID`
    - Discord: `DISCORD_WEBHOOK_URL`
@@ -92,7 +110,7 @@ python3 -m http.server 8000                             # dashboard at http://lo
 
 | Path | What it is |
 |---|---|
-| `config.yml` | routes, search window, alert rules, promotion keywords |
+| `config.yml` | search defaults, alert rules, promotion keywords |
 | `scanner/scan.py` | entry point: one full scan |
 | `scanner/providers.py` | Google Flights provider, plus a demo provider |
 | `scanner/deals.py` | median baselines, deal rules, alert de-duplication |
@@ -102,7 +120,8 @@ python3 -m http.server 8000                             # dashboard at http://lo
 | `data/history.json` | per-route, per-date price history |
 | `data/promos.json` | recent promotion headlines |
 | `index.html` | the dashboard (no build step) |
+| `settings.html` | route editor that saves to the repo via the GitHub API |
 | `search.html` | live search and watchlist editor (needs `server.py`) |
 | `server.py` | web server, search API, watchlist API, optional scheduler |
-| `data/watchlist.json` | watches added from the search page |
+| `data/watchlist.json` | the watched routes (edited by the settings and search pages) |
 | `Dockerfile` | runs `server.py` with a 6-hour scan schedule |

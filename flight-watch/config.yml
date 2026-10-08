@@ -14,21 +14,10 @@ search:
   adults: 1
   delay_seconds: 2       # pause between requests to stay polite
 
-# A route can override any `search` key (e.g. a longer stay for Europe).
-# alert_below: always alert when the cheapest fare is at or below this price.
-routes:
-  - to: NRT
-    name: 東京
-    alert_below: 9000
-  - to: KIX
-    name: 大阪
-    alert_below: 8500
-  - to: ICN
-    name: 首爾
-    alert_below: 8000
-  - to: BKK
-    name: 曼谷
-    alert_below: 9000
+# Routes live in data/watchlist.json so the settings page (settings.html) can
+# edit them. Routes listed here are scanned too, but the page can't change them.
+# A route can override any `search` key, e.g. stay_nights or dates.
+routes: []
 
 alerts:
   drop_pct: 15           # alert when a fare is this % below its recent median

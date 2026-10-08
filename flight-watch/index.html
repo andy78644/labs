@@ -12,7 +12,6 @@
 .route-code { color: var(--muted); font-size: 13px; margin-left: 6px; }
 .hero { font-size: 30px; font-weight: 650; line-height: 1.1; text-align: right; }
 .hero small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-right: 4px; }
-.sub { color: var(--ink-2); font-size: 13px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .chip {
   display: inline-flex; align-items: center; gap: 4px;
@@ -62,7 +61,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
   <header>
     <h1>✈️ Flight Watch 機票監控</h1>
     <span class="meta" id="meta">載入中…</span>
-    <nav><a href="./" aria-current="page">儀表板</a><a href="search.html">搜尋與監控</a></nav>
+    <nav><a href="./" aria-current="page">儀表板</a><a href="settings.html">設定</a><a href="search.html">搜尋</a></nav>
   </header>
 
   <section id="deals-section" hidden>
@@ -292,7 +291,6 @@ function renderRoutes() {
 
     const chips = el("div", { class: "chips" });
     chips.append(el("span", { class: "chip" }, cur));
-    if (route.source === "ui") chips.append(el("span", { class: "chip" }, "網頁新增"));
     if (route.best && route.alert_below) {
       const ok = route.best.price <= route.alert_below;
       chips.append(el("span", { class: "chip" + (ok ? " good" : "") },

@@ -278,7 +278,7 @@ class Handler(SimpleHTTPRequestHandler):
         clean = self.path.split("?", 1)[0]
         if clean.startswith("/data/"):
             return self._data_file(clean[len("/data/"):])
-        if clean in ("/", "/index.html", "/search.html", "/common.css") or clean.startswith("/docs/"):
+        if clean in ("/", "/index.html", "/search.html", "/settings.html", "/common.css") or clean.startswith("/docs/"):
             return super().do_GET()
         self.send_error(404)
 
