@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Watch 機票監控</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series: #2a78d6;
+  --series-soft: #86b6ef;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --critical: #d03b3b;
+  --wash: rgba(42, 120, 214, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series: #3987e5;
+    --series-soft: #1c5cab;
+    --good-text: #0ca30c;
+    --wash: rgba(57, 135, 229, 0.14);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+}
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 20px; }
+h1 { font-size: 24px; margin: 0; letter-spacing: 0.01em; }
+h2 { font-size: 16px; margin: 32px 0 12px; }
+.meta { color: var(--ink-2); font-size: 13px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); }
+.route-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.route-name { font-size: 17px; font-weight: 600; }
+.route-code { color: var(--muted); font-size: 13px; margin-left: 6px; }
+.hero { font-size: 30px; font-weight: 650; line-height: 1.1; text-align: right; }
+.hero small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-right: 4px; }
+.sub { color: var(--ink-2); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--ink-2);
+}
+.chip.good { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.chip.good::before { content: "✓"; font-weight: 700; }
+.chart-label { font-size: 12px; color: var(--muted); margin: 14px 0 2px; }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .val { fill: var(--ink-2); font-weight: 600; }
+svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.bar { fill: var(--series); pointer-events: none; }
+.bar.dim { fill: var(--series-soft); }
+.hit { fill: transparent; cursor: pointer; }
+.hit:hover + .bar, .hit:focus + .bar { fill: var(--ink-2); }
+.hit:focus { outline: none; }
+.empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+#tip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); max-width: 260px;
+}
+#tip strong { font-size: 14px; display: block; }
+#tip .muted { color: var(--muted); }
+details { margin-top: 10px; }
+summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+a { color: var(--series); }
+.deal-list, .promo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.deal-list li, .promo-list li { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
+.promo-list li { display: block; }
+.promo-list .sub { display: block; }
+.price { font-weight: 650; font-variant-numeric: tabular-nums; }
+.errors { color: var(--critical); font-size: 13px; }
+.errors ul { margin: 6px 0 0; padding-left: 18px; }
+footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>✈️ Flight Watch 機票監控</h1>
+    <span class="meta" id="meta">載入中…</span>
+  </header>
+
+  <section id="deals-section" hidden>
+    <h2>目前的好價</h2>
+    <div class="card"><ul class="deal-list" id="deals"></ul></div>
+  </section>
+
+  <h2>航線</h2>
+  <div class="grid" id="routes"></div>
+
+  <section id="promos-section" hidden>
+    <h2>優惠活動新聞</h2>
+    <div class="card"><ul class="promo-list" id="promos"></ul></div>
+  </section>
+
+  <section id="errors-section" hidden>
+    <h2>掃描錯誤</h2>
+    <div class="card errors"><details><summary id="errors-summary"></summary><ul id="errors"></ul></details></div>
+  </section>
+
+  <footer>
+    票價來自 Google Flights，每 6 小時由 GitHub Actions 掃描一次。顯示的是每個出發日期最便宜的一筆，實際價格以訂票網站為準。
+    設定在 <code>config.yml</code>。
+  </footer>
+</main>
+<div id="tip" role="status"></div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const SVGNS = "http://www.w3.org/2000/svg";
+const tip = $("#tip");
+let LATEST = null, HISTORY = null;
+
+function el(tag, attrs = {}, text) {
+  const n = tag.startsWith("svg:") ? document.createElementNS(SVGNS, tag.slice(4)) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    if (k === "class") n.setAttribute("class", v);
+    else n.setAttribute(k, v);
+  }
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+const money = (p, cur) => `${cur} ${Number(p).toLocaleString("en-US")}`;
+const short = (p) => p >= 10000 ? (p / 1000).toFixed(p % 1000 === 0 ? 0 : 1) + "k" : Number(p).toLocaleString("en-US");
+const md = (iso) => { const [, m, d] = iso.split("-"); return `${+m}/${+d}`; };
+const weekday = (iso) => "日一二三四五六"[new Date(iso + "T00:00:00").getDay()];
+const dur = (m) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+const stops = (n) => n === 0 ? "直飛" : `轉機 ${n} 次`;
+
+function ago(iso) {
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 60) return `${mins} 分鐘前`;
+  if (mins < 60 * 48) return `${Math.round(mins / 60)} 小時前`;
+  return `${Math.round(mins / 1440)} 天前`;
+}
+
+function showTip(evt, lines) {
+  tip.replaceChildren();
+  lines.forEach(([text, cls], i) => tip.append(el(i === 0 ? "strong" : "div", { class: cls }, text)));
+  tip.style.display = "block";
+  const r = tip.getBoundingClientRect();
+  let x, y;
+  if (evt.clientX != null && evt.type !== "focus") { x = evt.clientX + 14; y = evt.clientY + 14; }
+  else { const b = evt.target.getBoundingClientRect(); x = b.right + 8; y = b.top; }
+  if (x + r.width > innerWidth - 8) x = Math.max(8, x - r.width - 28);
+  if (y + r.height > innerHeight - 8) y = Math.max(8, y - r.height - 28);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+
+function niceMax(v) {
+  const step = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v / (step / 2)) * (step / 2);
+}
+
+/* Price by departure date: one bar per departure, target as a dashed rule. */
+function barChart(route, cur, width) {
+  const fares = route.fares;
+  const H = 170, padL = 40, padR = 8, padT = 18, padB = 34;
+  const innerW = width - padL - padR, innerH = H - padT - padB;
+  const maxP = niceMax(Math.max(...fares.map((f) => f.price), route.alert_below || 0) * 1.05);
+  const y = (p) => padT + innerH - (p / maxP) * innerH;
+  const slot = innerW / fares.length;
+  const bw = Math.max(4, Math.min(28, slot - 4));
+  const svg = el("svg:svg", { height: H, viewBox: `0 0 ${width} ${H}`, role: "img",
+    "aria-label": `${route.name} 各出發日最低票價` });
+
+  for (let i = 0; i <= 2; i++) {
+    const v = (maxP / 2) * i, yy = y(v);
+    svg.append(el("svg:line", { x1: padL, x2: width - padR, y1: yy, y2: yy,
+      stroke: i === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+    svg.append(el("svg:text", { x: padL - 6, y: yy + 4, "text-anchor": "end" }, short(v)));
+  }
+  const cheapest = Math.min(...fares.map((f) => f.price));
+  const labelEvery = Math.ceil(fares.length / Math.max(1, Math.floor(innerW / 44)));
+
+  fares.forEach((f, i) => {
+    const cx = padL + slot * i + slot / 2;
+    const top = y(f.price), h = padT + innerH - top;
+    const r = Math.min(4, bw / 2, h);
+    const x0 = cx - bw / 2, base = padT + innerH;
+    // rounded top, square base anchored to the axis
+    const d = `M${x0},${base}V${top + r}Q${x0},${top} ${x0 + r},${top}H${x0 + bw - r}Q${x0 + bw},${top} ${x0 + bw},${top + r}V${base}Z`;
+    const hit = el("svg:rect", { class: "hit", x: padL + slot * i, y: padT, width: slot, height: innerH + 2,
+      tabindex: 0, role: "link", "aria-label": `${f.depart} ${money(f.price, cur)}` });
+    const bar = el("svg:path", { d, class: "bar" + (route.alert_below && f.price > route.alert_below ? " dim" : "") });
+    const lines = [
+      [money(f.price, cur)],
+      [`${f.depart}（${weekday(f.depart)}）` + (f.return ? ` → ${md(f.return)}` : "")],
+      [`${f.airline} · ${stops(f.stops)} · ${f.depart_time} 出發`, "muted"],
+    ];
+    if (f.median) lines.push([`近期中位數 ${money(f.median, cur)}（${f.change_pct > 0 ? "+" : ""}${f.change_pct}%）`, "muted"]);
+    lines.push(["點擊打開 Google Flights", "muted"]);
+    const open = () => window.open(f.url, "_blank", "noopener");
+    hit.addEventListener("pointermove", (e) => showTip(e, lines));
+    hit.addEventListener("pointerleave", hideTip);
+    hit.addEventListener("focus", (e) => showTip(e, lines));
+    hit.addEventListener("blur", hideTip);
+    hit.addEventListener("click", open);
+    hit.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+    svg.append(hit, bar);
+    if (i % labelEvery === 0) svg.append(el("svg:text", { x: cx, y: H - padB + 16, "text-anchor": "middle" }, md(f.depart)));
+    if (f.price === cheapest && fares.findIndex((g) => g.price === cheapest) === i) {
+      svg.append(el("svg:text", { class: "val halo", x: cx, y: top - 5, "text-anchor": "middle" }, short(f.price)));
+    }
+  });
+
+  if (route.alert_below && route.alert_below < maxP) {
+    const yy = y(route.alert_below);
+    svg.append(el("svg:line", { x1: padL, x2: width - padR, y1: yy, y2: yy, stroke: "var(--ink-2)",
+      "stroke-width": 1, "stroke-dasharray": "4 3", "pointer-events": "none" }));
+    svg.append(el("svg:text", { class: "halo", x: width - padR, y: yy - 4, "text-anchor": "end" }, `目標 ${short(route.alert_below)}`));
+  }
+  svg.append(el("svg:text", { x: padL, y: H - 4 }, "出發日 →"));
+  return svg;
+}
+
+/* Cheapest fare across all dates, scan by scan. */
+function trendChart(points, cur, width) {
+  const H = 120, padL = 40, padR = 8, padT = 12, padB = 22;
+  const innerW = width - padL - padR, innerH = H - padT - padB;
+  const ts = points.map((p) => +new Date(p.t));
+  const t0 = ts[0], t1 = ts[ts.length - 1];
+  const lo = Math.min(...points.map((p) => p.best)), hi = Math.max(...points.map((p) => p.best));
+  const span = Math.max(hi - lo, hi * 0.05);
+  const yMin = Math.max(0, lo - span * 0.25), yMax = hi + span * 0.25;
+  const x = (t) => padL + ((t - t0) / (t1 - t0)) * innerW;
+  const y = (v) => padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const svg = el("svg:svg", { height: H, viewBox: `0 0 ${width} ${H}`, role: "img", "aria-label": "最低票價走勢" });
+  [yMin, (yMin + yMax) / 2, yMax].forEach((v, i) => {
+    svg.append(el("svg:line", { x1: padL, x2: width - padR, y1: y(v), y2: y(v),
+      stroke: i === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+    svg.append(el("svg:text", { x: padL - 6, y: y(v) + 4, "text-anchor": "end" }, short(Math.round(v / 10) * 10)));
+  });
+  const fmtDay = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  svg.append(el("svg:text", { x: padL, y: H - 4 }, fmtDay(t0)));
+  svg.append(el("svg:text", { x: width - padR, y: H - 4, "text-anchor": "end" }, fmtDay(t1)));
+  const d = points.map((p, i) => `${i ? "L" : "M"}${x(ts[i]).toFixed(1)},${y(p.best).toFixed(1)}`).join("");
+  svg.append(el("svg:path", { d, fill: "none", stroke: "var(--series)", "stroke-width": 2,
+    "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const cross = el("svg:line", { y1: padT, y2: padT + innerH, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  const dot = el("svg:circle", { r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+  const hit = el("svg:rect", { x: padL, y: padT, width: innerW, height: innerH, fill: "transparent" });
+  svg.append(cross, dot, hit);
+  hit.addEventListener("pointermove", (e) => {
+    const box = svg.getBoundingClientRect();
+    const px = ((e.clientX - box.left) / box.width) * width;
+    let best = 0;
+    ts.forEach((t, i) => { if (Math.abs(x(t) - px) < Math.abs(x(ts[best]) - px)) best = i; });
+    const p = points[best];
+    cross.setAttribute("x1", x(ts[best])); cross.setAttribute("x2", x(ts[best]));
+    dot.setAttribute("cx", x(ts[best])); dot.setAttribute("cy", y(p.best));
+    cross.setAttribute("visibility", "visible"); dot.setAttribute("visibility", "visible");
+    showTip(e, [[money(p.best, cur)], [new Date(p.t).toLocaleString("zh-TW", { hour12: false }), "muted"]]);
+  });
+  hit.addEventListener("pointerleave", () => {
+    hideTip(); cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+  });
+  return svg;
+}
+
+function fareTable(route, cur) {
+  const wrap = el("div", { class: "table-wrap" });
+  const t = el("table");
+  const head = el("tr");
+  ["出發", "回程", "票價", "中位數", "航空", "轉機", "飛行"].forEach((h, i) =>
+    head.append(el("th", { class: [2, 3].includes(i) ? "num" : null }, h)));
+  t.append(head);
+  route.fares.forEach((f) => {
+    const tr = el("tr");
+    const a = el("a", { href: f.url, target: "_blank", rel: "noopener" }, `${md(f.depart)}（${weekday(f.depart)}）`);
+    tr.append(el("td"), el("td", {}, f.return ? md(f.return) : "—"),
+      el("td", { class: "num" }, money(f.price, cur)),
+      el("td", { class: "num" }, f.median ? money(f.median, cur) : "—"),
+      el("td", {}, f.airline), el("td", {}, stops(f.stops)), el("td", {}, dur(f.duration_min)));
+    tr.firstChild.append(a);
+    t.append(tr);
+  });
+  wrap.append(t);
+  return wrap;
+}
+
+function renderRoutes() {
+  const cur = LATEST.currency;
+  const box = $("#routes");
+  box.replaceChildren();
+  LATEST.routes.forEach((route) => {
+    const card = el("article", { class: "card" });
+    const head = el("div", { class: "route-head" });
+    const left = el("div");
+    const name = el("div", { class: "route-name" }, route.name);
+    name.append(el("span", { class: "route-code" }, `${route.origin} → ${route.to}`));
+    left.append(name);
+    const right = el("div", { class: "hero" });
+    if (route.best) {
+      right.append(el("small", {}, "最低"), document.createTextNode(Number(route.best.price).toLocaleString("en-US")));
+      left.append(el("div", { class: "sub" },
+        `${route.best.depart}（${weekday(route.best.depart)}）` + (route.best.return ? ` → ${md(route.best.return)}` : "") +
+        ` · ${route.best.airline} · ${stops(route.best.stops)}`));
+    } else {
+      right.append(el("small", {}, "沒有結果"));
+    }
+    head.append(left, right);
+    card.append(head);
+
+    const chips = el("div", { class: "chips" });
+    chips.append(el("span", { class: "chip" }, cur));
+    if (route.best && route.alert_below) {
+      const ok = route.best.price <= route.alert_below;
+      chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
+        ok ? `低於目標 ${short(route.alert_below)}` : `目標 ${short(route.alert_below)}（差 ${short(route.best.price - route.alert_below)}）`));
+    }
+    if (route.best && route.median_best) {
+      const pct = Math.round((route.best.price - route.median_best) / route.median_best * 100);
+      chips.append(el("span", { class: "chip" }, `近期中位數 ${short(route.median_best)}（${pct > 0 ? "+" : ""}${pct}%）`));
+    }
+    chips.append(el("span", { class: "chip" }, `${route.fares.length} 個日期`));
+    card.append(chips);
+
+    if (route.fares.length) {
+      card.append(el("div", { class: "chart-label" }, "各出發日最低票價（淺色 = 高於目標）"));
+      const slot = el("div", { "data-chart": "bars" });
+      card.append(slot);
+      card.append(el("div", { class: "chart-label" }, "最低票價走勢"));
+      const pts = (HISTORY.routes[route.key] || []).filter((s) => s.best);
+      const tslot = el("div", { "data-chart": "trend" });
+      card.append(tslot);
+      const draw = () => {
+        const w = slot.clientWidth || 480;
+        slot.replaceChildren(barChart(route, cur, w));
+        tslot.replaceChildren(pts.length >= 2 ? trendChart(pts, cur, w)
+          : el("div", { class: "empty" }, `資料累積中：目前 ${pts.length} 次掃描，至少兩次才畫得出走勢。`));
+      };
+      card._draw = draw;
+      const det = el("details");
+      det.append(el("summary", {}, "表格"), fareTable(route, cur));
+      card.append(det);
+    } else {
+      card.append(el("div", { class: "empty" }, "這次掃描沒有拿到票價。"));
+    }
+    box.append(card);
+    card._draw && card._draw();
+  });
+}
+
+function renderDeals() {
+  const cur = LATEST.currency;
+  const list = $("#deals");
+  list.replaceChildren();
+  const byRoute = {};
+  LATEST.deals.forEach((d) => (byRoute[d.route] ||= []).push(d));
+  const rows = Object.values(byRoute).map((g) => g.sort((a, b) => a.price - b.price)[0]);
+  rows.sort((a, b) => a.price - b.price);
+  rows.forEach((d) => {
+    const li = el("li");
+    const n = byRoute[d.route].length;
+    const left = el("div");
+    left.append(el("strong", {}, `${d.name} `), el("span", { class: "sub" },
+      `${d.depart}（${weekday(d.depart)}）` + (d.return ? ` → ${md(d.return)}` : "") + ` · ${d.airline}` +
+      (n > 1 ? ` · 共 ${n} 個日期符合` : "")));
+    const right = el("div");
+    const reasons = d.reasons.map((r) => r === "below_target" ? "低於目標" : `比中位數 ${d.change_pct}%`).join("、");
+    right.append(el("span", { class: "chip good" }, reasons), document.createTextNode(" "),
+      el("a", { class: "price", href: d.url, target: "_blank", rel: "noopener" }, money(d.price, cur)));
+    li.append(left, right);
+    list.append(li);
+  });
+  $("#deals-section").hidden = rows.length === 0;
+}
+
+function renderPromos(promos) {
+  const items = (promos && promos.items) || [];
+  const list = $("#promos");
+  list.replaceChildren();
+  const names = Object.fromEntries(LATEST.routes.map((r) => [r.to, r.name]));
+  items.slice(0, 12).forEach((p) => {
+    const li = el("li");
+    li.append(el("a", { href: p.link, target: "_blank", rel: "noopener" }, p.title));
+    li.append(el("span", { class: "sub" },
+      [p.source, p.published ? ago(p.published) : null, (p.routes || []).map((c) => names[c] || c).join("、")]
+        .filter(Boolean).join(" · ")));
+    list.append(li);
+  });
+  $("#promos-section").hidden = items.length === 0;
+}
+
+function renderErrors() {
+  const errs = LATEST.errors || [];
+  $("#errors-section").hidden = errs.length === 0;
+  $("#errors-summary").textContent = `上次掃描有 ${errs.length} 個錯誤`;
+  $("#errors").replaceChildren(...errs.slice(0, 50).map((e) => el("li", {}, e)));
+}
+
+async function load() {
+  const get = (f) => fetch(`data/${f}?v=${Date.now()}`).then((r) => r.ok ? r.json() : null).catch(() => null);
+  const [latest, history, promos] = await Promise.all([get("latest.json"), get("history.json"), get("promos.json")]);
+  if (!latest) {
+    $("#meta").textContent = "還沒有掃描資料。先跑一次 python -m scanner.scan。";
+    return;
+  }
+  LATEST = latest; HISTORY = history || { routes: {} };
+  const when = new Date(latest.generated_at);
+  $("#meta").textContent = `從 ${latest.origin} 出發 · 上次掃描 ${when.toLocaleString("zh-TW", { hour12: false })}（${ago(latest.generated_at)}）` +
+    (latest.provider === "demo" ? " · 示範資料" : "");
+  renderDeals();
+  renderRoutes();
+  renderPromos(promos);
+  renderErrors();
+}
+
+let resizeTimer;
+addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => document.querySelectorAll("#routes .card").forEach((c) => c._draw && c._draw()), 120);
+});
+load();
+</script>
+</body>
+</html>

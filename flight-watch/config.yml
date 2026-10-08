@@ -1,0 +1,51 @@
+# Flight Watch config. Edit this file to change what gets scanned.
+# Airport codes are IATA codes (TPE = Taoyuan, TSA = Songshan, NRT/HND = Tokyo, ...).
+
+origin: TPE
+currency: TWD
+language: zh-TW          # language Google Flights answers in (airline names)
+
+search:
+  trip: round-trip       # round-trip | one-way
+  stay_nights: [4]       # one or more trip lengths; each one is a separate query
+  depart_weekdays: [fri] # which departure days to sample (mon..sun)
+  window_days: [14, 90]  # only departures 14-90 days from today
+  max_stops: 1           # null = any
+  adults: 1
+  delay_seconds: 2       # pause between requests to stay polite
+
+# A route can override any `search` key (e.g. a longer stay for Europe).
+# alert_below: always alert when the cheapest fare is at or below this price.
+routes:
+  - to: NRT
+    name: 東京
+    alert_below: 9000
+  - to: KIX
+    name: 大阪
+    alert_below: 8500
+  - to: ICN
+    name: 首爾
+    alert_below: 8000
+  - to: BKK
+    name: 曼谷
+    alert_below: 9000
+
+alerts:
+  drop_pct: 15           # alert when a fare is this % below its recent median
+  baseline_days: 30      # how far back the median looks
+  min_samples: 6         # need this many past scans before drop alerts start
+
+promotions:
+  enabled: true
+  lookback_days: 14
+  # Searched on Google News once per route name, e.g. "機票 優惠 東京".
+  query_terms: [機票, 優惠]
+  # Extra RSS/Atom feeds. Items are kept when the title mentions a route
+  # name and one of `keywords`.
+  feeds: []
+  keywords: [優惠, 促銷, 特價, 買一送一, 早鳥, 限時, 開賣, 開搶, 折, sale]
+  require_any: [機票, 航空, 航線, 票價, 來回]  # must look like an airfare story
+  # drop giveaways and Hong Kong-origin fares, which show up in zh results
+  exclude: [抽獎, 抽, 港幣, 香港出發, 香港快運, HK Express, 連稅]
+
+history_days: 180        # older scans are pruned from data/history.json
