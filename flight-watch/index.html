@@ -27,6 +27,16 @@ svg .val { fill: var(--ink-2); font-weight: 600; }
 svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .bar { fill: var(--series); pointer-events: none; }
 .bar.dim { fill: var(--series-soft); }
+.bar.sel { fill: var(--ink-2); }
+.options { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; }
+.options-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-bottom: 4px; }
+.opt { display: grid; grid-template-columns: 92px 1fr auto; gap: 2px 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.opt:last-child { border-bottom: 0; }
+.opt .price { font-size: 14px; }
+.opt .when { font-variant-numeric: tabular-nums; }
+.opt .meta-line { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
+.opt .tagline { color: var(--good-text); font-size: 12px; white-space: nowrap; }
+.group-summary { color: var(--ink-2); font-size: 13px; margin: -6px 0 12px; }
 .hit { fill: transparent; cursor: pointer; }
 .hit:hover + .bar, .hit:focus + .bar { fill: var(--ink-2); }
 .hit:focus { outline: none; }
@@ -69,8 +79,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
     <div class="card"><ul class="deal-list" id="deals"></ul></div>
   </section>
 
-  <h2>航線</h2>
-  <div class="grid" id="routes"></div>
+  <div id="routes"></div>
 
   <section id="promos-section" hidden>
     <h2>優惠活動新聞</h2>
@@ -95,14 +104,14 @@ const SVGNS = "http://www.w3.org/2000/svg";
 const tip = $("#tip");
 let LATEST = null, HISTORY = null;
 
-function el(tag, attrs = {}, text) {
+function el(tag, attrs = {}, ...kids) {
   const n = tag.startsWith("svg:") ? document.createElementNS(SVGNS, tag.slice(4)) : document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null) continue;
     if (k === "class") n.setAttribute("class", v);
     else n.setAttribute(k, v);
   }
-  if (text != null) n.textContent = text;
+  for (const k of kids) if (k != null) n.append(k instanceof Node ? k : String(k));
   return n;
 }
 
@@ -140,7 +149,7 @@ function niceMax(v) {
 }
 
 /* Price by departure date: one bar per departure, target as a dashed rule. */
-function barChart(route, cur, width) {
+function barChart(route, cur, width, selected, onPick) {
   const fares = route.fares;
   const H = 170, padL = 40, padR = 8, padT = 18, padB = 34;
   const innerW = width - padL - padR, innerH = H - padT - padB;
@@ -168,16 +177,17 @@ function barChart(route, cur, width) {
     // rounded top, square base anchored to the axis
     const d = `M${x0},${base}V${top + r}Q${x0},${top} ${x0 + r},${top}H${x0 + bw - r}Q${x0 + bw},${top} ${x0 + bw},${top + r}V${base}Z`;
     const hit = el("svg:rect", { class: "hit", x: padL + slot * i, y: padT, width: slot, height: innerH + 2,
-      tabindex: 0, role: "link", "aria-label": `${f.depart} ${money(f.price, cur)}` });
-    const bar = el("svg:path", { d, class: "bar" + (route.alert_below && f.price > route.alert_below ? " dim" : "") });
+      tabindex: 0, role: "button", "aria-label": `${f.depart} ${money(f.price, cur)}` });
+    const bar = el("svg:path", { d, class: "bar" + (f.fare_key === selected ? " sel" : route.alert_below && f.price > route.alert_below ? " dim" : "") });
     const lines = [
       [money(f.price, cur)],
       [`${f.depart}（${weekday(f.depart)}）` + (f.return ? ` → ${md(f.return)}` : "")],
       [`${f.airline} · ${stops(f.stops)} · ${f.depart_time} 出發`, "muted"],
     ];
     if (f.median) lines.push([`近期中位數 ${money(f.median, cur)}（${f.change_pct > 0 ? "+" : ""}${f.change_pct}%）`, "muted"]);
-    lines.push(["點擊打開 Google Flights", "muted"]);
-    const open = () => window.open(f.url, "_blank", "noopener");
+    const n = (f.options || []).length;
+    lines.push([n > 1 ? `共 ${n} 個航班選項，點擊查看` : "點擊查看航班", "muted"]);
+    const open = () => { hideTip(); onPick(f); };
     hit.addEventListener("pointermove", (e) => showTip(e, lines));
     hit.addEventListener("pointerleave", hideTip);
     hit.addEventListener("focus", (e) => showTip(e, lines));
@@ -266,11 +276,60 @@ function fareTable(route, cur) {
   return wrap;
 }
 
+const via = (o) => o.stops === 0 ? "直飛" : `經 ${(o.via || []).join("、") || "轉機"}`;
+
+/* All kept flights for one date pair, cheapest first. */
+function optionsPanel(route, f, cur) {
+  const box = el("div", { class: "options" });
+  const opts = f.options && f.options.length ? f.options : [f];
+  const fastest = opts.length > 1 ? opts.reduce((a, b) => (b.duration_min < a.duration_min ? b : a)) : null;
+  box.append(el("div", { class: "options-head" },
+    el("strong", {}, `${md(f.depart)}（${weekday(f.depart)}）` + (f.return ? ` → ${md(f.return)}（${weekday(f.return)}）` : "") + " 的航班"),
+    el("a", { href: f.url, target: "_blank", rel: "noopener" }, "在 Google Flights 看全部 →")));
+  opts.forEach((o, i) => {
+    const tags = [i === 0 ? "最便宜" : null, o === fastest && fastest.duration_min < opts[0].duration_min ? "最快" : null].filter(Boolean).join(" · ");
+    box.append(el("div", { class: "opt" },
+      el("a", { class: "price", href: f.url, target: "_blank", rel: "noopener" }, money(o.price, cur)),
+      el("span", { class: "when" }, `${o.depart_time || "?"} → ${o.arrive_time || "?"}`, el("span", { class: "sub" }, `　${o.airline}`)),
+      el("span", { class: "tagline" }, tags),
+      el("span", { class: "meta-line" },
+        [o.from_airport && o.to_airport ? `${o.from_airport} → ${o.to_airport}` : null, via(o), dur(o.duration_min),
+         i > 0 ? `比最便宜貴 ${short(o.price - opts[0].price)}` : null].filter(Boolean).join(" · "))));
+  });
+  if (f.return) box.append(el("div", { class: "meta", style: "margin-top:6px" }, "票價是來回總價；時間是去程。回程航班在 Google Flights 選。"));
+  return box;
+}
+
 function renderRoutes() {
   const cur = LATEST.currency;
-  const box = $("#routes");
-  box.replaceChildren();
-  LATEST.routes.forEach((route) => {
+  const root = $("#routes");
+  root.replaceChildren();
+  // Routes added together (same group) share a section and a "cheapest here" line.
+  const groups = [];
+  LATEST.routes.forEach((r) => {
+    const g = r.group || "";
+    let entry = groups.find((x) => x.name === g);
+    if (!entry) groups.push(entry = { name: g, routes: [] });
+    entry.routes.push(r);
+  });
+  groups.sort((a, b) => (a.name === "") - (b.name === ""));
+  for (const g of groups) {
+    root.append(el("h2", {}, g.name || (groups.length > 1 ? "其他航線" : "航線")));
+    const priced = g.routes.filter((r) => r.best);
+    if (g.name && priced.length > 1) {
+      const top = priced.reduce((a, b) => (b.best.price < a.best.price ? b : a));
+      root.append(el("div", { class: "group-summary" },
+        `這組最便宜：${top.name} ${money(top.best.price, cur)}（${md(top.best.depart)}` + (top.best.return ? ` → ${md(top.best.return)}` : "") + "）　" +
+        priced.filter((r) => r !== top).map((r) => `${r.name} ${short(r.best.price)}`).join("、")));
+    }
+    const box = el("div", { class: "grid" });
+    root.append(box);
+    g.routes.forEach((route) => renderCard(box, route, cur));
+  }
+}
+
+function renderCard(box, route, cur) {
+  {
     const card = el("article", { class: "card" });
     const head = el("div", { class: "route-head" });
     const left = el("div");
@@ -304,16 +363,26 @@ function renderRoutes() {
     card.append(chips);
 
     if (route.fares.length) {
-      card.append(el("div", { class: "chart-label" }, "各出發日最低票價（淺色 = 高於目標）"));
+      card.append(el("div", { class: "chart-label" }, "各出發日最低票價（點長條看那天的所有航班" + (route.alert_below ? "；淺色 = 高於目標" : "") + "）"));
       const slot = el("div", { "data-chart": "bars" });
       card.append(slot);
       card.append(el("div", { class: "chart-label" }, "最低票價走勢"));
-      const pts = (HISTORY.routes[route.key] || []).filter((s) => s.best);
+      const optSlot = el("div");
+      card.append(optSlot);
+      let selected = route.best.fare_key;
+      const pick = (f) => { selected = f.fare_key; optSlot.replaceChildren(optionsPanel(route, f, cur)); draw(); };
+      // Trend over the date pairs this route checks now (edited routes keep older scans).
+      const keys = new Set(route.fares.map((f) => f.fare_key));
+      const pts = (HISTORY.routes[route.key] || []).map((s) => {
+        const ps = Object.entries(s.fares || {}).filter(([k]) => keys.has(k)).map(([, v]) => v);
+        return ps.length ? { t: s.t, best: Math.min(...ps) } : null;
+      }).filter(Boolean);
       const tslot = el("div", { "data-chart": "trend" });
       card.append(tslot);
+      optSlot.replaceChildren(optionsPanel(route, route.best, cur));
       const draw = () => {
         const w = slot.clientWidth || 480;
-        slot.replaceChildren(barChart(route, cur, w));
+        slot.replaceChildren(barChart(route, cur, w, selected, pick));
         tslot.replaceChildren(pts.length >= 2 ? trendChart(pts, cur, w)
           : el("div", { class: "empty" }, `資料累積中：目前 ${pts.length} 次掃描，至少兩次才畫得出走勢。`));
       };
@@ -326,7 +395,7 @@ function renderRoutes() {
     }
     box.append(card);
     card._draw && card._draw();
-  });
+  }
 }
 
 function renderDeals() {
@@ -341,7 +410,7 @@ function renderDeals() {
     const li = el("li");
     const n = byRoute[d.route].length;
     const left = el("div");
-    left.append(el("strong", {}, `${d.name} `), el("span", { class: "sub" },
+    left.append(el("strong", {}, `${d.group ? d.group + " · " : ""}${d.name} `), el("span", { class: "sub" },
       `${d.depart}（${weekday(d.depart)}）` + (d.return ? ` → ${md(d.return)}` : "") + ` · ${d.airline}` +
       (n > 1 ? ` · 共 ${n} 個日期符合` : "")));
     const right = el("div");

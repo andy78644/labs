@@ -4,6 +4,15 @@ A small fare monitor. You pick a few destinations. A GitHub Actions job then sca
 
 ![dashboard](docs/screenshots/01-dashboard.png)
 
+## Flight options
+
+Each date pair keeps up to 6 flights, not just the cheapest one:
+- the cheapest per airline and departure time;
+- the cheapest nonstop;
+- the fastest flight.
+
+On the dashboard, click a bar to see that day's flights with times, airports, stops, duration and how much more each costs than the cheapest. The price shown is the round-trip total; the times are for the outbound flight.
+
 ## How it works
 
 ```
@@ -32,6 +41,8 @@ config.yml ──▶ scanner (GitHub Actions, every 6 h) ──▶ data/*.json �
   - name, origin, destination and target price;
   - round trip or one way, nights and stops;
   - which dates to check: either "every Friday 14–90 days out" or specific dates (a single day or a range).
+- **Several airports in one search.** Tick more than one origin (e.g. Taoyuan TPE + Songshan TSA), or write a destination as `NRT/HND`. Google Flights then searches all of them in one query and keeps the cheapest. This doesn't add queries.
+- **Several destinations at once.** Separate destinations with commas, e.g. `NRT/HND, ICN, OKA`, to create one route card each with the same dates. Give them a group name such as 聖誕節 and the dashboard shows them in one section, with a line saying which destination is cheapest.
 - Every route and the whole list show how many queries a scan will make. The page warns above about 120.
 - **儲存** commits `data/watchlist.json` to `main`, and the next scheduled scan uses it.
 - **立即掃描** starts a scan now. **發測試通知** checks the Telegram/Discord setup.
