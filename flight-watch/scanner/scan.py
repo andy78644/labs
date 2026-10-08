@@ -166,6 +166,8 @@ def run(args):
             print(f"  {key} {fare_key(dep, ret)}: {fare.price if fare else '-'}", file=sys.stderr)
 
         scans = history["routes"].get(key, [])
+        keys = {f["fare_key"] for f in fares}
+        prev = deals_mod.past_bests(scans[-1:], now, 36500, keys)
         route_deals, route_median = deals_mod.evaluate_route(route, fares, scans, now, alerts_cfg)
         for d in route_deals:
             d.update(route=key, origin=r_origin, to=route["to"], name=route["name"],
@@ -184,6 +186,7 @@ def run(args):
             "alert_below": route.get("alert_below"),
             "best": best,
             "median_best": route_median,
+            "prev_best": prev[0] if prev else None,
             "fares": fares,
         })
         if fares:
@@ -219,7 +222,13 @@ def run(args):
         "errors": errors,
     }
 
-    message = notify.build_message(fresh, pending_promos, currency, os.environ.get("DASHBOARD_URL"))
+    ncfg = cfg.get("notify", {})
+    notify_state = load_json(data_dir / "notify_state.json", {})
+    new_notify_state = json.loads(json.dumps(notify_state))
+    changes, summary = price_updates(out_routes, ncfg, new_notify_state, now)
+    dashboard = os.environ.get("DASHBOARD_URL") or ncfg.get("dashboard_url")
+    messages = notify.build_messages(fresh, pending_promos, currency, dashboard, changes=changes, summary=summary)
+    message = messages["plain"]
     print(message or "No new alerts.")
     if errors:
         print("\n".join(["Errors:"] + errors), file=sys.stderr)
@@ -233,20 +242,65 @@ def run(args):
     save_json(data_dir / "history.json", history)
     delivered = False
     if message and not args.no_notify:
-        sent, nerr = notify.send(message)
+        sent, nerr = notify.send(messages)
         delivered = bool(sent)
         print(("Sent to: " + ", ".join(sent)) if sent else "Not delivered to any channel; will retry next scan.")
         for e in nerr:
             print("Notify error: " + e, file=sys.stderr)
     if delivered or not message:
         alert_state = new_state  # with no message this only drops past dates
+        notify_state = new_notify_state  # likewise: only first-time baselines change
     if delivered:
         for p in pending_promos:
             p["notified"] = True
     save_json(data_dir / "alert_state.json", alert_state)
+    save_json(data_dir / "notify_state.json", notify_state)
     if promo_items:
         save_json(data_dir / "promos.json", {"updated_at": now.isoformat(), "items": promo_items})
     return latest
+
+
+def price_updates(out_routes, ncfg, state, now):
+    """Which routes to report as price changes, and the daily summary if one is
+    due. Updates `state` as if the message will be delivered.
+
+    A change is measured against the price last reported for the route (not
+    just the previous scan), so slow drifts are still reported once they add up."""
+    from zoneinfo import ZoneInfo
+
+    local = now.astimezone(ZoneInfo(ncfg.get("timezone", "Asia/Taipei")))
+    reported = state.setdefault("reported", {})
+    changes = []
+    for r in out_routes:
+        if not r["best"]:
+            continue
+        keys = sorted(f["fare_key"] for f in r["fares"])
+        base = reported.get(r["key"])
+        if not base or base.get("keys") != keys:
+            # New or edited route: start from the previous scan (or this one), say nothing yet.
+            reported[r["key"]] = {"price": r["prev_best"] or r["best"]["price"], "keys": keys}
+            base = reported[r["key"]]
+        moved = abs(r["best"]["price"] - base["price"]) / base["price"] * 100
+        if ncfg.get("price_changes", True) and moved >= ncfg.get("min_change_pct", 3):
+            changes.append({**r, "prev_best": base["price"]})
+            reported[r["key"]] = {"price": r["best"]["price"], "keys": keys}
+    live = {r["key"] for r in out_routes}
+    for k in [k for k in reported if k not in live]:
+        del reported[k]
+
+    summary = None
+    daily = state.setdefault("summary", {})
+    if ncfg.get("daily_summary", True) and local.hour >= ncfg.get("summary_hour", 8) \
+            and daily.get("date") != local.date().isoformat():
+        last = daily.get("best", {})
+        summary = [{**r, "last_summary": last.get(r["key"])} for r in out_routes]
+        state["summary"] = {"date": local.date().isoformat(),
+                            "best": {r["key"]: r["best"]["price"] for r in out_routes if r["best"]}}
+        changes = []  # the summary already lists every route
+        for r in out_routes:
+            if r["best"]:
+                reported[r["key"]] = {"price": r["best"]["price"], "keys": sorted(f["fare_key"] for f in r["fares"])}
+    return changes, summary
 
 
 def main(argv=None):

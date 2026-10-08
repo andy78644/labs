@@ -28,6 +28,13 @@ config.yml ──▶ scanner (GitHub Actions, every 6 h) ──▶ data/*.json �
   - it is at or below the route's `alert_below` target, or
   - it is `drop_pct` % (default 15 %) below the median price of that same date pair over the last `baseline_days`. This check only starts once there are `min_samples` past scans.
 - **No repeat alerts.** You hear about a deal the first time it appears, and again only if it gets cheaper. That state is kept in `data/alert_state.json`.
+- **What a message contains.** Each Telegram/Discord message can have these sections:
+  - 🔥 new deals;
+  - 📊 price changes: any route whose cheapest fare moved at least `min_change_pct` (3 %) since it was last reported;
+  - 📋 a daily summary of every route, sent by the first scan after `summary_hour` (08:00 Taipei);
+  - 📣 new promotion headlines.
+
+  Prices and headlines are links, and every message ends with a link to the dashboard. These options are under `notify:` in `config.yml`.
 - **Promotions.** The scanner searches Google News for `機票 優惠 <destination>`, plus any RSS/Atom feeds you list. It keeps headlines that name a destination and contain a sale keyword (`買一送一`, `早鳥`, `限時`, …). Syndicated copies of the same story are merged.
 - **Data** is committed back to the repo, so GitHub Pages serves the dashboard together with its data. `history.json` is pruned after `history_days`.
 
