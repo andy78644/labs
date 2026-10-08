@@ -84,6 +84,47 @@ def _field(num, payload):
     return _varint(num << 3 | 2) + _varint(len(payload)) + payload
 
 
+def parse_results(html):
+    """Read Google's embedded result data into Options. Same layout as
+    fast_flights.parser, but one malformed itinerary (say, one without a
+    price) is skipped instead of failing the whole date."""
+    import json
+    from selectolax.lexbor import LexborHTMLParser
+
+    script = LexborHTMLParser(html).css_first(r"script.ds\:1")
+    if script is None:
+        raise RuntimeError("no result data in the Google Flights page (blocked or changed?)")
+    data = script.text().split("data:", 1)[1].rsplit(",", 1)[0]
+    if data.endswith("errorHasStatus: true"):
+        return []
+    payload = json.loads(data)
+    hhmm = lambda v: "%02d:%02d" % tuple((x or 0) for x in [*(v or []), None, None][:2])
+    options = []
+    for k in (payload[3][0] if payload[3] and payload[3][0] else []):
+        try:
+            flight, price = k[0], k[1][0][1]
+            legs = flight[2]
+            first, last = legs[0], legs[-1]
+            arrive = hhmm(last[10])
+            days = (date(*last[21]) - date(*first[20])).days
+            if days > 0:
+                arrive += f"+{days}"
+            options.append(Option(
+                price=int(price),
+                airline=" / ".join(flight[1]),
+                stops=len(legs) - 1,
+                duration_min=sum(l[11] for l in legs),
+                depart_time=hhmm(first[8]),
+                arrive_time=arrive,
+                from_airport=first[3],
+                to_airport=last[6],
+                via=[l[6] for l in legs[:-1]],
+            ))
+        except (IndexError, TypeError, ValueError):
+            continue
+    return [o for o in options if o.price > 0]
+
+
 class GoogleFlightsProvider:
     """Google Flights through the fast-flights scraper. No API key needed,
     but it is an unofficial interface: keep the request rate low."""
@@ -93,17 +134,13 @@ class GoogleFlightsProvider:
 
     def __init__(self, currency, language, adults=1):
         from fast_flights import FlightQuery, Passengers, create_query
-        from fast_flights.exceptions import FlightsNotFound
-        from fast_flights.parser import parse
         from fast_flights.pb.flights_pb2 import Airport
         from primp import Client
 
         self._FlightQuery = FlightQuery
         self._Passengers = Passengers
         self._create_query = create_query
-        self._parse = parse
         self._Airport = Airport
-        self._not_found = FlightsNotFound
         self._client = Client(impersonate="chrome_145", impersonate_os="macos", referer=True, cookie_store=True)
         self.currency = currency
         self.language = language
@@ -137,31 +174,7 @@ class GoogleFlightsProvider:
         params = {"tfs": tfs, "hl": self.language, "curr": self.currency}
         url = f"{self.URL}/search?tfs={tfs}&hl={self.language}&curr={self.currency}"
         html = self._client.get(self.URL, params=params).text
-        try:
-            results = self._parse(html)
-        except self._not_found:
-            return None
-        options = []
-        for r in results:
-            if not r.price or r.price <= 0 or not r.flights:
-                continue
-            first, last = r.flights[0], r.flights[-1]
-            arrive = "%02d:%02d" % last.arrival.time
-            days = (date(*last.arrival.date) - date(*first.departure.date)).days
-            if days > 0:
-                arrive += f"+{days}"
-            options.append(Option(
-                price=int(r.price),
-                airline=" / ".join(r.airlines),
-                stops=len(r.flights) - 1,
-                duration_min=sum(f.duration for f in r.flights),
-                depart_time="%02d:%02d" % first.departure.time,
-                arrive_time=arrive,
-                from_airport=first.from_airport.code,
-                to_airport=last.to_airport.code,
-                via=[f.to_airport.code for f in r.flights[:-1]],
-            ))
-        return make_fare(pick_options(options), url)
+        return make_fare(pick_options(parse_results(html)), url)
 
 
 class DemoProvider:

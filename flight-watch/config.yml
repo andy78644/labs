@@ -37,4 +37,12 @@ promotions:
   # drop giveaways and Hong Kong-origin fares, which show up in zh results
   exclude: [抽獎, 抽, 港幣, 香港出發, 香港快運, HK Express, 連稅]
 
+notify:
+  dashboard_url: https://andy78644.com/labs/flight-watch/   # linked at the end of every message
+  price_changes: true    # report a route when its cheapest fare moves...
+  min_change_pct: 3      # ...at least this much since the last report
+  daily_summary: true    # one message a day listing every route's cheapest fare
+  summary_hour: 8        # sent by the first scan after this hour (scans run ~08:17, 14:17, 20:17, 02:17)
+  timezone: Asia/Taipei
+
 history_days: 180        # older scans are pruned from data/history.json

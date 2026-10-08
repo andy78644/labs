@@ -102,7 +102,8 @@ class AlertDelivery(unittest.TestCase):
         (self.dir / "config.yml").write_text(
             "origin: TPE\nsearch: {window_days: [14, 28], depart_weekdays: [fri]}\n"
             "routes: [{to: NRT, name: 東京, alert_below: 999999}]\n"
-            "promotions: {keywords: [優惠], require_any: [機票]}\n", encoding="utf-8")
+            "promotions: {keywords: [優惠], require_any: [機票]}\n"
+            "notify: {daily_summary: false}\n", encoding="utf-8")
         (self.dir / "promos.json").write_text(
             '{"items": [{"id": "p1", "title": "東京機票優惠", "link": "x", "first_seen": "2099-01-01"}]}', encoding="utf-8")
 
@@ -125,11 +126,11 @@ class AlertDelivery(unittest.TestCase):
 
     def test_failed_send_is_retried_then_marked(self):
         call, state, items = self.scan(sent=[])
-        self.assertIn("東京機票優惠", call.args[0])
+        self.assertIn("東京機票優惠", call.args[0]["plain"])
         self.assertEqual(state, {})
         self.assertFalse(items[0].get("notified"))
         call, state, items = self.scan(sent=["telegram"])
-        self.assertIn("機票降價提醒", call.args[0])
+        self.assertIn("好價", call.args[0]["plain"])
         self.assertTrue(state)
         self.assertTrue(items[0]["notified"])
         call, _, _ = self.scan(sent=["telegram"])
@@ -145,3 +146,70 @@ class EditedRouteBaseline(unittest.TestCase):
         old.append(scan(3, 21000, {"2026-12-25": 21000, "2026-11-06": 7000}))
         _, route_median = deals.evaluate_route({}, fares, old, NOW, {"min_samples": 3})
         self.assertEqual(route_median, 21000)
+
+
+class PriceUpdates(unittest.TestCase):
+    def route(self, price, prev=None, key="TPE-NRT"):
+        return {"key": key, "name": "東京", "best": {"price": price, "fare_key": "a"},
+                "prev_best": prev, "fares": [{"fare_key": "a", "price": price}]}
+
+    def test_changes_are_measured_from_the_last_report(self):
+        from scanner.scan import price_updates
+        cfg, state = {"daily_summary": False, "min_change_pct": 3}, {}
+        changes, _ = price_updates([self.route(10000, prev=10000)], cfg, state, NOW)
+        self.assertEqual(changes, [])          # first sight: baseline only
+        changes, _ = price_updates([self.route(9800)], cfg, state, NOW)
+        self.assertEqual(changes, [])          # -2%: below the threshold
+        changes, _ = price_updates([self.route(9600)], cfg, state, NOW)
+        self.assertEqual([c["prev_best"] for c in changes], [10000])  # -4% in total
+        changes, _ = price_updates([self.route(9600)], cfg, state, NOW)
+        self.assertEqual(changes, [])          # reported; new baseline 9600
+
+    def test_daily_summary_once_per_local_day(self):
+        from scanner.scan import price_updates
+        cfg, state = {"summary_hour": 8, "timezone": "Asia/Taipei"}, {}
+        early = datetime(2026, 10, 7, 23, tzinfo=timezone.utc)   # 07:00 in Taipei
+        self.assertIsNone(price_updates([self.route(10000)], cfg, state, early)[1])
+        late = datetime(2026, 10, 8, 1, tzinfo=timezone.utc)     # 09:00 in Taipei
+        changes, summary = price_updates([self.route(9000)], cfg, state, late)
+        self.assertEqual((len(summary), changes), (1, []))
+        self.assertIsNone(price_updates([self.route(8000)], cfg, state, late + timedelta(hours=6))[1])
+
+
+class Messages(unittest.TestCase):
+    def test_telegram_html_uses_links_and_escapes(self):
+        from scanner import notify
+        promo = [{"title": "東京 <限時> 買一送一 & 更多 - 某報", "link": "https://x/?a=1&b=2", "source": "某報"}]
+        m = notify.build_messages([], promo, "TWD", "https://d/")
+        self.assertIn('<a href="https://x/?a=1&amp;b=2">東京 &lt;限時&gt; 買一送一 &amp; 更多</a>（某報）', m["html"])
+        self.assertIn("[東京 <限時> 買一送一 & 更多](<https://x/?a=1&b=2>)", m["md"])
+        self.assertIn('<a href="https://d/">打開 Flight Watch 儀表板</a>', m["html"])
+        self.assertEqual(notify.build_messages([], [], "TWD", "https://d/")["plain"], "")
+
+    def test_chunks_split_on_lines(self):
+        from scanner import notify
+        parts = notify.chunks("\n".join(["x" * 40] * 10), 100)
+        self.assertTrue(all(len(p) <= 100 for p in parts))
+        self.assertEqual("\n".join(parts), "\n".join(["x" * 40] * 10))
+
+
+class ParseResults(unittest.TestCase):
+    def test_skips_itineraries_without_a_price(self):
+        import json
+        from scanner.providers import parse_results
+
+        def leg(frm, to, dep, arr, mins, d1, d2):
+            row = [None] * 22
+            row[3], row[6], row[8], row[10], row[11], row[20], row[21] = frm, to, dep, arr, mins, d1, d2
+            return row
+        good = [[None, ["樂桃航空"], [leg("TPE", "HND", [20, 55], [0, 50], 175, [2026, 12, 25], [2026, 12, 26])]],
+                [[None, 20370]]]
+        bad = [[None, ["X"], [leg("TPE", "NRT", [9], [13], 180, [2026, 12, 25], [2026, 12, 25])]], []]
+        payload = [None, None, None, [[good, bad]]]
+        page = ("<html><script class=\"ds:1\">AF_initDataCallback({key: 'ds:1', data:"
+                + json.dumps(payload) + ", sideChannel: {}});</script></html>")
+        opts = parse_results(page)
+        self.assertEqual(len(opts), 1)
+        o = opts[0]
+        self.assertEqual((o.price, o.depart_time, o.arrive_time, o.to_airport, o.stops),
+                         (20370, "20:55", "00:50+1", "HND", 0))
