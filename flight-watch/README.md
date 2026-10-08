@@ -22,6 +22,39 @@ config.yml ──▶ scanner (GitHub Actions, every 6 h) ──▶ data/*.json �
 - **Promotions.** The scanner searches Google News for `機票 優惠 <destination>`, plus any RSS/Atom feeds you list. It keeps headlines that name a destination and contain a sale keyword (`買一送一`, `早鳥`, `限時`, …). Syndicated copies of the same story are merged.
 - **Data** is committed back to the repo, so GitHub Pages serves the dashboard together with its data. `history.json` is pruned after `history_days`.
 
+## Search page and running it on your own machine
+
+`server.py` runs everything in one process: the dashboard, a **search page** and an optional scheduler. Use it when you want to pick dates yourself, or to run the scans on your own computer or a server instead of GitHub Actions.
+
+![search](docs/screenshots/02-search.png)
+
+On the search page (`/search.html`) you can:
+
+- pick an origin and destination, a departure date range, the departure weekdays, how many nights to stay and the maximum number of stops;
+- run a live search against Google Flights. You get a calendar shaded by price, the cheapest dates, and the details for each day with links to Google Flights. One search can cover up to 80 date pairs; 24 pairs took about 15 seconds;
+- star the days you care about, set a target price, and **add them to the watchlist**. Watches are saved in `data/watchlist.json`. Scheduled scans pick them up, and they show on the dashboard with a "網頁新增" tag;
+- remove watches, or start a full scan right away.
+
+```bash
+cd flight-watch
+.venv/bin/python server.py                    # http://127.0.0.1:8000/  (search: /search.html)
+.venv/bin/python server.py --scan-every 6     # also scan every 6 hours, no GitHub Actions needed
+```
+
+On a server or VPS, listen on all interfaces and **set a token**. Without one, anyone who finds the URL can run searches and edit the watchlist:
+
+```bash
+FLIGHT_WATCH_TOKEN=pick-a-password .venv/bin/python server.py --host 0.0.0.0 --scan-every 6
+# or with Docker; data/ is a volume so history survives restarts
+docker build -t flight-watch .
+docker run -d -p 8000:8000 -v fw-data:/app/data -e FLIGHT_WATCH_TOKEN=pick-a-password \
+  -e TELEGRAM_BOT_TOKEN=... -e TELEGRAM_CHAT_ID=... flight-watch
+```
+
+The search page asks for the token once and remembers it in the browser. The GitHub Pages copy only has the dashboard, because live search needs the server.
+
+If you use both the server and GitHub Actions, they keep separate data unless you commit the server's `data/` folder (including `watchlist.json`) back to the repo.
+
 ## Setup
 
 1. **Pick routes.** Edit [`config.yml`](config.yml): the origin, destinations, target prices, departure days and stay length. Any route can override the `search` settings. For example, a route with `dates: [2027-02-05]` checks only that date, and `stay_nights: [7, 10]` checks two trip lengths.
@@ -67,3 +100,7 @@ python3 -m http.server 8000                             # dashboard at http://lo
 | `data/history.json` | per-route, per-date price history |
 | `data/promos.json` | recent promotion headlines |
 | `index.html` | the dashboard (no build step) |
+| `search.html` | live search and watchlist editor (needs `server.py`) |
+| `server.py` | web server, search API, watchlist API, optional scheduler |
+| `data/watchlist.json` | watches added from the search page |
+| `Dockerfile` | runs `server.py` with a 6-hour scan schedule |

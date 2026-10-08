@@ -75,18 +75,58 @@ def fare_key(depart, ret):
     return depart.isoformat() + (f"/{ret.isoformat()}" if ret else "")
 
 
+class NoFaresError(RuntimeError):
+    pass
+
+
+def load_config(path):
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+
+
+def load_routes(cfg, data_dir):
+    """Routes from config.yml plus the ones added in the web UI
+    (data/watchlist.json). Each route gets an origin and a unique key."""
+    routes = [dict(r) for r in cfg.get("routes", [])]
+    routes += [dict(r, source="ui") for r in load_json(Path(data_dir) / "watchlist.json", {"routes": []})["routes"]]
+    for r in routes:
+        r["to"] = r["to"].upper()
+        r["origin"] = r.get("origin", cfg["origin"]).upper()
+        r.setdefault("name", r["to"])
+        r.setdefault("key", f'{r["origin"]}-{r["to"]}')
+    return routes
+
+
+def search_fare(provider, origin, dest, dep, ret, max_stops, delay, errors):
+    """One query with a single retry. Errors are appended, never raised."""
+    for attempt in range(2):
+        try:
+            return provider.search(origin, dest, dep, ret, max_stops)
+        except Exception as e:
+            if attempt:
+                errors.append(f"{origin}-{dest} {fare_key(dep, ret)}: {type(e).__name__}: {e}")
+            else:
+                time.sleep(delay * 3)
+    return None
+
+
+def fare_row(dep, ret, fare):
+    return {
+        "fare_key": fare_key(dep, ret),
+        "depart": dep.isoformat(),
+        "return": ret.isoformat() if ret else None,
+        **fare.to_dict(),
+    }
+
+
 def run(args):
-    cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
+    cfg = load_config(args.config)
     data_dir = Path(args.data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).replace(microsecond=0)
     today = date.today()
     origin = cfg["origin"].upper()
     currency = cfg.get("currency", "TWD")
-    routes = [r for r in cfg["routes"] if not args.only or r["to"].upper() in args.only]
-    for r in routes:
-        r["to"] = r["to"].upper()
-        r.setdefault("name", r["to"])
+    routes = [r for r in load_routes(cfg, data_dir) if not args.only or r["to"] in args.only]
 
     provider = make_provider(
         args.provider, currency, cfg.get("language", "zh-TW"), cfg.get("search", {}).get("adults", 1)
@@ -97,27 +137,14 @@ def run(args):
 
     out_routes, all_deals, errors = [], [], []
     for route in routes:
-        key = f"{origin}-{route['to']}"
+        key, r_origin = route["key"], route["origin"]
         search = route_search(cfg, route)
         delay = search.get("delay_seconds", 2)
         fares = []
         for dep, ret in trip_dates(search, today):
-            fare = None
-            for attempt in range(2):
-                try:
-                    fare = provider.search(origin, route["to"], dep, ret, search.get("max_stops"))
-                    break
-                except Exception as e:
-                    if attempt:
-                        errors.append(f"{key} {fare_key(dep, ret)}: {type(e).__name__}: {e}")
-                    time.sleep(delay * 3)
+            fare = search_fare(provider, r_origin, route["to"], dep, ret, search.get("max_stops"), delay, errors)
             if fare:
-                fares.append({
-                    "fare_key": fare_key(dep, ret),
-                    "depart": dep.isoformat(),
-                    "return": ret.isoformat() if ret else None,
-                    **fare.to_dict(),
-                })
+                fares.append(fare_row(dep, ret, fare))
             if args.provider != "demo":
                 time.sleep(delay)
             print(f"  {key} {fare_key(dep, ret)}: {fare.price if fare else '-'}", file=sys.stderr)
@@ -125,13 +152,14 @@ def run(args):
         scans = history["routes"].get(key, [])
         route_deals, route_median = deals_mod.evaluate_route(route, fares, scans, now, alerts_cfg)
         for d in route_deals:
-            d.update(route=key, origin=origin, to=route["to"], name=route["name"])
+            d.update(route=key, origin=r_origin, to=route["to"], name=route["name"])
         all_deals += route_deals
 
         best = min(fares, key=lambda f: f["price"]) if fares else None
         out_routes.append({
             "key": key,
-            "origin": origin,
+            "origin": r_origin,
+            "source": route.get("source", "config"),
             "to": route["to"],
             "name": route["name"],
             "alert_below": route.get("alert_below"),
@@ -179,8 +207,7 @@ def run(args):
         return latest
     if routes and not any(r["fares"] for r in out_routes):
         # Keep the last good data on disk rather than an empty dashboard.
-        print("No fares at all: the provider is probably blocked or broken.", file=sys.stderr)
-        sys.exit(1)
+        raise NoFaresError("No fares at all: the provider is probably blocked or broken.")
     save_json(data_dir / "latest.json", latest)
     save_json(data_dir / "history.json", history)
     save_json(data_dir / "alert_state.json", alert_state)
@@ -204,7 +231,11 @@ def main(argv=None):
     p.add_argument("--dry-run", action="store_true", help="do not write files or notify")
     p.add_argument("--no-notify", action="store_true")
     p.add_argument("--skip-promos", action="store_true")
-    run(p.parse_args(argv))
+    try:
+        run(p.parse_args(argv))
+    except NoFaresError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

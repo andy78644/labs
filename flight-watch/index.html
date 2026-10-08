@@ -4,58 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flight Watch 機票監控</title>
+<link rel="stylesheet" href="common.css">
 <style>
-:root {
-  color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #898781;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.10);
-  --series: #2a78d6;
-  --series-soft: #86b6ef;
-  --good: #0ca30c;
-  --good-text: #006300;
-  --critical: #d03b3b;
-  --wash: rgba(42, 120, 214, 0.08);
-}
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --ink: #ffffff;
-    --ink-2: #c3c2b7;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.10);
-    --series: #3987e5;
-    --series-soft: #1c5cab;
-    --good-text: #0ca30c;
-    --wash: rgba(57, 135, 229, 0.14);
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--page);
-  color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
-}
-main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 20px; }
-h1 { font-size: 24px; margin: 0; letter-spacing: 0.01em; }
-h2 { font-size: 16px; margin: 32px 0 12px; }
-.meta { color: var(--ink-2); font-size: 13px; }
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); }
 .route-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .route-name { font-size: 17px; font-weight: 600; }
@@ -112,6 +62,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
   <header>
     <h1>✈️ Flight Watch 機票監控</h1>
     <span class="meta" id="meta">載入中…</span>
+    <nav><a href="./" aria-current="page">儀表板</a><a href="search.html">搜尋與監控</a></nav>
   </header>
 
   <section id="deals-section" hidden>
@@ -133,7 +84,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
   </section>
 
   <footer>
-    票價來自 Google Flights，每 6 小時由 GitHub Actions 掃描一次。顯示的是每個出發日期最便宜的一筆，實際價格以訂票網站為準。
+    票價來自 Google Flights，定時自動掃描（GitHub Actions 或 server.py）。顯示的是每個出發日期最便宜的一筆，實際價格以訂票網站為準。
     設定在 <code>config.yml</code>。
   </footer>
 </main>
@@ -341,6 +292,7 @@ function renderRoutes() {
 
     const chips = el("div", { class: "chips" });
     chips.append(el("span", { class: "chip" }, cur));
+    if (route.source === "ui") chips.append(el("span", { class: "chip" }, "網頁新增"));
     if (route.best && route.alert_below) {
       const ok = route.best.price <= route.alert_below;
       chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
