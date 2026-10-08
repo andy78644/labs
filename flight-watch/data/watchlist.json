@@ -3,26 +3,44 @@
   {
    "origin": "TPE",
    "to": "NRT",
-   "name": "東京",
-   "alert_below": 9000
+   "name": "聖誕節",
+   "trip": "round-trip",
+   "stay_nights": [
+    2
+   ],
+   "dates": [
+    "2026-12-25"
+   ],
+   "max_stops": 0,
+   "key": "TPE-NRT"
   },
   {
    "origin": "TPE",
-   "to": "KIX",
-   "name": "大阪",
-   "alert_below": 8500
+   "to": "HND",
+   "name": "聖誕節2",
+   "trip": "round-trip",
+   "stay_nights": [
+    2
+   ],
+   "dates": [
+    "2026-12-25"
+   ],
+   "max_stops": 0,
+   "key": "TPE-HND"
   },
   {
    "origin": "TPE",
    "to": "ICN",
-   "name": "首爾",
-   "alert_below": 8000
-  },
-  {
-   "origin": "TPE",
-   "to": "BKK",
-   "name": "曼谷",
-   "alert_below": 9000
+   "name": "聖誕節3",
+   "trip": "round-trip",
+   "stay_nights": [
+    2
+   ],
+   "dates": [
+    "2026-12-25"
+   ],
+   "max_stops": 0,
+   "key": "TPE-ICN"
   }
  ]
 }
