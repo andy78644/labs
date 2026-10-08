@@ -27,7 +27,7 @@ def build_message(deals, promos, currency, dashboard_url=None, per_route=3):
                 why = "、".join(REASON_TEXT[r] for r in d["reasons"])
                 dates = d["depart"] + (f" → {d['return']}" if d.get("return") else "")
                 extra = ""
-                if d.get("median"):
+                if d.get("median") and d.get("samples", 0) >= 3:
                     extra = f"（中位數 {fmt_price(d['median'], currency)}，{d['change_pct']:+.0f}%）"
                 lines.append(
                     f"• {dates}: {fmt_price(d['price'], currency)} {d['airline']}，{why}{extra}\n  {d['url']}"
@@ -82,3 +82,21 @@ def send(message, env=os.environ):
         with open(summary, "a", encoding="utf-8") as f:
             f.write("```\n" + message + "\n```\n")
     return sent, errors
+
+
+def main():
+    """python -m scanner.notify: send a test message to every configured channel."""
+    import sys
+
+    sent, errors = send("✈️ Flight Watch 測試訊息：通知設定成功！之後有好價或優惠會發到這裡。")
+    for e in errors:
+        print("Error: " + e, file=sys.stderr)
+    if sent:
+        print("Sent to: " + ", ".join(sent))
+    elif not errors:
+        print("Nothing sent: set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID or DISCORD_WEBHOOK_URL.", file=sys.stderr)
+    sys.exit(0 if sent and not errors else 1)
+
+
+if __name__ == "__main__":
+    main()

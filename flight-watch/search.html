@@ -11,31 +11,6 @@
   --sel: #eb6834;
 }
 form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); align-items: end; }
-label, .field-label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
-input, select, button {
-  font: inherit; color: var(--ink); background: var(--page);
-  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; width: 100%;
-}
-input:focus, select:focus, button:focus-visible { outline: 2px solid var(--series); outline-offset: 1px; }
-button { cursor: pointer; width: auto; }
-button.primary { background: var(--series); color: #fff; border-color: transparent; font-weight: 600; padding: 8px 18px; }
-button.primary:disabled { opacity: 0.5; cursor: progress; }
-button.ghost { background: transparent; }
-button.danger { color: var(--critical); background: transparent; white-space: nowrap; flex: none; }
-.wide { grid-column: 1 / -1; }
-.seg { display: flex; flex-wrap: wrap; gap: 6px; }
-.seg label {
-  margin: 0; display: inline-flex; align-items: center; justify-content: center;
-  min-width: 38px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
-  color: var(--ink-2); cursor: pointer; font-size: 13px; user-select: none;
-}
-.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.seg input:checked + span { color: var(--ink); font-weight: 600; }
-.seg label:has(input:checked) { border-color: var(--series); background: var(--wash); }
-.seg label:has(input:focus-visible) { outline: 2px solid var(--series); }
-.form-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
-.notice { border-left: 3px solid var(--series); padding: 10px 14px; background: var(--surface); border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
-.err { color: var(--critical); font-size: 13px; min-height: 1.2em; }
 .progress { height: 6px; background: var(--grid); border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
 .progress div { height: 100%; width: 0; background: var(--series); transition: width .3s; }
 
@@ -73,7 +48,6 @@ button.day { width: auto; padding: 3px 4px; cursor: pointer; text-align: left; b
 .cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .watch-row { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--grid); }
 .watch-row:last-child { border-bottom: 0; }
-.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
 .log { font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); max-height: 160px; overflow: auto; margin-top: 8px; white-space: pre-wrap; }
 @media (max-width: 480px) { .day .p { font-size: 10px; } }
 </style>
@@ -82,7 +56,7 @@ button.day { width: auto; padding: 3px 4px; cursor: pointer; text-align: left; b
 <main>
   <header>
     <h1>✈️ Flight Watch 機票監控</h1>
-    <nav><a href="./">儀表板</a><a href="search.html" aria-current="page">搜尋與監控</a></nav>
+    <nav><a href="./">儀表板</a><a href="settings.html">設定</a><a href="search.html" aria-current="page">搜尋</a></nav>
   </header>
 
   <div class="notice" id="static-notice" hidden>
@@ -444,10 +418,10 @@ function renderWatchlist() {
     if (r.dates) {
       const ds = [...r.dates].sort();
       when = ds.length === 1 ? md(ds[0]) : `${md(ds[0])} – ${md(ds[ds.length - 1])}，${ds.length} 天`;
-    } else when = "設定檔的固定規則";
+    } else when = `每週${[].concat(r.depart_weekdays || ["fri"]).map((w) => WD[["mon","tue","wed","thu","fri","sat","sun"].indexOf(String(w).slice(0, 3))]).join("、")}出發`;
     const left = el("div", {},
       el("strong", {}, r.name), el("span", { class: "tag" }, `${r.origin}→${r.to}`),
-      el("span", { class: "tag" }, r.source === "ui" ? "網頁新增" : "config.yml"),
+      r.source === "ui" ? null : el("span", { class: "tag" }, "config.yml"),
       el("div", { class: "sub" }, when + (r.alert_below ? ` · 目標 ${money(r.alert_below)}` : "") +
         (r.stay_nights && r.trip !== "one-way" ? ` · 住 ${[].concat(r.stay_nights).join("/")} 晚` : "")));
     box.append(el("div", { class: "watch-row" }, left,

@@ -40,13 +40,14 @@ class ServerApp(unittest.TestCase):
             self.app.start_search({"to": "NRT", "start": self.day, "end": far, "nights": [3, 4]})
 
     def test_watch_add_unique_key_and_delete(self):
-        a = self.app.add_watch({"to": "NRT", "dates": [self.day], "alert_below": 7000})
-        self.assertEqual(a["key"], "TPE-NRT-2")  # TPE-NRT is taken by config.yml
+        first = self.app.add_watch({"to": "NRT", "dates": [self.day]})
+        second = self.app.add_watch({"to": "NRT", "dates": [self.day], "alert_below": 7000})
+        self.assertEqual((first["key"], second["key"]), ("TPE-NRT", "TPE-NRT-2"))
         routes = scan.load_routes(self.app.cfg(), self.app.data_dir)
-        self.assertIn("TPE-NRT-2", [r["key"] for r in routes])
+        self.assertEqual([r["key"] for r in routes], ["TPE-NRT", "TPE-NRT-2"])
         self.app.delete_watch("TPE-NRT-2")
         with self.assertRaises(KeyError):
-            self.app.delete_watch("TPE-NRT")  # config routes cannot be deleted from the UI
+            self.app.delete_watch("TPE-NRT-2")
 
 
 if __name__ == "__main__":

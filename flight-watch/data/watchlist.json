@@ -1,0 +1,28 @@
+{
+ "routes": [
+  {
+   "origin": "TPE",
+   "to": "NRT",
+   "name": "東京",
+   "alert_below": 9000
+  },
+  {
+   "origin": "TPE",
+   "to": "KIX",
+   "name": "大阪",
+   "alert_below": 8500
+  },
+  {
+   "origin": "TPE",
+   "to": "ICN",
+   "name": "首爾",
+   "alert_below": 8000
+  },
+  {
+   "origin": "TPE",
+   "to": "BKK",
+   "name": "曼谷",
+   "alert_below": 9000
+  }
+ ]
+}
