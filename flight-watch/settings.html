@@ -8,6 +8,7 @@
 <style>
 .route { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--grid); }
 .route:last-child { border-bottom: 0; }
+.group-head { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; padding: 14px 0 0; }
 .route .actions { display: flex; gap: 6px; flex: none; }
 .route .actions button { padding: 5px 12px; font-size: 13px; }
 .route-title { font-weight: 600; }
@@ -108,7 +109,16 @@ const NAMES = {
   DAD: "峴港", MNL: "馬尼拉", CEB: "宿霧", SIN: "新加坡", KUL: "吉隆坡", DPS: "峇里島", LAX: "洛杉磯", SFO: "舊金山",
   SEA: "西雅圖", JFK: "紐約", YVR: "溫哥華", LHR: "倫敦", CDG: "巴黎", AMS: "阿姆斯特丹", FRA: "法蘭克福", VIE: "維也納",
   PRG: "布拉格", FCO: "羅馬", IST: "伊斯坦堡", SYD: "雪梨", MEL: "墨爾本", AKL: "奧克蘭",
+  TPE: "台北", TSA: "台北", KHH: "高雄", RMQ: "台中", TNN: "台南", ITM: "大阪", DMK: "曼谷", PVG: "上海",
+  SHA: "上海", EWR: "紐約", LGW: "倫敦", ORY: "巴黎", BNE: "布里斯本", MUC: "慕尼黑", HKD: "函館", SDJ: "仙台",
+  KMJ: "熊本", KOJ: "鹿兒島", ISG: "石垣", SHI: "宮古島", CXR: "芽莊", PQC: "富國島", BKI: "亞庇", PEN: "檳城",
 };
+
+const TW = [["TPE", "桃園"], ["TSA", "松山"], ["KHH", "高雄"], ["RMQ", "台中"], ["TNN", "台南"]];
+const codesOf = (v) => (Array.isArray(v) ? v : String(v || "").split(/[\/+\s,，、]+/)).map((c) => String(c).trim().toUpperCase()).filter(Boolean);
+const cityOf = (codes) => [...new Set(codes.map((c) => NAMES[c] || c))].join("/");
+/* "NRT/HND, ICN" -> [["NRT","HND"], ["ICN"]]: commas make separate routes, slashes search together. */
+const destEntries = (text) => String(text || "").split(/[,，、;；\n]+/).map((e) => codesOf(e)).filter((e) => e.length);
 
 let ROUTES = [], SAVED = "[]", SHA = null, EDIT = null, DRAFT = null, AUTH = null;
 
@@ -245,8 +255,12 @@ function setRoutes(routes) {
 function startEdit(i) {
   EDIT = i;
   const r = i === "new" ? {} : ROUTES[i];
+  const origins = codesOf(r.origin || "TPE");
   DRAFT = {
-    name: r.name || "", origin: r.origin || "TPE", to: r.to || "", alert_below: r.alert_below || "",
+    group: r.group || "", name: r.name || "",
+    origins: origins.filter((c) => TW.some(([t]) => t === c)),
+    otherOrigins: origins.filter((c) => !TW.some(([t]) => t === c)).join(", "),
+    to: i === "new" ? "" : codesOf(r.to).join("/"), alert_below: r.alert_below || "",
     trip: get(r, "trip"), stay_nights: [].concat(get(r, "stay_nights")).join(","),
     mode: r.dates ? "dates" : "weekly",
     depart_weekdays: [].concat(get(r, "depart_weekdays")).map((w) => String(w).slice(0, 3)),
@@ -258,12 +272,36 @@ function startEdit(i) {
   document.querySelector(".route.editing")?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+/* The draft as one or more routes: one per destination entry. */
+function draftToRoutes() {
+  const d = DRAFT, errs = [];
+  const origins = [...new Set([...d.origins, ...codesOf(d.otherOrigins)])];
+  const entries = destEntries(d.to);
+  if (!origins.length) errs.push("至少選一個出發機場");
+  if (!entries.length) errs.push("至少填一個目的地");
+  const bad = [...origins, ...entries.flat()].filter((c) => !/^[A-Z]{3}$/.test(c));
+  if (bad.length) errs.push(`機場代碼要是 3 個英文字母：${bad.join("、")}`);
+  if (entries.some((e) => e.some((c) => origins.includes(c)))) errs.push("出發地和目的地不能一樣");
+  if (entries.some((e) => e.length > 4) || origins.length > 4) errs.push("同一格最多 4 個機場");
+  const { route: base, errs: e2 } = draftToRoute();
+  errs.push(...e2);
+  const old = EDIT === "new" ? null : ROUTES[EDIT];
+  const cities = entries.map(cityOf);
+  const routes = entries.map((codes, i) => {
+    const r = { ...base, origin: origins.length === 1 ? origins[0] : origins, to: codes.length === 1 ? codes[0] : codes };
+    const sameAsOld = old && i === 0 && codesOf(old.to).join("/") === codes.join("/");
+    r.name = sameAsOld && old.name ? old.name
+      : cities.filter((c) => c === cities[i]).length > 1 ? `${cities[i]}（${codes.join("/")}）` : cities[i];
+    if (d.group.trim()) r.group = d.group.trim().slice(0, 30);
+    return r;
+  });
+  return { routes, errs };
+}
+
+/* Settings shared by every route made from the draft. */
 function draftToRoute() {
   const d = DRAFT, errs = [];
-  const to = d.to.toUpperCase().trim(), origin = d.origin.toUpperCase().trim();
-  if (!/^[A-Z]{3}$/.test(origin) || !/^[A-Z]{3}$/.test(to)) errs.push("機場代碼要是 3 個英文字母");
-  if (origin === to) errs.push("出發地和目的地一樣");
-  const r = { origin, to, name: d.name.trim() || NAMES[to] || to };
+  const r = {};
   if (d.alert_below) {
     const t = parseInt(String(d.alert_below).replace(/[,\s]/g, ""), 10);
     if (!(t > 0)) errs.push("目標價要是數字"); else r.alert_below = t;
@@ -288,9 +326,9 @@ function draftToRoute() {
 }
 
 function applyEdit() {
-  const { route, errs } = draftToRoute();
+  const { routes, errs } = draftToRoutes();
   if (errs.length) { $("#edit-err").textContent = errs.join("；"); return; }
-  if (EDIT === "new") ROUTES.push(route); else ROUTES[EDIT] = route;
+  if (EDIT === "new") ROUTES.push(...routes); else ROUTES.splice(EDIT, 1, ...routes);
   EDIT = null; DRAFT = null;
   render();
 }
@@ -338,11 +376,23 @@ function editor() {
 
   return el("div", {},
     el("div", { class: "editor" },
-      el("div", {}, el("label", { for: "e-name" }, "名稱"), el("input", { id: "e-name", value: d.name, maxlength: 30, placeholder: "例如 東京跨年", oninput: upd("name") })),
-      el("div", {}, el("label", { for: "e-origin" }, "出發地"), el("input", { id: "e-origin", value: d.origin, maxlength: 3, oninput: upd("origin") })),
-      el("div", {}, el("label", { for: "e-to" }, "目的地（機場代碼）"), el("input", { id: "e-to", value: d.to, maxlength: 3, placeholder: "NRT", list: "codes",
-        oninput: (e) => { d.to = e.target.value; const n = NAMES[d.to.toUpperCase()]; if (n && !d.name) { d.name = n; $("#e-name").value = n; } renderCount(); } })),
-      el("div", {}, el("label", { for: "e-target" }, "目標價（來回總價，低於就通知）"), el("input", { id: "e-target", value: d.alert_below, inputmode: "numeric", oninput: upd("alert_below") })),
+      el("div", { class: "wide" }, el("span", { class: "field-label" }, "出發機場（可複選，多選會一起查、取最便宜）"),
+        el("div", { class: "row" },
+          seg("e-origin", TW.map(([c, n]) => [c, `${n} ${c}`]), d.origins, (v, on) => {
+            d.origins = on ? [...d.origins, v] : d.origins.filter((x) => x !== v); renderCount();
+          }, true),
+          el("input", { id: "e-origin-other", value: d.otherOrigins, placeholder: "其他，例如 HKG", style: "width:150px", "aria-label": "其他出發機場", oninput: upd("otherOrigins") }))),
+      el("div", { class: "wide" }, el("label", { for: "e-to" }, "目的地（機場代碼；逗號分開 = 分成多張卡片比較，斜線 = 同一張卡片一起查）"),
+        el("input", { id: "e-to", value: d.to, placeholder: "例如 NRT/HND, ICN, OKA", spellcheck: "false", oninput: upd("to") }),
+        el("div", { class: "chips", id: "dest-quick" }, ...[["東京", "NRT/HND"], ["大阪", "KIX"], ["首爾", "ICN/GMP"], ["沖繩", "OKA"], ["福岡", "FUK"], ["札幌", "CTS"], ["曼谷", "BKK/DMK"], ["香港", "HKG"], ["新加坡", "SIN"]].map(([n, c]) =>
+          el("button", { type: "button", class: "ghost", style: "padding:2px 10px;font-size:12px", onclick: () => {
+            const cur = destEntries(d.to).map((e) => e.join("/"));
+            if (!cur.includes(c)) cur.push(c);
+            d.to = cur.join(", "); $("#e-to").value = d.to; renderCount();
+          } }, `+ ${n}`))),
+        el("div", { class: "meta", id: "dest-preview", style: "margin-top:6px" })),
+      el("div", {}, el("label", { for: "e-group" }, "群組名稱（選填，例如 聖誕節）"), el("input", { id: "e-group", value: d.group, maxlength: 30, placeholder: "同一組的卡片會放在一起比較", oninput: upd("group") })),
+      el("div", {}, el("label", { for: "e-target" }, "目標價（每張卡片都用這個，低於就通知）"), el("input", { id: "e-target", value: d.alert_below, inputmode: "numeric", oninput: upd("alert_below") })),
       el("div", {}, el("span", { class: "field-label" }, "行程"),
         seg("e-trip", [["round-trip", "來回"], ["one-way", "單程"]], d.trip, (v) => { d.trip = v; nightsField.hidden = v !== "round-trip"; renderCount(); })),
       nightsField,
@@ -363,8 +413,12 @@ function editor() {
 function renderCount() {
   const n = $("#edit-count");
   if (!n || !DRAFT) return;
-  const { route, errs } = draftToRoute();
-  n.textContent = errs.length ? "" : `每次掃描會查 ${queries(route)} 組日期`;
+  const { routes, errs } = draftToRoutes();
+  const prev = $("#dest-preview");
+  if (prev) prev.textContent = routes.length > 1 ? `會變成 ${routes.length} 張卡片：${routes.map((r) => `${r.name}（${codesOf(r.to).join("/")}）`).join("、")}` : "";
+  n.textContent = errs.length ? "" : routes.length > 1
+    ? `每次掃描會查 ${routes.length} × ${queries(routes[0])} = ${routes.length * queries(routes[0])} 組日期`
+    : `每次掃描會查 ${queries(routes[0])} 組日期`;
   $("#edit-err").textContent = "";
 }
 
@@ -372,11 +426,15 @@ function render() {
   const box = $("#routes");
   box.replaceChildren();
   if (!ROUTES.length && EDIT !== "new") box.append(el("div", { class: "meta" }, "還沒有航線，按「新增航線」開始。"));
+  let lastGroup = null;
   ROUTES.forEach((r, i) => {
+    if ((r.group || "") !== lastGroup && (r.group || lastGroup)) box.append(el("div", { class: "group-head" }, r.group || "其他"));
+    lastGroup = r.group || "";
     if (EDIT === i) { box.append(el("div", { class: "route editing" }, el("div", { style: "flex:1" }, editor()))); return; }
     box.append(el("div", { class: "route" },
       el("div", {},
-        el("div", { class: "route-title" }, `${r.name || r.to} `, el("span", { class: "tag" }, `${r.origin || "TPE"}→${r.to}`),
+        el("div", { class: "route-title" }, `${r.name || cityOf(codesOf(r.to))} `,
+          el("span", { class: "tag" }, `${codesOf(r.origin || "TPE").join("/")}→${codesOf(r.to).join("/")}`),
           r.alert_below ? el("span", { class: "tag" }, `目標 ${money(r.alert_below)}`) : null),
         el("div", { class: "sub" }, describe(r)),
         el("div", { class: "meta" }, `每次掃描 ${queries(r)} 組日期`)),
@@ -402,8 +460,9 @@ function render() {
 function withKeys(routes) {
   const used = new Set();
   return routes.map((r) => {
-    let key = `${r.origin}-${r.to}`, n = 2;
-    while (used.has(key)) key = `${r.origin}-${r.to}-${n++}`;
+    const base = `${codesOf(r.origin).join("+")}-${codesOf(r.to).join("+")}`;
+    let key = base, n = 2;
+    while (used.has(key)) key = `${base}-${n++}`;
     used.add(key);
     return { ...r, key };
   });

@@ -3,7 +3,7 @@
   {
    "origin": "TPE",
    "to": "NRT",
-   "name": "聖誕節",
+   "name": "東京（NRT）",
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -12,12 +12,13 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-NRT"
+   "key": "TPE-NRT",
+   "group": "聖誕節"
   },
   {
    "origin": "TPE",
    "to": "HND",
-   "name": "聖誕節2",
+   "name": "東京（HND）",
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -26,12 +27,13 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-HND"
+   "key": "TPE-HND",
+   "group": "聖誕節"
   },
   {
    "origin": "TPE",
    "to": "ICN",
-   "name": "聖誕節3",
+   "name": "首爾",
    "trip": "round-trip",
    "stay_nights": [
     2
@@ -40,7 +42,8 @@
     "2026-12-25"
    ],
    "max_stops": 0,
-   "key": "TPE-ICN"
+   "key": "TPE-ICN",
+   "group": "聖誕節"
   }
  ]
 }

@@ -19,9 +19,18 @@ def past_prices(scans, fare_key, now, baseline_days):
     ]
 
 
-def past_bests(scans, now, baseline_days):
+def past_bests(scans, now, baseline_days, keys=None):
+    """Each past scan's cheapest fare. With `keys`, only those date pairs
+    count, so a route whose dates were edited isn't compared with old ones."""
     cutoff = now - timedelta(days=baseline_days)
-    return [s["best"] for s in scans if s.get("best") and parse_time(s["t"]) >= cutoff]
+    out = []
+    for s in scans:
+        if parse_time(s["t"]) < cutoff:
+            continue
+        prices = [p for k, p in s.get("fares", {}).items() if keys is None or k in keys]
+        if prices:
+            out.append(min(prices))
+    return out
 
 
 def evaluate_route(route, fares, scans, now, alerts):
@@ -53,7 +62,7 @@ def evaluate_route(route, fares, scans, now, alerts):
         if reasons:
             deals.append({**fare, "reasons": reasons})
 
-    bests = past_bests(scans, now, days)
+    bests = past_bests(scans, now, days, {f["fare_key"] for f in fares})
     route_median = int(median(bests)) if bests else None
     return deals, route_median
 

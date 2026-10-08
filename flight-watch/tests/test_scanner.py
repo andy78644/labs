@@ -134,3 +134,14 @@ class AlertDelivery(unittest.TestCase):
         self.assertTrue(items[0]["notified"])
         call, _, _ = self.scan(sent=["telegram"])
         self.assertIsNone(call)  # nothing new: no message at all
+
+
+class EditedRouteBaseline(unittest.TestCase):
+    def test_route_median_only_uses_current_dates(self):
+        old = [scan(h, 8000, {"2026-11-06": 8000}) for h in (6, 12, 18)]
+        fares = [{"fare_key": "2026-12-25", "price": 20000}]
+        _, route_median = deals.evaluate_route({}, fares, old, NOW, {"min_samples": 3})
+        self.assertIsNone(route_median)
+        old.append(scan(3, 21000, {"2026-12-25": 21000, "2026-11-06": 7000}))
+        _, route_median = deals.evaluate_route({}, fares, old, NOW, {"min_samples": 3})
+        self.assertEqual(route_median, 21000)

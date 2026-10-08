@@ -8,6 +8,7 @@ scans, look for promotions, write data/*.json and send alerts.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -17,6 +18,7 @@ import yaml
 
 from . import deals as deals_mod
 from . import notify, promos
+from .airports import city
 from .providers import make_provider
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -89,21 +91,35 @@ def load_routes(cfg, data_dir):
     routes = [dict(r) for r in cfg.get("routes", [])]
     routes += [dict(r, source="ui") for r in load_json(Path(data_dir) / "watchlist.json", {"routes": []})["routes"]]
     for r in routes:
-        r["to"] = r["to"].upper()
-        r["origin"] = r.get("origin", cfg["origin"]).upper()
-        r.setdefault("name", r["to"])
-        r.setdefault("key", f'{r["origin"]}-{r["to"]}')
+        # origin / to may each be several airports searched together, e.g. ["TPE", "TSA"].
+        r["origins"] = parse_codes(r.get("origin", cfg["origin"]))
+        r["dests"] = parse_codes(r["to"])
+        r["origin"], r["to"] = "/".join(r["origins"]), "/".join(r["dests"])
+        r["city"] = city(r["dests"])
+        r.setdefault("name", r["city"])
+        r.setdefault("key", f'{"+".join(r["origins"])}-{"+".join(r["dests"])}')
     return routes
 
 
-def search_fare(provider, origin, dest, dep, ret, max_stops, delay, errors):
+def parse_codes(value):
+    """ "TPE", "TPE/TSA", "tpe, tsa" or ["TPE", "TSA"] -> ["TPE", "TSA"]."""
+    items = value if isinstance(value, (list, tuple)) else re.split(r"[\s,/+、，]+", str(value))
+    codes = []
+    for c in items:
+        c = str(c).strip().upper()
+        if c and c not in codes:
+            codes.append(c)
+    return codes
+
+
+def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
     """One query with a single retry. Errors are appended, never raised."""
     for attempt in range(2):
         try:
-            return provider.search(origin, dest, dep, ret, max_stops)
+            return provider.search(origins, dests, dep, ret, max_stops)
         except Exception as e:
             if attempt:
-                errors.append(f"{origin}-{dest} {fare_key(dep, ret)}: {type(e).__name__}: {e}")
+                errors.append(f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}: {type(e).__name__}: {e}")
             else:
                 time.sleep(delay * 3)
     return None
@@ -126,7 +142,7 @@ def run(args):
     today = date.today()
     origin = cfg["origin"].upper()
     currency = cfg.get("currency", "TWD")
-    routes = [r for r in load_routes(cfg, data_dir) if not args.only or r["to"] in args.only]
+    routes = [r for r in load_routes(cfg, data_dir) if not args.only or set(r["dests"]) & set(args.only)]
 
     provider = make_provider(
         args.provider, currency, cfg.get("language", "zh-TW"), cfg.get("search", {}).get("adults", 1)
@@ -142,7 +158,7 @@ def run(args):
         delay = search.get("delay_seconds", 2)
         fares = []
         for dep, ret in trip_dates(search, today):
-            fare = search_fare(provider, r_origin, route["to"], dep, ret, search.get("max_stops"), delay, errors)
+            fare = search_fare(provider, route["origins"], route["dests"], dep, ret, search.get("max_stops"), delay, errors)
             if fare:
                 fares.append(fare_row(dep, ret, fare))
             if args.provider != "demo":
@@ -152,7 +168,8 @@ def run(args):
         scans = history["routes"].get(key, [])
         route_deals, route_median = deals_mod.evaluate_route(route, fares, scans, now, alerts_cfg)
         for d in route_deals:
-            d.update(route=key, origin=r_origin, to=route["to"], name=route["name"])
+            d.update(route=key, origin=r_origin, to=route["to"], name=route["name"],
+                     group=route.get("group"), city=route["city"])
         all_deals += route_deals
 
         best = min(fares, key=lambda f: f["price"]) if fares else None
@@ -162,6 +179,8 @@ def run(args):
             "source": route.get("source", "config"),
             "to": route["to"],
             "name": route["name"],
+            "group": route.get("group"),
+            "city": route["city"],
             "alert_below": route.get("alert_below"),
             "best": best,
             "median_best": route_median,

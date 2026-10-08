@@ -22,7 +22,8 @@ def build_message(deals, promos, currency, dashboard_url=None, per_route=3):
         for group in by_route.values():
             group.sort(key=lambda d: d["price"])
             first = group[0]
-            lines.append(f"{first['origin']}→{first['to']} {first['name']}")
+            label = f"{first['group']} · {first['name']}" if first.get("group") else first["name"]
+            lines.append(f"{first['origin']}→{first['to']} {label}")
             for d in group[:per_route]:
                 why = "、".join(REASON_TEXT[r] for r in d["reasons"])
                 dates = d["depart"] + (f" → {d['return']}" if d.get("return") else "")

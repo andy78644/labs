@@ -60,6 +60,15 @@ def parse_feed(xml_bytes):
     return items
 
 
+def route_terms(route):
+    """Words that tie a headline to a route: its city (東京), its own name
+    unless that is something like 聖誕節, and its airport codes."""
+    from .airports import city
+    terms = city(route.get("dests") or route["to"].split("/")).split("/")
+    terms += [route["name"]] + (route.get("dests") or route["to"].split("/"))
+    return [t for i, t in enumerate(terms) if t and t not in terms[:i]]
+
+
 def matches(title, names, keywords, require=(), exclude=()):
     t = title.lower()
     return (
@@ -79,7 +88,7 @@ def headline(title):
 def refilter(cfg, routes, items):
     """Re-apply the current filters to stored items, so a config change
     also cleans up what is already on the dashboard."""
-    names = [r["name"] for r in routes] + [r["to"] for r in routes]
+    names = [t for r in routes for t in route_terms(r)]
     return [
         it for it in items
         if matches(it["title"], names, cfg.get("keywords", []),
@@ -100,9 +109,15 @@ def scan_promotions(cfg, routes, now, fetcher=fetch):
     terms = cfg.get("query_terms", ["機票", "優惠"])
     cutoff = now - timedelta(days=lookback)
 
-    sources = [(r["name"], google_news_url(terms + [r["name"]], lookback)) for r in routes]
+    # One news search per destination city (several routes may share one).
+    cities = []
+    for r in routes:
+        c = route_terms(r)[0]
+        if c not in cities:
+            cities.append(c)
+    sources = [(c, google_news_url(terms + [c], lookback)) for c in cities]
     sources += [(f.get("name", f["url"]), f["url"]) for f in cfg.get("feeds", [])]
-    names = [r["name"] for r in routes] + [r["to"] for r in routes]
+    names = [t for r in routes for t in route_terms(r)]
 
     found, errors = {}, []
     for label, url in sources:
@@ -126,7 +141,8 @@ def scan_promotions(cfg, routes, now, fetcher=fetch):
                 "routes": [],
             })
             for r in routes:
-                if (r["name"].lower() in it["title"].lower() or r["to"] in it["title"]) and r["to"] not in entry["routes"]:
+                hit = any(t.lower() in it["title"].lower() for t in route_terms(r))
+                if hit and r["to"] not in entry["routes"]:
                     entry["routes"].append(r["to"])
     items = sorted(found.values(), key=lambda x: x["published"] or "", reverse=True)
     return items, errors

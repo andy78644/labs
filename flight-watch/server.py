@@ -30,6 +30,14 @@ from scanner.providers import make_provider
 
 ROOT = Path(__file__).resolve().parent
 IATA = re.compile(r"^[A-Z]{3}$")
+
+
+def airports(value, label):
+    """One or more airport codes ("TPE", "TPE/TSA", ["NRT", "HND"])."""
+    codes = scan.parse_codes(value)
+    if not codes or not all(IATA.match(c) for c in codes) or len(codes) > 4:
+        raise ValueError(f"{label}要是 1–4 個 3 碼機場代碼，例如 TPE 或 TPE/TSA")
+    return codes
 MAX_QUERIES = 80          # per live search
 PARALLEL = 3              # concurrent requests to Google, across all searches
 google_slots = threading.BoundedSemaphore(PARALLEL)
@@ -80,12 +88,11 @@ class App:
     # ---------- live search ----------
     def start_search(self, body):
         cfg = self.cfg()
-        origin = str(body.get("origin") or cfg["origin"]).upper().strip()
-        dest = str(body.get("to", "")).upper().strip()
-        if not IATA.match(origin) or not IATA.match(dest):
-            raise ValueError("機場代碼要是 3 個英文字母，例如 TPE、NRT")
-        if origin == dest:
+        origins = airports(body.get("origin") or cfg["origin"], "出發地")
+        dests = airports(body.get("to", ""), "目的地")
+        if set(origins) & set(dests):
             raise ValueError("出發地和目的地不能一樣")
+        origin, dest = "/".join(origins), "/".join(dests)
         trip = "one-way" if body.get("trip") == "one-way" else "round-trip"
         start = date.fromisoformat(body["start"])
         end = date.fromisoformat(body["end"])
@@ -133,7 +140,7 @@ class App:
 
         def one(dep, ret):
             with google_slots:
-                fare = scan.search_fare(provider, origin, dest, dep, ret, max_stops, delay, job["errors"])
+                fare = scan.search_fare(provider, origins, dests, dep, ret, max_stops, delay, job["errors"])
                 if self.opts.provider != "demo":
                     time.sleep(delay / 2)
             with self.lock:
@@ -158,10 +165,9 @@ class App:
     # ---------- watchlist edits ----------
     def add_watch(self, body):
         cfg = self.cfg()
-        origin = str(body.get("origin") or cfg["origin"]).upper()
-        dest = str(body.get("to", "")).upper()
-        if not IATA.match(origin) or not IATA.match(dest):
-            raise ValueError("機場代碼要是 3 個英文字母")
+        origins = airports(body.get("origin") or cfg["origin"], "出發地")
+        dests = airports(body.get("to", ""), "目的地")
+        origin, dest = "/".join(origins), "/".join(dests)
         dates = sorted({date.fromisoformat(d).isoformat() for d in body.get("dates") or []})
         if not dates:
             raise ValueError("至少要有一個出發日期")
@@ -178,9 +184,10 @@ class App:
         if body.get("alert_below"):
             route["alert_below"] = int(body["alert_below"])
         taken = {r["key"] for r in scan.load_routes(cfg, self.data_dir)}
-        key, n = f"{origin}-{dest}", 2
+        base = f'{"+".join(origins)}-{"+".join(dests)}'
+        key, n = base, 2
         while key in taken:
-            key, n = f"{origin}-{dest}-{n}", n + 1
+            key, n = f"{base}-{n}", n + 1
         route["key"] = key
         with self.lock:
             wl = self.watchlist()
