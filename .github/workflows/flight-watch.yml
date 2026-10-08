@@ -27,6 +27,10 @@ jobs:
         working-directory: flight-watch
     steps:
       - uses: actions/checkout@v4
+      # A queued run checks out the commit it was triggered on; start from the
+      # newest data instead (another scan or a settings save may have landed).
+      - name: Update to latest main
+        run: git pull --ff-only origin "${{ github.ref_name }}"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -59,7 +63,9 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "flight-watch: scan $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do
-            if git pull --rebase && git push; then echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+            # The scan rewrites data/ from scratch, so on a conflict this run's files win.
+            if git pull --rebase -X theirs && git push; then echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+            git rebase --abort 2>/dev/null || true
             sleep 5
           done
           exit 1
