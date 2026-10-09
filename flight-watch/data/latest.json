@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-09T13:20:32+00:00",
+ "generated_at": "2026-10-09T22:40:32+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -80,7 +80,7 @@
       "via": []
      },
      {
-      "price": 35492,
+      "price": 35505,
       "airline": "長榮航空",
       "stops": 0,
       "duration_min": 165,
@@ -92,11 +92,11 @@
      }
     ],
     "median": 20370,
-    "samples": 4,
+    "samples": 5,
     "change_pct": 3.7
    },
    "median_best": 20370,
-   "prev_best": 19610,
+   "prev_best": 21128,
    "fares": [
     {
      "fare_key": "2026-12-25/2026-12-27",
@@ -165,7 +165,7 @@
        "via": []
       },
       {
-       "price": 35492,
+       "price": 35505,
        "airline": "長榮航空",
        "stops": 0,
        "duration_min": 165,
@@ -177,7 +177,7 @@
       }
      ],
      "median": 20370,
-     "samples": 4,
+     "samples": 5,
      "change_pct": 3.7
     }
    ]
@@ -214,7 +214,7 @@
       "via": []
      },
      {
-      "price": 13270,
+      "price": 13276,
       "airline": "大韓航空",
       "stops": 0,
       "duration_min": 150,
@@ -225,7 +225,7 @@
       "via": []
      },
      {
-      "price": 14020,
+      "price": 14026,
       "airline": "韓亞航空",
       "stops": 0,
       "duration_min": 155,
@@ -236,7 +236,7 @@
       "via": []
      },
      {
-      "price": 14965,
+      "price": 14975,
       "airline": "濟州航空",
       "stops": 0,
       "duration_min": 145,
@@ -247,7 +247,7 @@
       "via": []
      },
      {
-      "price": 15344,
+      "price": 15350,
       "airline": "真航空",
       "stops": 0,
       "duration_min": 140,
@@ -258,7 +258,7 @@
       "via": []
      },
      {
-      "price": 17325,
+      "price": 17333,
       "airline": "長榮航空",
       "stops": 0,
       "duration_min": 145,
@@ -270,7 +270,7 @@
      }
     ],
     "median": 12708,
-    "samples": 4,
+    "samples": 5,
     "change_pct": 0.0
    },
    "median_best": 12708,
@@ -299,7 +299,7 @@
        "via": []
       },
       {
-       "price": 13270,
+       "price": 13276,
        "airline": "大韓航空",
        "stops": 0,
        "duration_min": 150,
@@ -310,7 +310,7 @@
        "via": []
       },
       {
-       "price": 14020,
+       "price": 14026,
        "airline": "韓亞航空",
        "stops": 0,
        "duration_min": 155,
@@ -321,7 +321,7 @@
        "via": []
       },
       {
-       "price": 14965,
+       "price": 14975,
        "airline": "濟州航空",
        "stops": 0,
        "duration_min": 145,
@@ -332,7 +332,7 @@
        "via": []
       },
       {
-       "price": 15344,
+       "price": 15350,
        "airline": "真航空",
        "stops": 0,
        "duration_min": 140,
@@ -343,7 +343,7 @@
        "via": []
       },
       {
-       "price": 17325,
+       "price": 17333,
        "airline": "長榮航空",
        "stops": 0,
        "duration_min": 145,
@@ -355,7 +355,7 @@
       }
      ],
      "median": 12708,
-     "samples": 4,
+     "samples": 5,
      "change_pct": 0.0
     }
    ]
