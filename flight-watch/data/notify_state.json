@@ -13,18 +13,18 @@
    ]
   },
   "TPE+TSA-BKK+DMK": {
-   "price": 16523,
+   "price": 10890,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
   }
  },
  "summary": {
-  "date": "2026-10-09",
+  "date": "2026-10-10",
   "best": {
-   "TPE+TSA-NRT+HND": 19610,
+   "TPE+TSA-NRT+HND": 21128,
    "TPE+TSA-ICN+GMP": 12708,
-   "TPE+TSA-BKK+DMK": 16523
+   "TPE+TSA-BKK+DMK": 10890
   }
  }
 }
