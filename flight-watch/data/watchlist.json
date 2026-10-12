@@ -62,6 +62,69 @@
    "name": "曼谷",
    "group": "聖誕節",
    "key": "TPE+TSA-BKK+DMK"
+  },
+  {
+   "trip": "round-trip",
+   "stay_nights": [
+    3
+   ],
+   "dates": [
+    "2026-12-24"
+   ],
+   "max_stops": 0,
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "NRT",
+    "HND"
+   ],
+   "name": "東京",
+   "group": "聖誕節2",
+   "key": "TPE+TSA-NRT+HND-2"
+  },
+  {
+   "trip": "round-trip",
+   "stay_nights": [
+    3
+   ],
+   "dates": [
+    "2026-12-24"
+   ],
+   "max_stops": 0,
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "ICN",
+    "GMP"
+   ],
+   "name": "首爾",
+   "group": "聖誕節2",
+   "key": "TPE+TSA-ICN+GMP-2"
+  },
+  {
+   "trip": "round-trip",
+   "stay_nights": [
+    3
+   ],
+   "dates": [
+    "2026-12-24"
+   ],
+   "max_stops": 0,
+   "origin": [
+    "TPE",
+    "TSA"
+   ],
+   "to": [
+    "BKK",
+    "DMK"
+   ],
+   "name": "曼谷",
+   "group": "聖誕節2",
+   "key": "TPE+TSA-BKK+DMK-2"
   }
  ]
 }
