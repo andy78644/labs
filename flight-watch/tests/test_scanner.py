@@ -205,7 +205,7 @@ class ParseResults(unittest.TestCase):
         good = [[None, ["樂桃航空"], [leg("TPE", "HND", [20, 55], [0, 50], 175, [2026, 12, 25], [2026, 12, 26])]],
                 [[None, 20370]]]
         bad = [[None, ["X"], [leg("TPE", "NRT", [9], [13], 180, [2026, 12, 25], [2026, 12, 25])]], []]
-        payload = [None, None, None, [[good, bad]]]
+        payload = [None, None, [[good]], [[good, bad]]]
         page = ("<html><script class=\"ds:1\">AF_initDataCallback({key: 'ds:1', data:"
                 + json.dumps(payload) + ", sideChannel: {}});</script></html>")
         opts = parse_results(page)
@@ -213,3 +213,16 @@ class ParseResults(unittest.TestCase):
         o = opts[0]
         self.assertEqual((o.price, o.depart_time, o.arrive_time, o.to_airport, o.stops),
                          (20370, "20:55", "00:50+1", "HND", 0))
+
+    def test_reads_best_flights_when_other_flights_is_empty(self):
+        """Google puts the cheapest flights in payload[2] ("best flights");
+        payload[3] can be empty, which used to look like "no fares"."""
+        import json
+        from scanner.providers import parse_results
+        row = [None] * 22
+        row[3], row[6], row[8], row[10], row[11], row[20], row[21] = "TPE", "BKK", [7], [10], 225, [2026, 12, 25], [2026, 12, 25]
+        item = [[None, ["泰國獅航"], [row]], [[None, 10890]]]
+        payload = [None, None, [[item]], [None]]
+        page = ("<html><script class=\"ds:1\">AF_initDataCallback({key: 'ds:1', data:"
+                + json.dumps(payload) + ", sideChannel: {}});</script></html>")
+        self.assertEqual([o.price for o in parse_results(page)], [10890])

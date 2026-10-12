@@ -114,12 +114,16 @@ def parse_codes(value):
 
 def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
     """One query with a single retry. Errors are appended, never raised."""
+    label = f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}"
     for attempt in range(2):
         try:
-            return provider.search(origins, dests, dep, ret, max_stops)
+            fare = provider.search(origins, dests, dep, ret, max_stops)
+            if fare is None:
+                errors.append(f"{label}: Google 沒有回傳這組日期的航班（可能沒有符合轉機條件的班次）")
+            return fare
         except Exception as e:
             if attempt:
-                errors.append(f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}: {type(e).__name__}: {e}")
+                errors.append(f"{label}: {type(e).__name__}: {e}")
             else:
                 time.sleep(delay * 3)
     return None
