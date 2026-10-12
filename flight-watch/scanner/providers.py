@@ -100,7 +100,14 @@ def parse_results(html):
     payload = json.loads(data)
     hhmm = lambda v: "%02d:%02d" % tuple((x or 0) for x in [*(v or []), None, None][:2])
     options = []
-    for k in (payload[3][0] if payload[3] and payload[3][0] else []):
+    # payload[2] holds Google's "best flights" (often the cheapest ones) and
+    # payload[3] "other flights"; either can be empty, so read both.
+    items = []
+    for i in (2, 3):
+        block = payload[i] if len(payload) > i else None
+        if block and block[0]:
+            items += block[0]
+    for k in items:
         try:
             flight, price = k[0], k[1][0][1]
             legs = flight[2]
@@ -122,7 +129,10 @@ def parse_results(html):
             ))
         except (IndexError, TypeError, ValueError):
             continue
-    return [o for o in options if o.price > 0]
+    unique = {}
+    for o in options:
+        unique.setdefault((o.price, o.airline, o.depart_time, o.arrive_time, o.from_airport, o.to_airport), o)
+    return [o for o in unique.values() if o.price > 0]
 
 
 class GoogleFlightsProvider:
