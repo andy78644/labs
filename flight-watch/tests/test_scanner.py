@@ -226,3 +226,53 @@ class ParseResults(unittest.TestCase):
         page = ("<html><script class=\"ds:1\">AF_initDataCallback({key: 'ds:1', data:"
                 + json.dumps(payload) + ", sideChannel: {}});</script></html>")
         self.assertEqual([o.price for o in parse_results(page)], [10890])
+
+
+class FlakyGoogle(unittest.TestCase):
+    def test_search_fare_retries_google_errors(self):
+        from unittest import mock
+        from scanner.providers import GoogleBusyError
+        from scanner.scan import search_fare
+        calls = []
+
+        class P:
+            def search(self, *a):
+                calls.append(1)
+                if len(calls) < 3:
+                    raise GoogleBusyError("busy")
+                return "fare"
+        errors = []
+        with mock.patch("scanner.scan.time.sleep") as sleep:
+            self.assertEqual(search_fare(P(), ["TPE"], ["NRT"], date(2026, 12, 25), None, 0, 2, errors), "fare")
+        self.assertEqual((len(calls), errors, sleep.call_count), (3, [], 2))
+
+    def test_failed_route_reports_no_fare_but_keeps_history(self):
+        import json, tempfile
+        from argparse import Namespace
+        from pathlib import Path
+        from unittest import mock
+        from scanner import scan as scan_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "config.yml").write_text("origin: TPE\nroutes: [{to: NRT, dates: ['2099-01-01'], stay_nights: [2]}]\n"
+                                          "notify: {daily_summary: false}\n", encoding="utf-8")
+            args = Namespace(config=d / "config.yml", data_dir=d, provider="demo", only=None,
+                             dry_run=False, no_notify=True, skip_promos=True)
+            scan_mod.run(args)
+            first = json.loads((d / "latest.json").read_text())["routes"][0]
+            with mock.patch.object(scan_mod, "search_fare", return_value=None):
+                with self.assertRaises(scan_mod.NoFaresError):   # nothing real at all: keep files
+                    scan_mod.run(args)
+            (d / "config.yml").write_text("origin: TPE\nroutes: [{to: NRT, dates: ['2099-01-01'], stay_nights: [2]},"
+                                          " {to: KIX, dates: ['2099-01-01'], stay_nights: [2]}]\n"
+                                          "notify: {daily_summary: false}\n", encoding="utf-8")
+            real = scan_mod.search_fare
+            with mock.patch.object(scan_mod, "search_fare",
+                                   side_effect=lambda p, o, ds, *a: None if ds == ["NRT"] else real(p, o, ds, *a)):
+                scan_mod.run(args)
+            nrt = json.loads((d / "latest.json").read_text())["routes"][0]
+            self.assertEqual((nrt["fares"], nrt["best"]), ([], None))      # no pretend data
+            self.assertEqual(nrt["fare_keys"], ["2099-01-01/2099-01-03"])   # dashboard can draw history
+            self.assertEqual(nrt["last_seen"]["price"], first["best"]["price"])
+            hist = json.loads((d / "history.json").read_text())["routes"]["TPE-NRT"]
+            self.assertEqual(len(hist), 1)   # the failed scan adds nothing to the history

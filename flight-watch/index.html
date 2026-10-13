@@ -20,6 +20,8 @@
 }
 .chip.good { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
 .chip.good::before { content: "✓"; font-weight: 700; }
+.chip.warn-chip { color: #9a5b00; border-color: rgba(250, 178, 25, 0.6); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .chip.warn-chip { color: #fab219; } }
 .chart-label { font-size: 12px; color: var(--muted); margin: 14px 0 2px; }
 svg { display: block; width: 100%; overflow: visible; }
 svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -281,6 +283,10 @@ const via = (o) => o.stops === 0 ? "直飛" : `經 ${(o.via || []).join("、") |
 /* All kept flights for one date pair, cheapest first. */
 function optionsPanel(route, f, cur) {
   const box = el("div", { class: "options" });
+  if (!(f.options && f.options.length) && !f.depart_time) {
+    box.append(el("div", { class: "meta" }, `${md(f.depart)} 的價格是之前掃描留下的，這次 Google 沒回傳航班細節。`));
+    return box;
+  }
   const opts = f.options && f.options.length ? f.options : [f];
   const fastest = opts.length > 1 ? opts.reduce((a, b) => (b.duration_min < a.duration_min ? b : a)) : null;
   box.append(el("div", { class: "options-head" },
@@ -328,74 +334,88 @@ function renderRoutes() {
   }
 }
 
+const fmtWhen = (t) => new Date(t).toLocaleString("zh-TW", { hour12: false, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/* Cheapest fare per scan over the date pairs this route checks now, so an
+   edited route isn't compared with old dates, and history shows even when
+   this scan got nothing. */
+function historyPoints(route) {
+  const keys = new Set(route.fare_keys || route.fares.map((f) => f.fare_key));
+  return (HISTORY.routes[route.key] || []).map((s) => {
+    const ps = Object.entries(s.fares || {}).filter(([k]) => keys.has(k)).map(([, v]) => v);
+    return ps.length ? { t: s.t, best: Math.min(...ps) } : null;
+  }).filter(Boolean);
+}
+
 function renderCard(box, route, cur) {
-  {
-    const card = el("article", { class: "card" });
-    const head = el("div", { class: "route-head" });
-    const left = el("div");
-    const name = el("div", { class: "route-name" }, route.name);
-    name.append(el("span", { class: "route-code" }, `${route.origin} → ${route.to}`));
-    left.append(name);
-    const right = el("div", { class: "hero" });
-    if (route.best) {
-      right.append(el("small", {}, "最低"), document.createTextNode(Number(route.best.price).toLocaleString("en-US")));
-      left.append(el("div", { class: "sub" },
-        `${route.best.depart}（${weekday(route.best.depart)}）` + (route.best.return ? ` → ${md(route.best.return)}` : "") +
-        ` · ${route.best.airline} · ${stops(route.best.stops)}`));
-    } else {
-      right.append(el("small", {}, "沒有結果"));
-    }
-    head.append(left, right);
-    card.append(head);
-
-    const chips = el("div", { class: "chips" });
-    chips.append(el("span", { class: "chip" }, cur));
-    if (route.best && route.alert_below) {
-      const ok = route.best.price <= route.alert_below;
-      chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
-        ok ? `低於目標 ${short(route.alert_below)}` : `目標 ${short(route.alert_below)}（差 ${short(route.best.price - route.alert_below)}）`));
-    }
-    if (route.best && route.median_best) {
-      const pct = Math.round((route.best.price - route.median_best) / route.median_best * 100);
-      chips.append(el("span", { class: "chip" }, `近期中位數 ${short(route.median_best)}（${pct > 0 ? "+" : ""}${pct}%）`));
-    }
-    chips.append(el("span", { class: "chip" }, `${route.fares.length} 個日期`));
-    card.append(chips);
-
-    if (route.fares.length) {
-      card.append(el("div", { class: "chart-label" }, "各出發日最低票價（點長條看那天的所有航班" + (route.alert_below ? "；淺色 = 高於目標" : "") + "）"));
-      const slot = el("div", { "data-chart": "bars" });
-      card.append(slot);
-      card.append(el("div", { class: "chart-label" }, "最低票價走勢"));
-      const optSlot = el("div");
-      card.append(optSlot);
-      let selected = route.best.fare_key;
-      const pick = (f) => { selected = f.fare_key; optSlot.replaceChildren(optionsPanel(route, f, cur)); draw(); };
-      // Trend over the date pairs this route checks now (edited routes keep older scans).
-      const keys = new Set(route.fares.map((f) => f.fare_key));
-      const pts = (HISTORY.routes[route.key] || []).map((s) => {
-        const ps = Object.entries(s.fares || {}).filter(([k]) => keys.has(k)).map(([, v]) => v);
-        return ps.length ? { t: s.t, best: Math.min(...ps) } : null;
-      }).filter(Boolean);
-      const tslot = el("div", { "data-chart": "trend" });
-      card.append(tslot);
-      optSlot.replaceChildren(optionsPanel(route, route.best, cur));
-      const draw = () => {
-        const w = slot.clientWidth || 480;
-        slot.replaceChildren(barChart(route, cur, w, selected, pick));
-        tslot.replaceChildren(pts.length >= 2 ? trendChart(pts, cur, w)
-          : el("div", { class: "empty" }, `資料累積中：目前 ${pts.length} 次掃描，至少兩次才畫得出走勢。`));
-      };
-      card._draw = draw;
-      const det = el("details");
-      det.append(el("summary", {}, "表格"), fareTable(route, cur));
-      card.append(det);
-    } else {
-      card.append(el("div", { class: "empty" }, "這次掃描沒有拿到票價。"));
-    }
-    box.append(card);
-    card._draw && card._draw();
+  const card = el("article", { class: "card" });
+  const head = el("div", { class: "route-head" });
+  const left = el("div");
+  const name = el("div", { class: "route-name" }, route.name);
+  name.append(el("span", { class: "route-code" }, `${route.origin} → ${route.to}`));
+  left.append(name);
+  const right = el("div", { class: "hero" });
+  if (route.best) {
+    right.append(el("small", {}, "最低"), document.createTextNode(Number(route.best.price).toLocaleString("en-US")));
+    left.append(el("div", { class: "sub" },
+      `${route.best.depart}（${weekday(route.best.depart)}）` + (route.best.return ? ` → ${md(route.best.return)}` : "") +
+      ` · ${route.best.airline} · ${stops(route.best.stops)}`));
+  } else {
+    right.append(el("small", {}, "這次沒查到"));
+    const seen = route.last_seen;
+    left.append(el("div", { class: "sub" }, seen
+      ? `上次查到 ${money(seen.price, cur)}（${fmtWhen(seen.t)}，${md(seen.fare_key.split("/")[0])} 出發）`
+      : "還沒有查到過這條航線的票價"));
   }
+  head.append(left, right);
+  card.append(head);
+
+  const chips = el("div", { class: "chips" });
+  chips.append(el("span", { class: "chip" }, cur));
+  if (!route.best) chips.append(el("span", { class: "chip warn-chip", title: "Google 這次一直回傳錯誤，或沒有符合條件的航班；詳情見最下面的掃描錯誤" },
+    "⚠ 這次掃描沒拿到票價"));
+  if (route.best && route.alert_below) {
+    const ok = route.best.price <= route.alert_below;
+    chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
+      ok ? `低於目標 ${short(route.alert_below)}` : `目標 ${short(route.alert_below)}（差 ${short(route.best.price - route.alert_below)}）`));
+  }
+  if (route.best && route.median_best) {
+    const pct = Math.round((route.best.price - route.median_best) / route.median_best * 100);
+    chips.append(el("span", { class: "chip" }, `近期中位數 ${short(route.median_best)}（${pct > 0 ? "+" : ""}${pct}%）`));
+  }
+  if (route.fares.length) chips.append(el("span", { class: "chip" }, `${route.fares.length} 個日期`));
+  card.append(chips);
+
+  // This scan's fares: bars and the flights for the selected date.
+  let slot = null, optSlot = null, selected = route.best && route.best.fare_key;
+  const pick = (f) => { selected = f.fare_key; optSlot.replaceChildren(optionsPanel(route, f, cur)); draw(); };
+  if (route.fares.length) {
+    card.append(el("div", { class: "chart-label" }, "各出發日最低票價（點長條看那天的所有航班" + (route.alert_below ? "；淺色 = 高於目標" : "") + "）"));
+    slot = el("div", { "data-chart": "bars" });
+    optSlot = el("div");
+    card.append(slot, optSlot);
+    optSlot.replaceChildren(optionsPanel(route, route.best, cur));
+  }
+
+  // History: always shown when there is any, even if this scan got nothing.
+  const pts = historyPoints(route);
+  card.append(el("div", { class: "chart-label" }, "最低票價走勢（每次掃描）"));
+  const tslot = el("div", { "data-chart": "trend" });
+  card.append(tslot);
+  const draw = () => {
+    const w = (slot || tslot).clientWidth || 480;
+    if (slot) slot.replaceChildren(barChart(route, cur, w, selected, pick));
+    tslot.replaceChildren(pts.length >= 2 ? trendChart(pts, cur, w)
+      : el("div", { class: "empty" }, pts.length ? "目前只有 1 次掃描有資料，至少兩次才畫得出走勢。" : "還沒有歷史資料。"));
+  };
+  card._draw = draw;
+  if (route.fares.length) {
+    const det = el("details");
+    det.append(el("summary", {}, "表格"), fareTable(route, cur));
+    card.append(det);
+  }
+  box.append(card);
+  draw();
 }
 
 function renderDeals() {

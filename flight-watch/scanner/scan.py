@@ -115,17 +115,21 @@ def parse_codes(value):
 def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
     """One query with a single retry. Errors are appended, never raised."""
     label = f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}"
-    for attempt in range(2):
+    # Google often answers with a momentary error page (about 1 in 3 queries
+    # in testing); waiting a few seconds and asking again almost always works.
+    waits = [delay * 1.5, delay * 3, delay * 6, delay * 10, delay * 15]
+    last = None
+    for attempt in range(len(waits) + 1):
         try:
             fare = provider.search(origins, dests, dep, ret, max_stops)
             if fare is None:
-                errors.append(f"{label}: Google 沒有回傳這組日期的航班（可能沒有符合轉機條件的班次）")
+                errors.append(f"{label}: 這組日期查不到符合條件的航班（例如沒有直飛）")
             return fare
         except Exception as e:
-            if attempt:
-                errors.append(f"{label}: {type(e).__name__}: {e}")
-            else:
-                time.sleep(delay * 3)
+            last = e
+            if attempt < len(waits):
+                time.sleep(waits[attempt])
+    errors.append(f"{label}: 試了 {len(waits) + 1} 次都失敗（{type(last).__name__}: {last}）")
     return None
 
 
@@ -178,6 +182,7 @@ def run(args):
                      group=route.get("group"), city=route["city"])
         all_deals += route_deals
 
+        wanted = sorted(fare_key(d, r) for d, r in trip_dates(search, today))
         best = min(fares, key=lambda f: f["price"]) if fares else None
         out_routes.append({
             "key": key,
@@ -191,6 +196,10 @@ def run(args):
             "best": best,
             "median_best": route_median,
             "prev_best": prev[0] if prev else None,
+            # The date pairs this route checks, so the dashboard can draw its
+            # history even when this scan got nothing; and the newest price seen.
+            "fare_keys": wanted,
+            "last_seen": None if fares else last_seen(scans, set(wanted)),
             "fares": fares,
         })
         if fares:
@@ -262,6 +271,16 @@ def run(args):
     if promo_items:
         save_json(data_dir / "promos.json", {"updated_at": now.isoformat(), "items": promo_items})
     return latest
+
+
+def last_seen(scans, wanted):
+    """Cheapest price for these date pairs in the newest scan that had any."""
+    for sc in reversed(scans):
+        hit = {k: p for k, p in sc.get("fares", {}).items() if k in wanted}
+        if hit:
+            k = min(hit, key=hit.get)
+            return {"price": hit[k], "fare_key": k, "t": sc["t"]}
+    return None
 
 
 def price_updates(out_routes, ncfg, state, now):
