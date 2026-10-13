@@ -20,6 +20,8 @@
 }
 .chip.good { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
 .chip.good::before { content: "✓"; font-weight: 700; }
+.chip.warn-chip { color: #9a5b00; border-color: rgba(250, 178, 25, 0.6); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .chip.warn-chip { color: #fab219; } }
 .chart-label { font-size: 12px; color: var(--muted); margin: 14px 0 2px; }
 svg { display: block; width: 100%; overflow: visible; }
 svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -281,6 +283,10 @@ const via = (o) => o.stops === 0 ? "直飛" : `經 ${(o.via || []).join("、") |
 /* All kept flights for one date pair, cheapest first. */
 function optionsPanel(route, f, cur) {
   const box = el("div", { class: "options" });
+  if (!(f.options && f.options.length) && !f.depart_time) {
+    box.append(el("div", { class: "meta" }, `${md(f.depart)} 的價格是之前掃描留下的，這次 Google 沒回傳航班細節。`));
+    return box;
+  }
   const opts = f.options && f.options.length ? f.options : [f];
   const fastest = opts.length > 1 ? opts.reduce((a, b) => (b.duration_min < a.duration_min ? b : a)) : null;
   box.append(el("div", { class: "options-head" },
@@ -350,6 +356,8 @@ function renderCard(box, route, cur) {
 
     const chips = el("div", { class: "chips" });
     chips.append(el("span", { class: "chip" }, cur));
+    if (route.stale_since) chips.append(el("span", { class: "chip warn-chip", title: "Google 這次一直回傳錯誤，先顯示上一次成功的結果" },
+      `⚠ 這次沒查到，顯示 ${new Date(route.stale_since).toLocaleString("zh-TW", { hour12: false, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 的資料`));
     if (route.best && route.alert_below) {
       const ok = route.best.price <= route.alert_below;
       chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
@@ -366,9 +374,9 @@ function renderCard(box, route, cur) {
       card.append(el("div", { class: "chart-label" }, "各出發日最低票價（點長條看那天的所有航班" + (route.alert_below ? "；淺色 = 高於目標" : "") + "）"));
       const slot = el("div", { "data-chart": "bars" });
       card.append(slot);
-      card.append(el("div", { class: "chart-label" }, "最低票價走勢"));
       const optSlot = el("div");
       card.append(optSlot);
+      card.append(el("div", { class: "chart-label" }, "最低票價走勢（每次掃描）"));
       let selected = route.best.fare_key;
       const pick = (f) => { selected = f.fare_key; optSlot.replaceChildren(optionsPanel(route, f, cur)); draw(); };
       // Trend over the date pairs this route checks now (edited routes keep older scans).

@@ -115,17 +115,21 @@ def parse_codes(value):
 def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
     """One query with a single retry. Errors are appended, never raised."""
     label = f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}"
-    for attempt in range(2):
+    # Google often answers with a momentary error page (about 1 in 3 queries
+    # in testing); waiting a few seconds and asking again almost always works.
+    waits = [delay * 1.5, delay * 3, delay * 6, delay * 10, delay * 15]
+    last = None
+    for attempt in range(len(waits) + 1):
         try:
             fare = provider.search(origins, dests, dep, ret, max_stops)
             if fare is None:
-                errors.append(f"{label}: Google 沒有回傳這組日期的航班（可能沒有符合轉機條件的班次）")
+                errors.append(f"{label}: 這組日期查不到符合條件的航班（例如沒有直飛）")
             return fare
         except Exception as e:
-            if attempt:
-                errors.append(f"{label}: {type(e).__name__}: {e}")
-            else:
-                time.sleep(delay * 3)
+            last = e
+            if attempt < len(waits):
+                time.sleep(waits[attempt])
+    errors.append(f"{label}: 試了 {len(waits) + 1} 次都失敗（{type(last).__name__}: {last}）")
     return None
 
 
@@ -152,6 +156,8 @@ def run(args):
         args.provider, currency, cfg.get("language", "zh-TW"), cfg.get("search", {}).get("adults", 1)
     )
     history = load_json(data_dir / "history.json", {"routes": {}})
+    previous = {r["key"]: r for r in load_json(data_dir / "latest.json", {"routes": []}).get("routes", [])}
+    prev_time = load_json(data_dir / "latest.json", {}).get("generated_at")
     alert_state = load_json(data_dir / "alert_state.json", {})
     alerts_cfg = cfg.get("alerts", {})
 
@@ -178,7 +184,18 @@ def run(args):
                      group=route.get("group"), city=route["city"])
         all_deals += route_deals
 
-        best = min(fares, key=lambda f: f["price"]) if fares else None
+        # A failed query should not blank the dashboard: show the last good
+        # fares for these dates, marked as stale (no alerts or history from them).
+        shown, stale_since = fares, None
+        old = previous.get(key)
+        if not fares:
+            wanted = {fare_key(d, r) for d, r in trip_dates(search, today)}
+            if old and old.get("fares"):
+                shown = [f for f in old["fares"] if f["fare_key"] in wanted]
+                stale_since = (old.get("stale_since") or prev_time) if shown else None
+            if not shown:
+                shown, stale_since = fares_from_history(scans, wanted)
+        best = min(shown, key=lambda f: f["price"]) if shown else None
         out_routes.append({
             "key": key,
             "origin": r_origin,
@@ -191,7 +208,8 @@ def run(args):
             "best": best,
             "median_best": route_median,
             "prev_best": prev[0] if prev else None,
-            "fares": fares,
+            "stale_since": stale_since,
+            "fares": shown,
         })
         if fares:
             scans.append({
@@ -239,7 +257,7 @@ def run(args):
 
     if args.dry_run:
         return latest
-    if routes and not any(r["fares"] for r in out_routes):
+    if routes and not any(r["fares"] and not r["stale_since"] for r in out_routes):
         # Keep the last good data on disk rather than an empty dashboard.
         raise NoFaresError("No fares at all: the provider is probably blocked or broken.")
     save_json(data_dir / "latest.json", latest)
@@ -264,6 +282,22 @@ def run(args):
     return latest
 
 
+def fares_from_history(scans, wanted):
+    """Prices only (no flight details) from the newest scan that had any of
+    these date pairs. Used when neither this scan nor the last one got data."""
+    for sc in reversed(scans):
+        hit = {k: p for k, p in sc.get("fares", {}).items() if k in wanted}
+        if hit:
+            rows = []
+            for k, p in sorted(hit.items()):
+                dep, _, ret = k.partition("/")
+                rows.append({"fare_key": k, "depart": dep, "return": ret or None, "price": p,
+                             "airline": "（上次的價格）", "stops": 0, "duration_min": 0,
+                             "depart_time": "", "url": "", "options": []})
+            return rows, sc["t"]
+    return [], None
+
+
 def price_updates(out_routes, ncfg, state, now):
     """Which routes to report as price changes, and the daily summary if one is
     due. Updates `state` as if the message will be delivered.
@@ -276,7 +310,7 @@ def price_updates(out_routes, ncfg, state, now):
     reported = state.setdefault("reported", {})
     changes = []
     for r in out_routes:
-        if not r["best"]:
+        if not r["best"] or r.get("stale_since"):
             continue
         keys = sorted(f["fare_key"] for f in r["fares"])
         base = reported.get(r["key"])
@@ -299,10 +333,11 @@ def price_updates(out_routes, ncfg, state, now):
         last = daily.get("best", {})
         summary = [{**r, "last_summary": last.get(r["key"])} for r in out_routes]
         state["summary"] = {"date": local.date().isoformat(),
-                            "best": {r["key"]: r["best"]["price"] for r in out_routes if r["best"]}}
+                            "best": {r["key"]: r["best"]["price"] for r in out_routes
+                                     if r["best"] and not r.get("stale_since")}}
         changes = []  # the summary already lists every route
         for r in out_routes:
-            if r["best"]:
+            if r["best"] and not r.get("stale_since"):
                 reported[r["key"]] = {"price": r["best"]["price"], "keys": sorted(f["fare_key"] for f in r["fares"])}
     return changes, summary
 

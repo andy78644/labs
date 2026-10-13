@@ -103,7 +103,7 @@ def build_message(deals, promos, currency, dashboard_url=None, per_route=3,
         blocks.append("\n".join(lines))
 
     if changes:
-        lines = [f"📊 {f.bold('價格變化')}（和上次掃描比）"]
+        lines = [f"📊 {f.bold('價格變化')}（和上次通知時比）"]
         for r in changes:
             b = r["best"]
             lines.append(f"• {f.esc(label(r))} {f.link(fmt_price(b['price'], currency), b.get('url'))} "
@@ -118,6 +118,8 @@ def build_message(deals, promos, currency, dashboard_url=None, per_route=3,
                 lines.append(f"• {f.esc(label(r))}：這次沒拿到票價")
                 continue
             vs = f" · 比昨天 {change_text(b['price'], r['last_summary'], currency)}" if r.get("last_summary") else ""
+            if r.get("stale_since"):
+                vs = "（這次沒查到，這是上次的價格）"
             lines.append(f"• {f.esc(label(r))} {f.link(fmt_price(b['price'], currency), b.get('url'))} "
                          f"{trip(b)} {f.esc(b['airline'])} {stops(b.get('stops', 0))}{vs}")
         blocks.append("\n".join(lines))

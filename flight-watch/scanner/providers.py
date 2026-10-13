@@ -84,6 +84,11 @@ def _field(num, payload):
     return _varint(num << 3 | 2) + _varint(len(payload)) + payload
 
 
+class GoogleBusyError(RuntimeError):
+    """Google answered with an error page instead of results. It is usually
+    momentary: the same query a few seconds later works."""
+
+
 def parse_results(html):
     """Read Google's embedded result data into Options. Same layout as
     fast_flights.parser, but one malformed itinerary (say, one without a
@@ -93,10 +98,10 @@ def parse_results(html):
 
     script = LexborHTMLParser(html).css_first(r"script.ds\:1")
     if script is None:
-        raise RuntimeError("no result data in the Google Flights page (blocked or changed?)")
+        raise GoogleBusyError("no result data in the page (blocked or changed?)")
     data = script.text().split("data:", 1)[1].rsplit(",", 1)[0]
     if data.endswith("errorHasStatus: true"):
-        return []
+        raise GoogleBusyError("Google returned an error page")
     payload = json.loads(data)
     hhmm = lambda v: "%02d:%02d" % tuple((x or 0) for x in [*(v or []), None, None][:2])
     options = []
