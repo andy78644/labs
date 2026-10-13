@@ -246,7 +246,7 @@ class FlakyGoogle(unittest.TestCase):
             self.assertEqual(search_fare(P(), ["TPE"], ["NRT"], date(2026, 12, 25), None, 0, 2, errors), "fare")
         self.assertEqual((len(calls), errors, sleep.call_count), (3, [], 2))
 
-    def test_failed_route_keeps_last_good_fares(self):
+    def test_failed_route_reports_no_fare_but_keeps_history(self):
         import json, tempfile
         from argparse import Namespace
         from pathlib import Path
@@ -271,7 +271,8 @@ class FlakyGoogle(unittest.TestCase):
                                    side_effect=lambda p, o, ds, *a: None if ds == ["NRT"] else real(p, o, ds, *a)):
                 scan_mod.run(args)
             nrt = json.loads((d / "latest.json").read_text())["routes"][0]
-            self.assertEqual(nrt["fares"], first["fares"])
-            self.assertTrue(nrt["stale_since"])
+            self.assertEqual((nrt["fares"], nrt["best"]), ([], None))      # no pretend data
+            self.assertEqual(nrt["fare_keys"], ["2099-01-01/2099-01-03"])   # dashboard can draw history
+            self.assertEqual(nrt["last_seen"]["price"], first["best"]["price"])
             hist = json.loads((d / "history.json").read_text())["routes"]["TPE-NRT"]
-            self.assertEqual(len(hist), 1)   # stale data is not added to the history
+            self.assertEqual(len(hist), 1)   # the failed scan adds nothing to the history

@@ -156,8 +156,6 @@ def run(args):
         args.provider, currency, cfg.get("language", "zh-TW"), cfg.get("search", {}).get("adults", 1)
     )
     history = load_json(data_dir / "history.json", {"routes": {}})
-    previous = {r["key"]: r for r in load_json(data_dir / "latest.json", {"routes": []}).get("routes", [])}
-    prev_time = load_json(data_dir / "latest.json", {}).get("generated_at")
     alert_state = load_json(data_dir / "alert_state.json", {})
     alerts_cfg = cfg.get("alerts", {})
 
@@ -184,18 +182,8 @@ def run(args):
                      group=route.get("group"), city=route["city"])
         all_deals += route_deals
 
-        # A failed query should not blank the dashboard: show the last good
-        # fares for these dates, marked as stale (no alerts or history from them).
-        shown, stale_since = fares, None
-        old = previous.get(key)
-        if not fares:
-            wanted = {fare_key(d, r) for d, r in trip_dates(search, today)}
-            if old and old.get("fares"):
-                shown = [f for f in old["fares"] if f["fare_key"] in wanted]
-                stale_since = (old.get("stale_since") or prev_time) if shown else None
-            if not shown:
-                shown, stale_since = fares_from_history(scans, wanted)
-        best = min(shown, key=lambda f: f["price"]) if shown else None
+        wanted = sorted(fare_key(d, r) for d, r in trip_dates(search, today))
+        best = min(fares, key=lambda f: f["price"]) if fares else None
         out_routes.append({
             "key": key,
             "origin": r_origin,
@@ -208,8 +196,11 @@ def run(args):
             "best": best,
             "median_best": route_median,
             "prev_best": prev[0] if prev else None,
-            "stale_since": stale_since,
-            "fares": shown,
+            # The date pairs this route checks, so the dashboard can draw its
+            # history even when this scan got nothing; and the newest price seen.
+            "fare_keys": wanted,
+            "last_seen": None if fares else last_seen(scans, set(wanted)),
+            "fares": fares,
         })
         if fares:
             scans.append({
@@ -257,7 +248,7 @@ def run(args):
 
     if args.dry_run:
         return latest
-    if routes and not any(r["fares"] and not r["stale_since"] for r in out_routes):
+    if routes and not any(r["fares"] for r in out_routes):
         # Keep the last good data on disk rather than an empty dashboard.
         raise NoFaresError("No fares at all: the provider is probably blocked or broken.")
     save_json(data_dir / "latest.json", latest)
@@ -282,20 +273,14 @@ def run(args):
     return latest
 
 
-def fares_from_history(scans, wanted):
-    """Prices only (no flight details) from the newest scan that had any of
-    these date pairs. Used when neither this scan nor the last one got data."""
+def last_seen(scans, wanted):
+    """Cheapest price for these date pairs in the newest scan that had any."""
     for sc in reversed(scans):
         hit = {k: p for k, p in sc.get("fares", {}).items() if k in wanted}
         if hit:
-            rows = []
-            for k, p in sorted(hit.items()):
-                dep, _, ret = k.partition("/")
-                rows.append({"fare_key": k, "depart": dep, "return": ret or None, "price": p,
-                             "airline": "（上次的價格）", "stops": 0, "duration_min": 0,
-                             "depart_time": "", "url": "", "options": []})
-            return rows, sc["t"]
-    return [], None
+            k = min(hit, key=hit.get)
+            return {"price": hit[k], "fare_key": k, "t": sc["t"]}
+    return None
 
 
 def price_updates(out_routes, ncfg, state, now):
@@ -310,7 +295,7 @@ def price_updates(out_routes, ncfg, state, now):
     reported = state.setdefault("reported", {})
     changes = []
     for r in out_routes:
-        if not r["best"] or r.get("stale_since"):
+        if not r["best"]:
             continue
         keys = sorted(f["fare_key"] for f in r["fares"])
         base = reported.get(r["key"])
@@ -333,11 +318,10 @@ def price_updates(out_routes, ncfg, state, now):
         last = daily.get("best", {})
         summary = [{**r, "last_summary": last.get(r["key"])} for r in out_routes]
         state["summary"] = {"date": local.date().isoformat(),
-                            "best": {r["key"]: r["best"]["price"] for r in out_routes
-                                     if r["best"] and not r.get("stale_since")}}
+                            "best": {r["key"]: r["best"]["price"] for r in out_routes if r["best"]}}
         changes = []  # the summary already lists every route
         for r in out_routes:
-            if r["best"] and not r.get("stale_since"):
+            if r["best"]:
                 reported[r["key"]] = {"price": r["best"]["price"], "keys": sorted(f["fare_key"] for f in r["fares"])}
     return changes, summary
 
