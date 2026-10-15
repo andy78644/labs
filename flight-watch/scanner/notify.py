@@ -122,6 +122,11 @@ def build_message(deals, promos, currency, dashboard_url=None, per_route=3,
             vs = f" · 比昨天 {change_text(b['price'], r['last_summary'], currency)}" if r.get("last_summary") else ""
             lines.append(f"• {f.esc(label(r))} {f.link(fmt_price(b['price'], currency), b.get('url'))} "
                          f"{trip(b)} {f.esc(b['airline'])} {stops(b.get('stops', 0))}{vs}")
+            rec = b.get("recommended")
+            if rec and (rec["price"], rec["airline"], rec["depart_time"]) != (b["price"], b["airline"], b["depart_time"]):
+                lines.append(f"  ⭐ 推薦 {f.link(fmt_price(rec['price'], currency), b.get('url'))} {f.esc(rec['airline'])} "
+                             f"{rec['depart_time']}→{rec['arrive_time']} {stops(rec['stops'])}"
+                             f"（貴 {rec['price'] - b['price']:,}）")
         blocks.append("\n".join(lines))
 
     if promos:

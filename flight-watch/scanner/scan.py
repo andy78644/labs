@@ -26,7 +26,14 @@ WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 SEARCH_KEYS = {
     "trip", "stay_nights", "depart_weekdays", "window_days", "dates",
     "max_stops", "delay_seconds",
+    # flight filters, passed to the provider (see providers.GoogleFlightsProvider._tfs)
+    "depart_hours", "return_hours", "airlines", "exclude_airlines", "no_lcc", "cabin", "adults",
 }
+FILTER_KEYS = ("depart_hours", "return_hours", "airlines", "exclude_airlines", "no_lcc", "cabin", "adults")
+
+
+def filter_opts(search):
+    return {k: search[k] for k in FILTER_KEYS if search.get(k) not in (None, "", [], False)}
 
 
 def load_json(path, default):
@@ -112,7 +119,7 @@ def parse_codes(value):
     return codes
 
 
-def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
+def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors, opts=None):
     """One query with a single retry. Errors are appended, never raised."""
     label = f"{'/'.join(origins)}-{'/'.join(dests)} {fare_key(dep, ret)}"
     # Google often answers with a momentary error page (about 1 in 3 queries
@@ -121,7 +128,8 @@ def search_fare(provider, origins, dests, dep, ret, max_stops, delay, errors):
     last = None
     for attempt in range(len(waits) + 1):
         try:
-            fare = provider.search(origins, dests, dep, ret, max_stops)
+            fare = provider.search(origins, dests, dep, ret, max_stops, opts) if opts \
+                else provider.search(origins, dests, dep, ret, max_stops)
             if fare is None:
                 errors.append(f"{label}: 這組日期查不到符合條件的航班（例如沒有直飛）")
             return fare
@@ -166,7 +174,8 @@ def run(args):
         delay = search.get("delay_seconds", 2)
         fares = []
         for dep, ret in trip_dates(search, today):
-            fare = search_fare(provider, route["origins"], route["dests"], dep, ret, search.get("max_stops"), delay, errors)
+            fare = search_fare(provider, route["origins"], route["dests"], dep, ret, search.get("max_stops"),
+                               delay, errors, filter_opts(search))
             if fare:
                 fares.append(fare_row(dep, ret, fare))
             if args.provider != "demo":

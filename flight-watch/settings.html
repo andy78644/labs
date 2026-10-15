@@ -173,8 +173,18 @@ function describe(r) {
   parts.push(get(r, "trip") === "one-way" ? "單程" : `住 ${[].concat(get(r, "stay_nights")).join(" / ")} 晚`);
   const st = get(r, "max_stops");
   parts.push(st === 0 ? "只要直飛" : st == null ? "轉機不限" : `最多轉 ${st} 次`);
+  if (r.depart_hours) parts.push(`去程 ${hoursText(r.depart_hours)}起飛`);
+  if (r.return_hours) parts.push(`回程 ${hoursText(r.return_hours)}起飛`);
+  if (r.airlines) parts.push(`只搭 ${r.airlines.join("/")}`);
+  if (r.no_lcc) parts.push("排除廉航");
+  if (r.cabin && r.cabin !== "economy") parts.push(CABIN_NAME[r.cabin] || r.cabin);
+  if (r.adults > 1) parts.push(`${r.adults} 人（總價）`);
   return parts.join(" · ");
 }
+
+const codesOfAirlines = (t) => String(t || "").split(/[\s,，、/]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+const CABIN_NAME = { economy: "經濟艙", "premium-economy": "豪華經濟艙", business: "商務艙", first: "頭等艙" };
+const hoursText = (h) => `${h[0]}–${h[1] + 1} 點`;
 
 /* ---------- GitHub API ---------- */
 async function gh(path, opts = {}) {
@@ -267,6 +277,13 @@ function startEdit(i) {
     window_days: [...get(r, "window_days")],
     dates: [...(r.dates || [])].sort(),
     max_stops: get(r, "max_stops") == null ? "any" : String(get(r, "max_stops")),
+    // stored as [first, last] departure hour; edited as a [from, to) range
+    depart_hours: r.depart_hours ? [String(r.depart_hours[0]), String(r.depart_hours[1] + 1)] : ["0", "24"],
+    return_hours: r.return_hours ? [String(r.return_hours[0]), String(r.return_hours[1] + 1)] : ["0", "24"],
+    airlines: (r.airlines || []).join(", "),
+    no_lcc: !!r.no_lcc,
+    cabin: r.cabin || "economy",
+    adults: String(r.adults || 1),
   };
   render();
   document.querySelector(".route.editing")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -322,6 +339,20 @@ function draftToRoute() {
     r.window_days = [lo, hi];
   }
   r.max_stops = d.max_stops === "any" ? null : Number(d.max_stops);
+  // Flight filters, sent to Google with each query (see scanner/providers.py).
+  for (const k of ["depart_hours", "return_hours"]) {
+    const [a, b] = d[k].map(Number);
+    if (!(a >= 0 && b <= 24 && a < b)) errs.push("起飛時段的開始要早於結束");
+    else if (a > 0 || b < 24) r[k] = [a, b - 1];   // Google's latest hour is inclusive
+  }
+  if (d.trip === "one-way") delete r.return_hours;
+  const al = codesOfAirlines(d.airlines);
+  if (al.some((c) => !/^[A-Z0-9]{2}$/.test(c))) errs.push("航空公司要填 2 碼代號，例如 BR, CI, JX");
+  else if (al.length) r.airlines = al;
+  if (d.no_lcc) r.no_lcc = true;
+  if (d.cabin !== "economy") r.cabin = d.cabin;
+  const n = Number(d.adults);
+  if (!(n >= 1 && n <= 9)) errs.push("人數要是 1–9"); else if (n > 1) r.adults = n;
   return { route: r, errs };
 }
 
@@ -340,6 +371,13 @@ function editor() {
     el("label", {}, el("input", { type: multi ? "checkbox" : "radio", name, value: v, checked: multi ? cur.includes(v) : cur === v,
       onchange: (e) => { onpick(v, e.target.checked); } }), el("span", {}, label))));
 
+  const hourOpts = (cur, from) => Array.from({ length: 25 }, (_, h) => h).filter((h) => (from ? h < 24 : h > 0))
+    .map((h) => el("option", { value: String(h), selected: String(h) === cur }, `${h}:00`));
+  const hoursField = (label, key) => el("div", {}, el("span", { class: "field-label" }, label),
+    el("div", { class: "row" },
+      el("select", { "aria-label": `${label} 開始`, style: "width:auto", onchange: (e) => { d[key][0] = e.target.value; } }, ...hourOpts(d[key][0], true)),
+      "到",
+      el("select", { "aria-label": `${label} 結束`, style: "width:auto", onchange: (e) => { d[key][1] = e.target.value; } }, ...hourOpts(d[key][1], false))));
   const nightsField = el("div", { hidden: d.trip !== "round-trip" },
     el("label", { for: "e-nights" }, "住幾晚（多個用逗號）"), el("input", { id: "e-nights", value: d.stay_nights, inputmode: "numeric", oninput: upd("stay_nights") }));
 
@@ -399,6 +437,17 @@ function editor() {
       el("div", {}, el("label", { for: "e-stops" }, "轉機"),
         el("select", { id: "e-stops", onchange: upd("max_stops") },
           ...[["0", "只要直飛"], ["1", "最多 1 次"], ["2", "最多 2 次"], ["any", "不限"]].map(([v, t]) => el("option", { value: v, selected: d.max_stops === v }, t)))),
+      hoursField("去程起飛時段", "depart_hours"),
+      d.trip === "round-trip" ? hoursField("回程起飛時段", "return_hours") : null,
+      el("div", {}, el("label", { for: "e-cabin" }, "艙等"),
+        el("select", { id: "e-cabin", onchange: upd("cabin") },
+          ...Object.entries(CABIN_NAME).map(([v, t]) => el("option", { value: v, selected: d.cabin === v }, t)))),
+      el("div", {}, el("label", { for: "e-adults" }, "人數（價格是總價）"),
+        el("input", { id: "e-adults", type: "number", min: 1, max: 9, value: d.adults, oninput: upd("adults") })),
+      el("div", {}, el("label", { for: "e-airlines" }, "只搭這些航空（選填，2 碼代號）"),
+        el("input", { id: "e-airlines", value: d.airlines, placeholder: "例如 BR, CI, JX", spellcheck: "false", oninput: upd("airlines") })),
+      el("div", {}, el("span", { class: "field-label" }, "廉航"),
+        el("label", { class: "check" }, el("input", { type: "checkbox", checked: d.no_lcc, onchange: (e) => { d.no_lcc = e.target.checked; } }), " 排除廉航（虎航、樂桃、酷航…）")),
       el("div", { class: "wide" }, el("span", { class: "field-label" }, "要查哪些日期"),
         seg("e-mode", [["weekly", "每週固定星期"], ["dates", "指定日期"]], d.mode, (v) => { d.mode = v; weekly.hidden = v !== "weekly"; fixed.hidden = v !== "dates"; renderCount(); })),
       weekly, fixed),
