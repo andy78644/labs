@@ -8,7 +8,10 @@
 <style>
 .route { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--grid); }
 .route:last-child { border-bottom: 0; }
-.group-head { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; padding: 14px 0 0; }
+.group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+  color: var(--muted); letter-spacing: .04em; padding: 14px 0 4px; border-bottom: 1px solid var(--grid); }
+.group-head .actions { display: flex; gap: 6px; }
+.group-head .actions button { padding: 3px 10px; font-size: 12px; letter-spacing: 0; }
 .route .actions { display: flex; gap: 6px; flex: none; }
 .route .actions button { padding: 5px 12px; font-size: 13px; }
 .route-title { font-weight: 600; }
@@ -262,15 +265,13 @@ function setRoutes(routes) {
   EDIT = null; DRAFT = null;
 }
 
-function startEdit(i) {
-  EDIT = i;
-  const r = i === "new" ? {} : ROUTES[i];
+function draftFrom(r, isNew) {
   const origins = codesOf(r.origin || "TPE");
-  DRAFT = {
+  return {
     group: r.group || "", name: r.name || "",
     origins: origins.filter((c) => TW.some(([t]) => t === c)),
     otherOrigins: origins.filter((c) => !TW.some(([t]) => t === c)).join(", "),
-    to: i === "new" ? "" : codesOf(r.to).join("/"), alert_below: r.alert_below || "",
+    to: isNew ? "" : codesOf(r.to).join("/"), alert_below: r.alert_below || "",
     trip: get(r, "trip"), stay_nights: [].concat(get(r, "stay_nights")).join(","),
     mode: r.dates ? "dates" : "weekly",
     depart_weekdays: [].concat(get(r, "depart_weekdays")).map((w) => String(w).slice(0, 3)),
@@ -285,8 +286,65 @@ function startEdit(i) {
     cabin: r.cabin || "economy",
     adults: String(r.adults || 1),
   };
+}
+
+function startEdit(i) {
+  EDIT = i;
+  DRAFT = draftFrom(i === "new" ? {} : ROUTES[i], i === "new");
   render();
   document.querySelector(".route.editing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/* Settings every route of a group shares; editing the group changes only the
+   ones you touch, so routes that differ keep their own values. */
+const SHARED = ["trip", "stay_nights", "dates", "depart_weekdays", "window_days", "max_stops", "depart_hours",
+  "return_hours", "airlines", "no_lcc", "cabin", "adults", "alert_below"];
+const SHARED_NAME = { trip: "行程", stay_nights: "住幾晚", dates: "出發日期", depart_weekdays: "出發星期", window_days: "天數範圍",
+  max_stops: "轉機", depart_hours: "去程時段", return_hours: "回程時段", airlines: "指定航空", no_lcc: "排除廉航",
+  cabin: "艙等", adults: "人數", alert_below: "目標價", origin: "出發機場" };
+
+function startGroupEdit(name) {
+  const idx = ROUTES.map((r, i) => (r.group === name ? i : -1)).filter((i) => i >= 0);
+  const members = idx.map((i) => ROUTES[i]);
+  DRAFT = draftFrom(members[0]);
+  DRAFT.to = members.map((r) => codesOf(r.to).join("/")).join(", ");
+  EDIT = { group: name, idx, init: draftToRoute().route, initOrigin: draftToRoutes().routes[0]?.origin,
+    mixed: [...SHARED, "origin"].filter((f) => new Set(members.map((r) => JSON.stringify(f === "origin" ? codesOf(r.origin || "TPE") : r[f]))).size > 1) };
+  render();
+  document.querySelector(".route.editing")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function applyGroupEdit() {
+  const { routes: fresh, errs } = draftToRoutes();
+  if (errs.length) { $("#edit-err").textContent = errs.join("；"); return; }
+  const base = draftToRoute().route;
+  const changed = SHARED.filter((f) => JSON.stringify(base[f]) !== JSON.stringify(EDIT.init[f]));
+  const newOrigin = fresh[0].origin;
+  const originChanged = JSON.stringify(newOrigin) !== JSON.stringify(EDIT.initOrigin);
+  const groupName = DRAFT.group.trim().slice(0, 30);
+  const members = EDIT.idx.map((i) => ROUTES[i]);
+  const byDest = new Map(members.map((r) => [codesOf(r.to).join("/"), r]));
+  const kept = new Set();
+  const out = fresh.map((fr) => {
+    const old = byDest.get(codesOf(fr.to).join("/"));
+    if (!old) return fr;                       // a new destination: the draft's settings
+    kept.add(old);
+    const r = { ...old };                      // an existing one keeps its key, name and history
+    for (const f of changed) { if (base[f] === undefined) delete r[f]; else r[f] = base[f]; }
+    if (originChanged) r.origin = newOrigin;
+    if (groupName) r.group = groupName; else delete r.group;
+    return r;
+  });
+  const removed = members.filter((r) => !kept.has(r));
+  if (removed.length && !confirm(`會從群組移除：${removed.map((r) => r.name).join("、")}（按儲存後才生效）`)) return;
+  const next = [];
+  ROUTES.forEach((r, i) => {
+    if (i === EDIT.idx[0]) next.push(...out);
+    if (!EDIT.idx.includes(i)) next.push(r);
+  });
+  ROUTES = next;
+  EDIT = null; DRAFT = null;
+  render();
 }
 
 /* The draft as one or more routes: one per destination entry. */
@@ -302,7 +360,7 @@ function draftToRoutes() {
   if (entries.some((e) => e.length > 4) || origins.length > 4) errs.push("同一格最多 4 個機場");
   const { route: base, errs: e2 } = draftToRoute();
   errs.push(...e2);
-  const old = EDIT === "new" ? null : ROUTES[EDIT];
+  const old = typeof EDIT === "number" ? ROUTES[EDIT] : null;
   const cities = entries.map(cityOf);
   const routes = entries.map((codes, i) => {
     const r = { ...base, origin: origins.length === 1 ? origins[0] : origins, to: codes.length === 1 ? codes[0] : codes };
@@ -357,6 +415,7 @@ function draftToRoute() {
 }
 
 function applyEdit() {
+  if (EDIT && EDIT.group !== undefined) return applyGroupEdit();
   const { routes, errs } = draftToRoutes();
   if (errs.length) { $("#edit-err").textContent = errs.join("；"); return; }
   if (EDIT === "new") ROUTES.push(...routes); else ROUTES.splice(EDIT, 1, ...routes);
@@ -455,7 +514,8 @@ function editor() {
       el("span", { class: "meta", id: "edit-count" }),
       el("div", { class: "btn-row" },
         el("button", { type: "button", class: "ghost", onclick: () => { EDIT = null; DRAFT = null; render(); } }, "取消"),
-        el("button", { type: "button", class: "primary", onclick: applyEdit }, EDIT === "new" ? "加入" : "完成"))),
+        el("button", { type: "button", class: "primary", onclick: applyEdit },
+          EDIT === "new" ? "加入" : EDIT && EDIT.group !== undefined ? "套用到整組" : "完成"))),
     el("div", { class: "err", id: "edit-err", role: "alert" }));
 }
 
@@ -476,9 +536,33 @@ function render() {
   box.replaceChildren();
   if (!ROUTES.length && EDIT !== "new") box.append(el("div", { class: "meta" }, "還沒有航線，按「新增航線」開始。"));
   let lastGroup = null;
+  const groupEdit = EDIT && EDIT.group !== undefined ? EDIT : null;
   ROUTES.forEach((r, i) => {
-    if ((r.group || "") !== lastGroup && (r.group || lastGroup)) box.append(el("div", { class: "group-head" }, r.group || "其他"));
+    if ((r.group || "") !== lastGroup && (r.group || lastGroup)) {
+      const g = r.group;
+      const n = g ? ROUTES.filter((x) => x.group === g).length : 0;
+      box.append(el("div", { class: "group-head" },
+        el("span", {}, g ? `${g}（${n} 條）` : "其他"),
+        g ? el("span", { class: "actions" },
+          el("button", { type: "button", class: "ghost", disabled: EDIT !== null, onclick: () => startGroupEdit(g) }, "編輯整組"),
+          el("button", { type: "button", class: "danger", disabled: EDIT !== null, onclick: () => {
+            if (confirm(`刪除整個「${g}」群組的 ${n} 條航線？（按儲存後才會生效）`)) { ROUTES = ROUTES.filter((x) => x.group !== g); render(); }
+          } }, "刪除整組")) : null));
+    }
     lastGroup = r.group || "";
+    if (groupEdit && groupEdit.idx.includes(i)) {
+      if (i === groupEdit.idx[0]) {
+        const mixed = groupEdit.mixed.map((f) => SHARED_NAME[f] || f);
+        box.append(el("div", { class: "route editing" }, el("div", { style: "flex:1" },
+          el("strong", {}, `編輯整組「${groupEdit.group}」`),
+          el("div", { class: "meta", style: "margin:2px 0 6px" },
+            `只有你改動的欄位會套用到這組全部 ${groupEdit.idx.length} 條航線，沒動的維持各自的設定。` +
+            (mixed.length ? `目前各條不一樣的：${mixed.join("、")}（表單顯示的是第一條的值）。` : "") +
+            "目的地可以加減：保留的航線會留著價格歷史。"),
+          editor())));
+      }
+      return;
+    }
     if (EDIT === i) { box.append(el("div", { class: "route editing" }, el("div", { style: "flex:1" }, editor()))); return; }
     box.append(el("div", { class: "route" },
       el("div", {},
@@ -507,14 +591,24 @@ function render() {
 
 /* Give every route a stable, unique key so its price history follows it. */
 function withKeys(routes) {
+  // A route keeps its key while its airports stay the same (its price history
+  // is stored under it); new or re-pointed routes get a fresh one.
+  const baseOf = (r) => `${codesOf(r.origin).join("+")}-${codesOf(r.to).join("+")}`;
+  const keeps = (r) => r.key && (r.key === baseOf(r) || r.key.startsWith(baseOf(r) + "-"));
   const used = new Set();
-  return routes.map((r) => {
-    const base = `${codesOf(r.origin).join("+")}-${codesOf(r.to).join("+")}`;
+  const out = routes.map((r) => {
+    if (keeps(r) && !used.has(r.key)) { used.add(r.key); return { ...r }; }
+    return { ...r, key: null };
+  });
+  for (const r of out) {
+    if (r.key) continue;
+    const base = baseOf(r);
     let key = base, n = 2;
     while (used.has(key)) key = `${base}-${n++}`;
     used.add(key);
-    return { ...r, key };
-  });
+    r.key = key;
+  }
+  return out;
 }
 
 async function save() {
