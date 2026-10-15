@@ -1,25 +1,25 @@
 {
  "reported": {
   "TPE+TSA-NRT+HND": {
-   "price": 16996,
+   "price": 43620,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
   },
   "TPE+TSA-ICN+GMP": {
-   "price": 12236,
+   "price": 42512,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
   },
   "TPE+TSA-BKK+DMK": {
-   "price": 8206,
+   "price": 39280,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
   },
   "TPE+TSA-NRT+HND-2": {
-   "price": 18810,
+   "price": 33446,
    "keys": [
     "2026-12-24/2026-12-27"
    ]
