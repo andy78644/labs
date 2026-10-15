@@ -19,7 +19,16 @@
    ],
    "name": "東京",
    "group": "聖誕節",
-   "key": "TPE+TSA-NRT+HND"
+   "key": "TPE+TSA-NRT+HND",
+   "depart_hours": [
+    0,
+    8
+   ],
+   "return_hours": [
+    14,
+    23
+   ],
+   "adults": 2
   },
   {
    "trip": "round-trip",
@@ -40,7 +49,16 @@
    ],
    "name": "首爾",
    "group": "聖誕節",
-   "key": "TPE+TSA-ICN+GMP"
+   "key": "TPE+TSA-ICN+GMP",
+   "depart_hours": [
+    0,
+    8
+   ],
+   "return_hours": [
+    14,
+    23
+   ],
+   "adults": 2
   },
   {
    "trip": "round-trip",
@@ -61,7 +79,16 @@
    ],
    "name": "曼谷",
    "group": "聖誕節",
-   "key": "TPE+TSA-BKK+DMK"
+   "key": "TPE+TSA-BKK+DMK",
+   "depart_hours": [
+    0,
+    8
+   ],
+   "return_hours": [
+    14,
+    23
+   ],
+   "adults": 2
   },
   {
    "trip": "round-trip",
@@ -82,7 +109,15 @@
    ],
    "name": "東京",
    "group": "聖誕節2",
-   "key": "TPE+TSA-NRT+HND-2"
+   "key": "TPE+TSA-NRT+HND-2",
+   "depart_hours": [
+    18,
+    23
+   ],
+   "return_hours": [
+    14,
+    23
+   ]
   },
   {
    "trip": "round-trip",
@@ -103,7 +138,15 @@
    ],
    "name": "首爾",
    "group": "聖誕節2",
-   "key": "TPE+TSA-ICN+GMP-2"
+   "key": "TPE+TSA-ICN+GMP-2",
+   "depart_hours": [
+    18,
+    23
+   ],
+   "return_hours": [
+    14,
+    23
+   ]
   },
   {
    "trip": "round-trip",
@@ -124,7 +167,15 @@
    ],
    "name": "曼谷",
    "group": "聖誕節2",
-   "key": "TPE+TSA-BKK+DMK-2"
+   "key": "TPE+TSA-BKK+DMK-2",
+   "depart_hours": [
+    18,
+    23
+   ],
+   "return_hours": [
+    14,
+    23
+   ]
   }
  ]
 }
