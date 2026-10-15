@@ -13,6 +13,30 @@ Each date pair keeps up to 6 flights, not just the cheapest one:
 
 On the dashboard, click a bar to see that day's flights with times, airports, stops, duration and how much more each costs than the cheapest. The price shown is the round-trip total; the times are for the outbound flight.
 
+## Cheapest vs. recommended, filters
+
+- **Two picks for every date.** Each date shows both **最便宜** (the cheapest fare) and **⭐ 推薦** (recommended). The recommended flight has the lowest price after penalties for what makes a cheap fare worse:
+  - +12 % per stop;
+  - +4 % per hour slower than the fastest option;
+  - +8 % for red-eye times: leaving before 06:00 or after 22:00, or landing after midnight.
+
+  The flight list also marks Google's own "best" picks and the fastest flight. The daily summary includes the recommended flight when it isn't the cheapest.
+- **Route filters (settings page).** These are sent to Google with every query, so they change what gets scanned:
+  - outbound and return departure-time windows;
+  - "only these airlines" (strict: codeshare flights operated by other airlines are dropped);
+  - excluding low-cost carriers;
+  - cabin class;
+  - number of adults (prices are then totals).
+- **Dashboard filters.** These narrow the flights already scanned, without a new search:
+  - nonstop only;
+  - departure time;
+  - exclude low-cost carriers;
+  - hide individual airlines;
+  - a maximum price.
+
+  Each route keeps up to 12 flights per date for this. The choice is remembered in the browser.
+- **Checked baggage isn't offered.** Google ignored the baggage option in testing, so the price would be misleading.
+
 ## How it works
 
 ```

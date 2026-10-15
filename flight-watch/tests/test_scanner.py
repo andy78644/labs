@@ -276,3 +276,26 @@ class FlakyGoogle(unittest.TestCase):
             self.assertEqual(nrt["last_seen"]["price"], first["best"]["price"])
             hist = json.loads((d / "history.json").read_text())["routes"]["TPE-NRT"]
             self.assertEqual(len(hist), 1)   # the failed scan adds nothing to the history
+
+
+class FlightFilters(unittest.TestCase):
+    def opt(self, price, codes, stops=0, dep="10:00", arr="13:00", dur=180):
+        from scanner.providers import Option
+        return Option(price=price, airline="/".join(codes), stops=stops, duration_min=dur, depart_time=dep,
+                      arrive_time=arr, from_airport="TPE", to_airport="NRT", airline_codes=codes)
+
+    def test_airline_filters(self):
+        from scanner.providers import apply_filters
+        opts = [self.opt(9000, ["IT"]), self.opt(15000, ["BR"]), self.opt(16000, ["JL"]), self.opt(17000, ["CI"])]
+        self.assertEqual([o.price for o in apply_filters(opts, {"no_lcc": True})], [15000, 16000, 17000])
+        self.assertEqual([o.price for o in apply_filters(opts, {"airlines": ["BR", "CI"]})], [15000, 17000])
+        self.assertEqual([o.price for o in apply_filters(opts, {"exclude_airlines": ["JL"]})], [9000, 15000, 17000])
+
+    def test_recommendation_weighs_stops_time_and_red_eye(self):
+        from scanner.providers import pick_options
+        cheap_redeye = self.opt(10000, ["IT"], dep="02:30", arr="06:35")
+        one_stop = self.opt(10500, ["OZ"], stops=1, dur=480)
+        daytime = self.opt(10600, ["BR"], dep="09:00")
+        kept = pick_options([cheap_redeye, one_stop, daytime])
+        self.assertEqual([o.price for o in kept if o.recommended], [10600])
+        self.assertEqual(kept[0].price, 10000)   # still listed first as the cheapest

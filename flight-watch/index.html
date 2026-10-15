@@ -38,6 +38,21 @@ svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stro
 .opt .when { font-variant-numeric: tabular-nums; }
 .opt .meta-line { grid-column: 2 / 4; color: var(--muted); font-size: 12px; }
 .opt .tagline { color: var(--good-text); font-size: 12px; white-space: nowrap; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 20px; font-size: 13px; }
+.filters .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.filters .lbl { color: var(--muted); font-size: 12px; margin-right: 2px; }
+.fbtn { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink-2); cursor: pointer; }
+.fbtn[aria-pressed="true"] { border-color: var(--series); background: var(--wash); color: var(--ink); font-weight: 600; }
+.fbtn.off { text-decoration: line-through; opacity: .55; }
+.filters input[type=number] { width: 96px; font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--page); color: var(--ink); }
+.filters details summary { font-size: 12px; }
+.filter-note { color: var(--muted); font-size: 12px; }
+.rec-line { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.rec-line b { color: var(--ink); }
+.tag-rec { color: #9a5b00; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .tag-rec { color: #fab219; } }
 .group-summary { color: var(--ink-2); font-size: 13px; margin: -6px 0 12px; }
 .hit { fill: transparent; cursor: pointer; }
 .hit:hover + .bar, .hit:focus + .bar { fill: var(--ink-2); }
@@ -76,6 +91,8 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
     <nav><a href="./" aria-current="page">儀表板</a><a href="settings.html">設定</a><a href="search.html">搜尋</a></nav>
   </header>
 
+  <section id="filters" class="card filters" aria-label="篩選"></section>
+
   <section id="deals-section" hidden>
     <h2>目前的好價</h2>
     <div class="card"><ul class="deal-list" id="deals"></ul></div>
@@ -110,7 +127,8 @@ function el(tag, attrs = {}, ...kids) {
   const n = tag.startsWith("svg:") ? document.createElementNS(SVGNS, tag.slice(4)) : document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null) continue;
-    if (k === "class") n.setAttribute("class", v);
+    if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+    else if (k === "class") n.setAttribute("class", v);
     else n.setAttribute(k, v);
   }
   for (const k of kids) if (k != null) n.append(k instanceof Node ? k : String(k));
@@ -292,18 +310,110 @@ function optionsPanel(route, f, cur) {
   box.append(el("div", { class: "options-head" },
     el("strong", {}, `${md(f.depart)}（${weekday(f.depart)}）` + (f.return ? ` → ${md(f.return)}（${weekday(f.return)}）` : "") + " 的航班"),
     el("a", { href: f.url, target: "_blank", rel: "noopener" }, "在 Google Flights 看全部 →")));
+  const rec = f.recommended || recommend(opts);
   opts.forEach((o, i) => {
-    const tags = [i === 0 ? "最便宜" : null, o === fastest && fastest.duration_min < opts[0].duration_min ? "最快" : null].filter(Boolean).join(" · ");
+    const isRec = rec && o.price === rec.price && o.airline === rec.airline && o.depart_time === rec.depart_time;
+    const tags = [i === 0 ? "最便宜" : null, isRec ? "⭐ 推薦" : null, o.google_best ? "Google 最佳" : null,
+      o === fastest && fastest.duration_min < opts[0].duration_min ? "最快" : null].filter(Boolean).join(" · ");
     box.append(el("div", { class: "opt" },
       el("a", { class: "price", href: f.url, target: "_blank", rel: "noopener" }, money(o.price, cur)),
       el("span", { class: "when" }, `${o.depart_time || "?"} → ${o.arrive_time || "?"}`, el("span", { class: "sub" }, `　${o.airline}`)),
-      el("span", { class: "tagline" }, tags),
+      el("span", { class: "tagline" + (isRec ? " tag-rec" : "") }, tags),
       el("span", { class: "meta-line" },
-        [o.from_airport && o.to_airport ? `${o.from_airport} → ${o.to_airport}` : null, via(o), dur(o.duration_min),
+        [(o.flight_numbers || []).join("+") || null, o.from_airport && o.to_airport ? `${o.from_airport} → ${o.to_airport}` : null,
+         via(o), dur(o.duration_min),
          i > 0 ? `比最便宜貴 ${short(o.price - opts[0].price)}` : null].filter(Boolean).join(" · "))));
   });
   if (f.return) box.append(el("div", { class: "meta", style: "margin-top:6px" }, "票價是來回總價；時間是去程。回程航班在 Google Flights 選。"));
   return box;
+}
+
+/* ---------- filters (applied to the flights already scanned; no new search) ---------- */
+const LCC = new Set(["IT","MM","GK","TR","7C","LJ","TW","ZE","BX","RS","UO","SL","FD","AK","D7","Z2","5J","VJ","VZ",
+  "3K","JQ","BC","9C","XJ","DD","QG","JW","TZ","IJ","6J","OD"]);
+const TIMES = [["any", "不限", 0, 24], ["noredeye", "避開紅眼", 6, 22], ["morning", "早上 6–12", 6, 12],
+  ["afternoon", "下午 12–18", 12, 18], ["evening", "晚上 18–24", 18, 24]];
+const FILTER_DEFAULT = { nonstop: false, time: "any", noLcc: false, hide: [], maxPrice: "" };
+let FILTER = { ...FILTER_DEFAULT };
+try { FILTER = { ...FILTER_DEFAULT, ...JSON.parse(localStorage.getItem("fw-filter") || "{}") }; } catch {}
+const saveFilter = () => { try { localStorage.setItem("fw-filter", JSON.stringify(FILTER)); } catch {} };
+const filterOn = () => JSON.stringify(FILTER) !== JSON.stringify(FILTER_DEFAULT);
+const hourOf = (t) => (t ? parseInt(t, 10) : 12);
+
+function matches(o) {
+  if (FILTER.nonstop && o.stops > 0) return false;
+  const [, , lo, hi] = TIMES.find((t) => t[0] === FILTER.time) || TIMES[0];
+  const h = hourOf(o.depart_time);
+  if (h < lo || h >= hi) return false;
+  if (FILTER.noLcc && (o.airline_codes || []).some((c) => LCC.has(c))) return false;
+  if (FILTER.hide.includes(o.airline)) return false;
+  if (FILTER.maxPrice && o.price > Number(FILTER.maxPrice)) return false;
+  return true;
+}
+
+/* Same formula as scanner/providers.py: score(). */
+function isRedeye(o) {
+  const h = hourOf(o.depart_time);
+  const late = (o.arrive_time || "").includes("+") && hourOf(o.arrive_time) < 6;
+  return h < 6 || h >= 22 || late;
+}
+function recommend(opts) {
+  if (!opts.length) return null;
+  const fastest = Math.min(...opts.map((o) => o.duration_min || 0));
+  const score = (o) => o.price * (1 + 0.12 * o.stops + 0.04 * Math.max(0, ((o.duration_min || 0) - fastest) / 60) + 0.08 * isRedeye(o));
+  return opts.reduce((a, b) => (score(b) < score(a) || (score(b) === score(a) && b.price < a.price) ? b : a));
+}
+
+/* The route as the filters see it: each date's options narrowed, its price the
+   cheapest remaining option. Dates with nothing left drop out. */
+function viewOf(route) {
+  const fares = route.fares.map((f) => {
+    const all = f.options && f.options.length ? f.options : [f];
+    const opts = all.filter(matches).sort((a, b) => a.price - b.price);
+    if (!opts.length) return null;
+    const top = opts[0];
+    return { ...f, options: opts, price: top.price, airline: top.airline, stops: top.stops, depart_time: top.depart_time,
+      duration_min: top.duration_min, recommended: recommend(opts) };
+  }).filter(Boolean);
+  const best = fares.length ? fares.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+  // Overall recommendation across dates: each date's pick, scored together.
+  const rec = recommend(fares.map((f) => ({ ...f.recommended, fare: f })));
+  return { ...route, fares, best, rec, filteredOut: route.fares.length > 0 && !fares.length };
+}
+
+function renderFilters() {
+  const box = $("#filters");
+  box.replaceChildren();
+  const btn = (label, pressed, on, cls) => el("button", { type: "button", class: "fbtn" + (cls ? " " + cls : ""),
+    "aria-pressed": pressed ? "true" : "false", onclick: on }, label);
+  const set = (patch) => { Object.assign(FILTER, patch); saveFilter(); renderAll(); };
+  box.append(
+    el("div", { class: "grp" }, el("span", { class: "lbl" }, "轉機"),
+      btn("不限", !FILTER.nonstop, () => set({ nonstop: false })), btn("只要直飛", FILTER.nonstop, () => set({ nonstop: true }))),
+    el("div", { class: "grp" }, el("span", { class: "lbl" }, "去程起飛"),
+      ...TIMES.map(([k, label]) => btn(label, FILTER.time === k, () => set({ time: k })))),
+    el("div", { class: "grp" }, el("span", { class: "lbl" }, "航空"),
+      btn("排除廉航", FILTER.noLcc, () => set({ noLcc: !FILTER.noLcc }))));
+  const price = el("input", { type: "number", min: 0, step: 500, placeholder: "不限", value: FILTER.maxPrice, "aria-label": "價格上限" });
+  price.addEventListener("change", () => set({ maxPrice: price.value }));
+  box.append(el("div", { class: "grp" }, el("span", { class: "lbl" }, "價格上限"), price));
+  const names = [...new Set(LATEST.routes.flatMap((r) => r.fares.flatMap((f) => (f.options && f.options.length ? f.options : [f]).map((o) => o.airline))))].sort();
+  if (names.length) {
+    const det = el("details", FILTER.hide.length ? { open: "" } : {});
+    det.append(el("summary", {}, `個別航空公司${FILTER.hide.length ? `（已隱藏 ${FILTER.hide.length} 家）` : ""}`),
+      el("div", { class: "grp", style: "margin-top:6px" }, ...names.map((n) => {
+        const hidden = FILTER.hide.includes(n);
+        return btn(n, !hidden, () => set({ hide: hidden ? FILTER.hide.filter((x) => x !== n) : [...FILTER.hide, n] }), hidden ? "off" : "");
+      })));
+    box.append(det);
+  }
+  if (filterOn()) box.append(el("button", { type: "button", class: "fbtn", onclick: () => set({ ...FILTER_DEFAULT, hide: [] }) }, "重設篩選"),
+    el("span", { class: "filter-note" }, "只篩選已掃到的航班；走勢圖是未篩選的最低價"));
+}
+
+function renderAll() {
+  renderFilters();
+  renderRoutes();
 }
 
 function renderRoutes() {
@@ -312,7 +422,7 @@ function renderRoutes() {
   root.replaceChildren();
   // Routes added together (same group) share a section and a "cheapest here" line.
   const groups = [];
-  LATEST.routes.forEach((r) => {
+  LATEST.routes.map(viewOf).forEach((r) => {
     const g = r.group || "";
     let entry = groups.find((x) => x.name === g);
     if (!entry) groups.push(entry = { name: g, routes: [] });
@@ -356,10 +466,21 @@ function renderCard(box, route, cur) {
   left.append(name);
   const right = el("div", { class: "hero" });
   if (route.best) {
-    right.append(el("small", {}, "最低"), document.createTextNode(Number(route.best.price).toLocaleString("en-US")));
+    right.append(el("small", {}, "最便宜"), document.createTextNode(Number(route.best.price).toLocaleString("en-US")));
     left.append(el("div", { class: "sub" },
       `${route.best.depart}（${weekday(route.best.depart)}）` + (route.best.return ? ` → ${md(route.best.return)}` : "") +
       ` · ${route.best.airline} · ${stops(route.best.stops)}`));
+    const r = route.rec;
+    if (r && (r.price !== route.best.price || r.airline !== route.best.airline || r.depart_time !== route.best.depart_time)) {
+      left.append(el("div", { class: "rec-line" }, "⭐ 推薦 ", el("b", {}, money(r.price, cur)),
+        ` ${r.airline} ${r.depart_time}→${r.arrive_time} · ${stops(r.stops)} · ${dur(r.duration_min || 0)}` +
+        `（${md(r.fare.depart)} 出發，貴 ${short(r.price - route.best.price)}）`));
+    } else if (r) {
+      left.append(el("div", { class: "rec-line" }, "⭐ 最便宜的這班也是推薦的選擇"));
+    }
+  } else if (route.filteredOut) {
+    right.append(el("small", {}, "沒有符合篩選的航班"));
+    left.append(el("div", { class: "sub" }, "放寬上面的篩選條件就看得到"));
   } else {
     right.append(el("small", {}, "這次沒查到"));
     const seen = route.last_seen;
@@ -379,7 +500,7 @@ function renderCard(box, route, cur) {
     chips.append(el("span", { class: "chip" + (ok ? " good" : "") },
       ok ? `低於目標 ${short(route.alert_below)}` : `目標 ${short(route.alert_below)}（差 ${short(route.best.price - route.alert_below)}）`));
   }
-  if (route.best && route.median_best) {
+  if (route.best && route.median_best && !filterOn()) {
     const pct = Math.round((route.best.price - route.median_best) / route.median_best * 100);
     chips.append(el("span", { class: "chip" }, `近期中位數 ${short(route.median_best)}（${pct > 0 ? "+" : ""}${pct}%）`));
   }
@@ -478,7 +599,7 @@ async function load() {
   $("#meta").textContent = `從 ${latest.origin} 出發 · 上次掃描 ${when.toLocaleString("zh-TW", { hour12: false })}（${ago(latest.generated_at)}）` +
     (latest.provider === "demo" ? " · 示範資料" : "");
   renderDeals();
-  renderRoutes();
+  renderAll();
   renderPromos(promos);
   renderErrors();
 }
