@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-18T04:37:25+00:00",
+ "generated_at": "2026-10-18T11:09:40+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -82,6 +82,25 @@
       "recommended": false
      },
      {
+      "price": 48998,
+      "airline": "捷星日本航空",
+      "stops": 0,
+      "duration_min": 185,
+      "depart_time": "02:30",
+      "arrive_time": "06:35",
+      "from_airport": "TPE",
+      "to_airport": "NRT",
+      "via": [],
+      "airline_codes": [
+       "GK"
+      ],
+      "flight_numbers": [
+       "GK12"
+      ],
+      "google_best": false,
+      "recommended": false
+     },
+     {
       "price": 56256,
       "airline": "星宇航空",
       "stops": 0,
@@ -98,25 +117,6 @@
        "JX800"
       ],
       "google_best": true,
-      "recommended": false
-     },
-     {
-      "price": 59852,
-      "airline": "捷星日本航空",
-      "stops": 0,
-      "duration_min": 185,
-      "depart_time": "02:30",
-      "arrive_time": "06:35",
-      "from_airport": "TPE",
-      "to_airport": "NRT",
-      "via": [],
-      "airline_codes": [
-       "GK"
-      ],
-      "flight_numbers": [
-       "GK12"
-      ],
-      "google_best": false,
       "recommended": false
      },
      {
@@ -178,11 +178,11 @@
      "recommended": true
     },
     "median": 21128,
-    "samples": 31,
+    "samples": 32,
     "change_pct": 96.3
    },
    "median_best": 21128,
-   "prev_best": 43634,
+   "prev_best": 41478,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -257,6 +257,25 @@
        "recommended": false
       },
       {
+       "price": 48998,
+       "airline": "捷星日本航空",
+       "stops": 0,
+       "duration_min": 185,
+       "depart_time": "02:30",
+       "arrive_time": "06:35",
+       "from_airport": "TPE",
+       "to_airport": "NRT",
+       "via": [],
+       "airline_codes": [
+        "GK"
+       ],
+       "flight_numbers": [
+        "GK12"
+       ],
+       "google_best": false,
+       "recommended": false
+      },
+      {
        "price": 56256,
        "airline": "星宇航空",
        "stops": 0,
@@ -273,25 +292,6 @@
         "JX800"
        ],
        "google_best": true,
-       "recommended": false
-      },
-      {
-       "price": 59852,
-       "airline": "捷星日本航空",
-       "stops": 0,
-       "duration_min": 185,
-       "depart_time": "02:30",
-       "arrive_time": "06:35",
-       "from_airport": "TPE",
-       "to_airport": "NRT",
-       "via": [],
-       "airline_codes": [
-        "GK"
-       ],
-       "flight_numbers": [
-        "GK12"
-       ],
-       "google_best": false,
        "recommended": false
       },
       {
@@ -353,7 +353,7 @@
       "recommended": true
      },
      "median": 21128,
-     "samples": 31,
+     "samples": 32,
      "change_pct": 96.3
     }
    ]
@@ -437,7 +437,7 @@
      "recommended": true
     },
     "median": 12708,
-    "samples": 30,
+    "samples": 31,
     "change_pct": 237.0
    },
    "median_best": 12708,
@@ -517,7 +517,7 @@
       "recommended": true
      },
      "median": 12708,
-     "samples": 30,
+     "samples": 31,
      "change_pct": 237.0
     }
    ]
@@ -638,12 +638,12 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 16497,
-    "samples": 27,
-    "change_pct": 158.6
+    "median": 16505,
+    "samples": 28,
+    "change_pct": 158.5
    },
-   "median_best": 16497,
-   "prev_best": 43956,
+   "median_best": 16505,
+   "prev_best": 42668,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -756,9 +756,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 16497,
-     "samples": 27,
-     "change_pct": 158.6
+     "median": 16505,
+     "samples": 28,
+     "change_pct": 158.5
     }
    ]
   },
@@ -821,11 +821,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 33446,
-    "samples": 21,
-    "change_pct": 36.9
+    "median": 33447,
+    "samples": 22,
+    "change_pct": 36.8
    },
-   "median_best": 33446,
+   "median_best": 33447,
    "prev_best": 45772,
    "fare_keys": [
     "2026-12-24/2026-12-27"
@@ -882,9 +882,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 33446,
-     "samples": 21,
-     "change_pct": 36.9
+     "median": 33447,
+     "samples": 22,
+     "change_pct": 36.8
     }
    ]
   },
@@ -986,7 +986,7 @@
      "recommended": true
     },
     "median": 12882,
-    "samples": 20,
+    "samples": 21,
     "change_pct": 0.5
    },
    "median_best": 12882,
@@ -1085,7 +1085,7 @@
       "recommended": true
      },
      "median": 12882,
-     "samples": 20,
+     "samples": 21,
      "change_pct": 0.5
     }
    ]
@@ -1207,7 +1207,7 @@
      "recommended": true
     },
     "median": 16503,
-    "samples": 21,
+    "samples": 22,
     "change_pct": 7.4
    },
    "median_best": 16503,
@@ -1325,7 +1325,7 @@
       "recommended": true
      },
      "median": 16503,
-     "samples": 21,
+     "samples": 22,
      "change_pct": 7.4
     }
    ]
