@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-21T17:14:38+00:00",
+ "generated_at": "2026-10-21T21:44:50+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -17,7 +17,7 @@
     "fare_key": "2026-12-25/2026-12-27",
     "depart": "2026-12-25",
     "return": "2026-12-27",
-    "price": 41568,
+    "price": 41594,
     "airline": "酷航",
     "stops": 0,
     "duration_min": 185,
@@ -25,7 +25,7 @@
     "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA05SVGoFEgNUU0FyBRIDSE5EGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDTlJUcgUSA1RQRWoFEgNITkRyBRIDVFNB&hl=zh-TW&curr=TWD",
     "options": [
      {
-      "price": 41568,
+      "price": 41594,
       "airline": "酷航",
       "stops": 0,
       "duration_min": 185,
@@ -44,7 +44,7 @@
       "recommended": true
      },
      {
-      "price": 48438,
+      "price": 48464,
       "airline": "台灣虎航",
       "stops": 0,
       "duration_min": 180,
@@ -63,7 +63,7 @@
       "recommended": false
      },
      {
-      "price": 48700,
+      "price": 48726,
       "airline": "樂桃航空",
       "stops": 0,
       "duration_min": 185,
@@ -82,7 +82,7 @@
       "recommended": false
      },
      {
-      "price": 58402,
+      "price": 58428,
       "airline": "星宇航空",
       "stops": 0,
       "duration_min": 190,
@@ -101,7 +101,26 @@
       "recommended": false
      },
      {
-      "price": 78716,
+      "price": 59866,
+      "airline": "捷星日本航空",
+      "stops": 0,
+      "duration_min": 185,
+      "depart_time": "02:30",
+      "arrive_time": "06:35",
+      "from_airport": "TPE",
+      "to_airport": "NRT",
+      "via": [],
+      "airline_codes": [
+       "GK"
+      ],
+      "flight_numbers": [
+       "GK12"
+      ],
+      "google_best": false,
+      "recommended": false
+     },
+     {
+      "price": 78742,
       "airline": "長榮航空",
       "stops": 0,
       "duration_min": 185,
@@ -120,7 +139,7 @@
       "recommended": false
      },
      {
-      "price": 78716,
+      "price": 78742,
       "airline": "長榮航空",
       "stops": 0,
       "duration_min": 185,
@@ -140,7 +159,7 @@
      }
     ],
     "recommended": {
-     "price": 41568,
+     "price": 41594,
      "airline": "酷航",
      "stops": 0,
      "duration_min": 185,
@@ -159,11 +178,11 @@
      "recommended": true
     },
     "median": 41478,
-    "samples": 44,
-    "change_pct": 0.2
+    "samples": 45,
+    "change_pct": 0.3
    },
    "median_best": 41478,
-   "prev_best": 41574,
+   "prev_best": 41568,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -173,7 +192,7 @@
      "fare_key": "2026-12-25/2026-12-27",
      "depart": "2026-12-25",
      "return": "2026-12-27",
-     "price": 41568,
+     "price": 41594,
      "airline": "酷航",
      "stops": 0,
      "duration_min": 185,
@@ -181,7 +200,7 @@
      "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA05SVGoFEgNUU0FyBRIDSE5EGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDTlJUcgUSA1RQRWoFEgNITkRyBRIDVFNB&hl=zh-TW&curr=TWD",
      "options": [
       {
-       "price": 41568,
+       "price": 41594,
        "airline": "酷航",
        "stops": 0,
        "duration_min": 185,
@@ -200,7 +219,7 @@
        "recommended": true
       },
       {
-       "price": 48438,
+       "price": 48464,
        "airline": "台灣虎航",
        "stops": 0,
        "duration_min": 180,
@@ -219,7 +238,7 @@
        "recommended": false
       },
       {
-       "price": 48700,
+       "price": 48726,
        "airline": "樂桃航空",
        "stops": 0,
        "duration_min": 185,
@@ -238,7 +257,7 @@
        "recommended": false
       },
       {
-       "price": 58402,
+       "price": 58428,
        "airline": "星宇航空",
        "stops": 0,
        "duration_min": 190,
@@ -257,7 +276,26 @@
        "recommended": false
       },
       {
-       "price": 78716,
+       "price": 59866,
+       "airline": "捷星日本航空",
+       "stops": 0,
+       "duration_min": 185,
+       "depart_time": "02:30",
+       "arrive_time": "06:35",
+       "from_airport": "TPE",
+       "to_airport": "NRT",
+       "via": [],
+       "airline_codes": [
+        "GK"
+       ],
+       "flight_numbers": [
+        "GK12"
+       ],
+       "google_best": false,
+       "recommended": false
+      },
+      {
+       "price": 78742,
        "airline": "長榮航空",
        "stops": 0,
        "duration_min": 185,
@@ -276,7 +314,7 @@
        "recommended": false
       },
       {
-       "price": 78716,
+       "price": 78742,
        "airline": "長榮航空",
        "stops": 0,
        "duration_min": 185,
@@ -296,7 +334,7 @@
       }
      ],
      "recommended": {
-      "price": 41568,
+      "price": 41594,
       "airline": "酷航",
       "stops": 0,
       "duration_min": 185,
@@ -315,8 +353,8 @@
       "recommended": true
      },
      "median": 41478,
-     "samples": 44,
-     "change_pct": 0.2
+     "samples": 45,
+     "change_pct": 0.3
     }
    ]
   },
@@ -329,160 +367,18 @@
    "group": "聖誕節",
    "city": "首爾",
    "alert_below": null,
-   "best": {
-    "fare_key": "2026-12-25/2026-12-27",
-    "depart": "2026-12-25",
-    "return": "2026-12-27",
-    "price": 41416,
-    "airline": "長榮航空",
-    "stops": 0,
-    "duration_min": 145,
-    "depart_time": "07:05",
-    "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA0lDTmoFEgNUU0FyBRIDR01QGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDSUNOcgUSA1RQRWoFEgNHTVByBRIDVFNB&hl=zh-TW&curr=TWD",
-    "options": [
-     {
-      "price": 41416,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 145,
-      "depart_time": "07:05",
-      "arrive_time": "10:30",
-      "from_airport": "TPE",
-      "to_airport": "ICN",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR170"
-      ],
-      "google_best": false,
-      "recommended": true
-     },
-     {
-      "price": 44366,
-      "airline": "中華航空",
-      "stops": 0,
-      "duration_min": 150,
-      "depart_time": "07:50",
-      "arrive_time": "11:20",
-      "from_airport": "TPE",
-      "to_airport": "ICN",
-      "via": [],
-      "airline_codes": [
-       "CI"
-      ],
-      "flight_numbers": [
-       "CI160"
-      ],
-      "google_best": false,
-      "recommended": false
-     }
-    ],
-    "recommended": {
-     "price": 41416,
-     "airline": "長榮航空",
-     "stops": 0,
-     "duration_min": 145,
-     "depart_time": "07:05",
-     "arrive_time": "10:30",
-     "from_airport": "TPE",
-     "to_airport": "ICN",
-     "via": [],
-     "airline_codes": [
-      "BR"
-     ],
-     "flight_numbers": [
-      "BR170"
-     ],
-     "google_best": false,
-     "recommended": true
-    },
-    "median": 41500,
-    "samples": 43,
-    "change_pct": -0.2
-   },
-   "median_best": 41500,
-   "prev_best": 41408,
+   "best": null,
+   "median_best": null,
+   "prev_best": null,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
-   "last_seen": null,
-   "fares": [
-    {
-     "fare_key": "2026-12-25/2026-12-27",
-     "depart": "2026-12-25",
-     "return": "2026-12-27",
-     "price": 41416,
-     "airline": "長榮航空",
-     "stops": 0,
-     "duration_min": 145,
-     "depart_time": "07:05",
-     "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA0lDTmoFEgNUU0FyBRIDR01QGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDSUNOcgUSA1RQRWoFEgNHTVByBRIDVFNB&hl=zh-TW&curr=TWD",
-     "options": [
-      {
-       "price": 41416,
-       "airline": "長榮航空",
-       "stops": 0,
-       "duration_min": 145,
-       "depart_time": "07:05",
-       "arrive_time": "10:30",
-       "from_airport": "TPE",
-       "to_airport": "ICN",
-       "via": [],
-       "airline_codes": [
-        "BR"
-       ],
-       "flight_numbers": [
-        "BR170"
-       ],
-       "google_best": false,
-       "recommended": true
-      },
-      {
-       "price": 44366,
-       "airline": "中華航空",
-       "stops": 0,
-       "duration_min": 150,
-       "depart_time": "07:50",
-       "arrive_time": "11:20",
-       "from_airport": "TPE",
-       "to_airport": "ICN",
-       "via": [],
-       "airline_codes": [
-        "CI"
-       ],
-       "flight_numbers": [
-        "CI160"
-       ],
-       "google_best": false,
-       "recommended": false
-      }
-     ],
-     "recommended": {
-      "price": 41416,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 145,
-      "depart_time": "07:05",
-      "arrive_time": "10:30",
-      "from_airport": "TPE",
-      "to_airport": "ICN",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR170"
-      ],
-      "google_best": false,
-      "recommended": true
-     },
-     "median": 41500,
-     "samples": 43,
-     "change_pct": -0.2
-    }
-   ]
+   "last_seen": {
+    "price": 41416,
+    "fare_key": "2026-12-25/2026-12-27",
+    "t": "2026-10-21T17:14:38+00:00"
+   },
+   "fares": []
   },
   {
    "key": "TPE+TSA-BKK+DMK",
@@ -493,236 +389,18 @@
    "group": "聖誕節",
    "city": "曼谷",
    "alert_below": null,
-   "best": {
-    "fare_key": "2026-12-25/2026-12-27",
-    "depart": "2026-12-25",
-    "return": "2026-12-27",
-    "price": 38020,
-    "airline": "THAI",
-    "stops": 0,
-    "duration_min": 235,
-    "depart_time": "07:55",
-    "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA0JLS2oFEgNUU0FyBRIDRE1LGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDQktLcgUSA1RQRWoFEgNETUtyBRIDVFNB&hl=zh-TW&curr=TWD",
-    "options": [
-     {
-      "price": 38020,
-      "airline": "THAI",
-      "stops": 0,
-      "duration_min": 235,
-      "depart_time": "07:55",
-      "arrive_time": "10:50",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "TG"
-      ],
-      "flight_numbers": [
-       "TG637"
-      ],
-      "google_best": false,
-      "recommended": true
-     },
-     {
-      "price": 39088,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 245,
-      "depart_time": "08:25",
-      "arrive_time": "11:30",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR211"
-      ],
-      "google_best": false,
-      "recommended": false
-     },
-     {
-      "price": 44512,
-      "airline": "中華航空",
-      "stops": 0,
-      "duration_min": 230,
-      "depart_time": "07:00",
-      "arrive_time": "09:50",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "CI"
-      ],
-      "flight_numbers": [
-       "CI833"
-      ],
-      "google_best": false,
-      "recommended": false
-     },
-     {
-      "price": 50690,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 245,
-      "depart_time": "08:05",
-      "arrive_time": "11:10",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR67"
-      ],
-      "google_best": false,
-      "recommended": false
-     }
-    ],
-    "recommended": {
-     "price": 38020,
-     "airline": "THAI",
-     "stops": 0,
-     "duration_min": 235,
-     "depart_time": "07:55",
-     "arrive_time": "10:50",
-     "from_airport": "TPE",
-     "to_airport": "BKK",
-     "via": [],
-     "airline_codes": [
-      "TG"
-     ],
-     "flight_numbers": [
-      "TG637"
-     ],
-     "google_best": false,
-     "recommended": true
-    },
-    "median": 36940,
-    "samples": 40,
-    "change_pct": 2.9
-   },
-   "median_best": 36940,
-   "prev_best": 37976,
+   "best": null,
+   "median_best": null,
+   "prev_best": null,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
-   "last_seen": null,
-   "fares": [
-    {
-     "fare_key": "2026-12-25/2026-12-27",
-     "depart": "2026-12-25",
-     "return": "2026-12-27",
-     "price": 38020,
-     "airline": "THAI",
-     "stops": 0,
-     "duration_min": 235,
-     "depart_time": "07:55",
-     "url": "https://www.google.com/travel/flights/search?tfs=QgIBAUgBmAEBGi4SCjIwMjYtMTItMjUoAEAASAhqBRIDVFBFcgUSA0JLS2oFEgNUU0FyBRIDRE1LGi4SCjIwMjYtMTItMjcoAEAOSBdqBRIDQktLcgUSA1RQRWoFEgNETUtyBRIDVFNB&hl=zh-TW&curr=TWD",
-     "options": [
-      {
-       "price": 38020,
-       "airline": "THAI",
-       "stops": 0,
-       "duration_min": 235,
-       "depart_time": "07:55",
-       "arrive_time": "10:50",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "TG"
-       ],
-       "flight_numbers": [
-        "TG637"
-       ],
-       "google_best": false,
-       "recommended": true
-      },
-      {
-       "price": 39088,
-       "airline": "長榮航空",
-       "stops": 0,
-       "duration_min": 245,
-       "depart_time": "08:25",
-       "arrive_time": "11:30",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "BR"
-       ],
-       "flight_numbers": [
-        "BR211"
-       ],
-       "google_best": false,
-       "recommended": false
-      },
-      {
-       "price": 44512,
-       "airline": "中華航空",
-       "stops": 0,
-       "duration_min": 230,
-       "depart_time": "07:00",
-       "arrive_time": "09:50",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "CI"
-       ],
-       "flight_numbers": [
-        "CI833"
-       ],
-       "google_best": false,
-       "recommended": false
-      },
-      {
-       "price": 50690,
-       "airline": "長榮航空",
-       "stops": 0,
-       "duration_min": 245,
-       "depart_time": "08:05",
-       "arrive_time": "11:10",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "BR"
-       ],
-       "flight_numbers": [
-        "BR67"
-       ],
-       "google_best": false,
-       "recommended": false
-      }
-     ],
-     "recommended": {
-      "price": 38020,
-      "airline": "THAI",
-      "stops": 0,
-      "duration_min": 235,
-      "depart_time": "07:55",
-      "arrive_time": "10:50",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "TG"
-      ],
-      "flight_numbers": [
-       "TG637"
-      ],
-      "google_best": false,
-      "recommended": true
-     },
-     "median": 36940,
-     "samples": 40,
-     "change_pct": 2.9
-    }
-   ]
+   "last_seen": {
+    "price": 38020,
+    "fare_key": "2026-12-25/2026-12-27",
+    "t": "2026-10-21T17:14:38+00:00"
+   },
+   "fares": []
   },
   {
    "key": "TPE+TSA-NRT+HND-2",
@@ -784,11 +462,11 @@
      "recommended": true
     },
     "median": 34115,
-    "samples": 34,
+    "samples": 35,
     "change_pct": 34.3
    },
    "median_best": 34115,
-   "prev_best": 45792,
+   "prev_best": 45820,
    "fare_keys": [
     "2026-12-24/2026-12-27"
    ],
@@ -845,7 +523,7 @@
       "recommended": true
      },
      "median": 34115,
-     "samples": 34,
+     "samples": 35,
      "change_pct": 34.3
     }
    ]
@@ -863,7 +541,7 @@
     "fare_key": "2026-12-24/2026-12-27",
     "depart": "2026-12-24",
     "return": "2026-12-27",
-    "price": 13968,
+    "price": 15643,
     "airline": "酷航",
     "stops": 0,
     "duration_min": 150,
@@ -871,7 +549,7 @@
     "url": "https://www.google.com/travel/flights/search?tfs=QgEBSAGYAQEaLhIKMjAyNi0xMi0yNCgAQBJIF2oFEgNUUEVyBRIDSUNOagUSA1RTQXIFEgNHTVAaLhIKMjAyNi0xMi0yNygAQA5IF2oFEgNJQ05yBRIDVFBFagUSA0dNUHIFEgNUU0E=&hl=zh-TW&curr=TWD",
     "options": [
      {
-      "price": 13968,
+      "price": 15643,
       "airline": "酷航",
       "stops": 0,
       "duration_min": 150,
@@ -890,26 +568,7 @@
       "recommended": true
      },
      {
-      "price": 14968,
-      "airline": "台灣虎航",
-      "stops": 0,
-      "duration_min": 150,
-      "depart_time": "20:00",
-      "arrive_time": "23:30",
-      "from_airport": "TPE",
-      "to_airport": "ICN",
-      "via": [],
-      "airline_codes": [
-       "IT"
-      ],
-      "flight_numbers": [
-       "IT602"
-      ],
-      "google_best": false,
-      "recommended": false
-     },
-     {
-      "price": 15102,
+      "price": 17380,
       "airline": "大韓航空",
       "stops": 0,
       "duration_min": 150,
@@ -929,7 +588,7 @@
      }
     ],
     "recommended": {
-     "price": 13968,
+     "price": 15643,
      "airline": "酷航",
      "stops": 0,
      "duration_min": 150,
@@ -948,8 +607,8 @@
      "recommended": true
     },
     "median": 12952,
-    "samples": 33,
-    "change_pct": 7.8
+    "samples": 34,
+    "change_pct": 20.8
    },
    "median_best": 12952,
    "prev_best": 13968,
@@ -962,7 +621,7 @@
      "fare_key": "2026-12-24/2026-12-27",
      "depart": "2026-12-24",
      "return": "2026-12-27",
-     "price": 13968,
+     "price": 15643,
      "airline": "酷航",
      "stops": 0,
      "duration_min": 150,
@@ -970,7 +629,7 @@
      "url": "https://www.google.com/travel/flights/search?tfs=QgEBSAGYAQEaLhIKMjAyNi0xMi0yNCgAQBJIF2oFEgNUUEVyBRIDSUNOagUSA1RTQXIFEgNHTVAaLhIKMjAyNi0xMi0yNygAQA5IF2oFEgNJQ05yBRIDVFBFagUSA0dNUHIFEgNUU0E=&hl=zh-TW&curr=TWD",
      "options": [
       {
-       "price": 13968,
+       "price": 15643,
        "airline": "酷航",
        "stops": 0,
        "duration_min": 150,
@@ -989,26 +648,7 @@
        "recommended": true
       },
       {
-       "price": 14968,
-       "airline": "台灣虎航",
-       "stops": 0,
-       "duration_min": 150,
-       "depart_time": "20:00",
-       "arrive_time": "23:30",
-       "from_airport": "TPE",
-       "to_airport": "ICN",
-       "via": [],
-       "airline_codes": [
-        "IT"
-       ],
-       "flight_numbers": [
-        "IT602"
-       ],
-       "google_best": false,
-       "recommended": false
-      },
-      {
-       "price": 15102,
+       "price": 17380,
        "airline": "大韓航空",
        "stops": 0,
        "duration_min": 150,
@@ -1028,7 +668,7 @@
       }
      ],
      "recommended": {
-      "price": 13968,
+      "price": 15643,
       "airline": "酷航",
       "stops": 0,
       "duration_min": 150,
@@ -1047,8 +687,8 @@
       "recommended": true
      },
      "median": 12952,
-     "samples": 33,
-     "change_pct": 7.8
+     "samples": 34,
+     "change_pct": 20.8
     }
    ]
   },
@@ -1169,11 +809,11 @@
      "recommended": true
     },
     "median": 16503,
-    "samples": 34,
+    "samples": 35,
     "change_pct": 18.0
    },
    "median_best": 16503,
-   "prev_best": 19454,
+   "prev_best": 19479,
    "fare_keys": [
     "2026-12-24/2026-12-27"
    ],
@@ -1287,12 +927,15 @@
       "recommended": true
      },
      "median": 16503,
-     "samples": 34,
+     "samples": 35,
      "change_pct": 18.0
     }
    ]
   }
  ],
  "deals": [],
- "errors": []
+ "errors": [
+  "TPE/TSA-ICN/GMP 2026-12-25/2026-12-27: 試了 6 次都失敗（GoogleBusyError: Google returned an error page）",
+  "TPE/TSA-BKK/DMK 2026-12-25/2026-12-27: 試了 6 次都失敗（GoogleBusyError: Google returned an error page）"
+ ]
 }
