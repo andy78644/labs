@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-24T15:58:45+00:00",
+ "generated_at": "2026-10-24T20:52:28+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -78,26 +78,26 @@
       "flight_numbers": [
        "MM620"
       ],
-      "google_best": false,
+      "google_best": true,
       "recommended": false
      },
      {
-      "price": 65524,
-      "airline": "星宇航空",
+      "price": 59874,
+      "airline": "捷星日本航空",
       "stops": 0,
-      "duration_min": 190,
-      "depart_time": "08:25",
-      "arrive_time": "12:35",
+      "duration_min": 185,
+      "depart_time": "02:30",
+      "arrive_time": "06:35",
       "from_airport": "TPE",
       "to_airport": "NRT",
       "via": [],
       "airline_codes": [
-       "JX"
+       "GK"
       ],
       "flight_numbers": [
-       "JX800"
+       "GK12"
       ],
-      "google_best": true,
+      "google_best": false,
       "recommended": false
      },
      {
@@ -158,12 +158,12 @@
      "google_best": true,
      "recommended": true
     },
-    "median": 41831,
-    "samples": 56,
-    "change_pct": 15.6
+    "median": 41896,
+    "samples": 57,
+    "change_pct": 15.5
    },
-   "median_best": 41831,
-   "prev_best": 48186,
+   "median_best": 41896,
+   "prev_best": 48376,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -234,26 +234,26 @@
        "flight_numbers": [
         "MM620"
        ],
-       "google_best": false,
+       "google_best": true,
        "recommended": false
       },
       {
-       "price": 65524,
-       "airline": "星宇航空",
+       "price": 59874,
+       "airline": "捷星日本航空",
        "stops": 0,
-       "duration_min": 190,
-       "depart_time": "08:25",
-       "arrive_time": "12:35",
+       "duration_min": 185,
+       "depart_time": "02:30",
+       "arrive_time": "06:35",
        "from_airport": "TPE",
        "to_airport": "NRT",
        "via": [],
        "airline_codes": [
-        "JX"
+        "GK"
        ],
        "flight_numbers": [
-        "JX800"
+        "GK12"
        ],
-       "google_best": true,
+       "google_best": false,
        "recommended": false
       },
       {
@@ -314,9 +314,9 @@
       "google_best": true,
       "recommended": true
      },
-     "median": 41831,
-     "samples": 56,
-     "change_pct": 15.6
+     "median": 41896,
+     "samples": 57,
+     "change_pct": 15.5
     }
    ]
   },
@@ -398,11 +398,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 41527,
-    "samples": 54,
+    "median": 41530,
+    "samples": 55,
     "change_pct": 8.2
    },
-   "median_best": 41527,
+   "median_best": 41530,
    "prev_best": 44936,
    "fare_keys": [
     "2026-12-25/2026-12-27"
@@ -478,8 +478,8 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 41527,
-     "samples": 54,
+     "median": 41530,
+     "samples": 55,
      "change_pct": 8.2
     }
    ]
@@ -543,6 +543,25 @@
       "recommended": false
      },
      {
+      "price": 44246,
+      "airline": "長榮航空",
+      "stops": 0,
+      "duration_min": 245,
+      "depart_time": "08:25",
+      "arrive_time": "11:30",
+      "from_airport": "TPE",
+      "to_airport": "BKK",
+      "via": [],
+      "airline_codes": [
+       "BR"
+      ],
+      "flight_numbers": [
+       "BR211"
+      ],
+      "google_best": false,
+      "recommended": false
+     },
+     {
       "price": 44500,
       "airline": "中華航空",
       "stops": 0,
@@ -557,25 +576,6 @@
       ],
       "flight_numbers": [
        "CI833"
-      ],
-      "google_best": false,
-      "recommended": false
-     },
-     {
-      "price": 47510,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 245,
-      "depart_time": "08:25",
-      "arrive_time": "11:30",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR211"
       ],
       "google_best": false,
       "recommended": false
@@ -601,7 +601,7 @@
      "recommended": true
     },
     "median": 38006,
-    "samples": 50,
+    "samples": 51,
     "change_pct": 0.0
    },
    "median_best": 38006,
@@ -661,6 +661,25 @@
        "recommended": false
       },
       {
+       "price": 44246,
+       "airline": "長榮航空",
+       "stops": 0,
+       "duration_min": 245,
+       "depart_time": "08:25",
+       "arrive_time": "11:30",
+       "from_airport": "TPE",
+       "to_airport": "BKK",
+       "via": [],
+       "airline_codes": [
+        "BR"
+       ],
+       "flight_numbers": [
+        "BR211"
+       ],
+       "google_best": false,
+       "recommended": false
+      },
+      {
        "price": 44500,
        "airline": "中華航空",
        "stops": 0,
@@ -675,25 +694,6 @@
        ],
        "flight_numbers": [
         "CI833"
-       ],
-       "google_best": false,
-       "recommended": false
-      },
-      {
-       "price": 47510,
-       "airline": "長榮航空",
-       "stops": 0,
-       "duration_min": 245,
-       "depart_time": "08:25",
-       "arrive_time": "11:30",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "BR"
-       ],
-       "flight_numbers": [
-        "BR211"
        ],
        "google_best": false,
        "recommended": false
@@ -719,7 +719,7 @@
       "recommended": true
      },
      "median": 38006,
-     "samples": 50,
+     "samples": 51,
      "change_pct": 0.0
     }
    ]
@@ -784,7 +784,7 @@
      "recommended": true
     },
     "median": 45772,
-    "samples": 45,
+    "samples": 46,
     "change_pct": 0.1
    },
    "median_best": 45772,
@@ -845,7 +845,7 @@
       "recommended": true
      },
      "median": 45772,
-     "samples": 45,
+     "samples": 46,
      "change_pct": 0.1
     }
    ]
@@ -947,11 +947,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 12952,
-    "samples": 45,
+    "median": 12954,
+    "samples": 46,
     "change_pct": 7.8
    },
-   "median_best": 12952,
+   "median_best": 12954,
    "prev_best": 13968,
    "fare_keys": [
     "2026-12-24/2026-12-27"
@@ -1046,8 +1046,8 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 12952,
-     "samples": 45,
+     "median": 12954,
+     "samples": 46,
      "change_pct": 7.8
     }
    ]
@@ -1111,6 +1111,25 @@
       "recommended": true
      },
      {
+      "price": 20749,
+      "airline": "中華航空",
+      "stops": 0,
+      "duration_min": 245,
+      "depart_time": "22:30",
+      "arrive_time": "01:35+1",
+      "from_airport": "TPE",
+      "to_airport": "BKK",
+      "via": [],
+      "airline_codes": [
+       "CI"
+      ],
+      "flight_numbers": [
+       "CI837"
+      ],
+      "google_best": false,
+      "recommended": false
+     },
+     {
       "price": 21766,
       "airline": "長榮航空",
       "stops": 0,
@@ -1125,25 +1144,6 @@
       ],
       "flight_numbers": [
        "BR205"
-      ],
-      "google_best": false,
-      "recommended": false
-     },
-     {
-      "price": 22640,
-      "airline": "中華航空",
-      "stops": 0,
-      "duration_min": 245,
-      "depart_time": "22:30",
-      "arrive_time": "01:35+1",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "CI"
-      ],
-      "flight_numbers": [
-       "CI837"
       ],
       "google_best": false,
       "recommended": false
@@ -1168,11 +1168,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 16111,
-    "samples": 46,
-    "change_pct": 24.0
+    "median": 16503,
+    "samples": 47,
+    "change_pct": 21.0
    },
-   "median_best": 16111,
+   "median_best": 16503,
    "prev_best": 19972,
    "fare_keys": [
     "2026-12-24/2026-12-27"
@@ -1229,6 +1229,25 @@
        "recommended": true
       },
       {
+       "price": 20749,
+       "airline": "中華航空",
+       "stops": 0,
+       "duration_min": 245,
+       "depart_time": "22:30",
+       "arrive_time": "01:35+1",
+       "from_airport": "TPE",
+       "to_airport": "BKK",
+       "via": [],
+       "airline_codes": [
+        "CI"
+       ],
+       "flight_numbers": [
+        "CI837"
+       ],
+       "google_best": false,
+       "recommended": false
+      },
+      {
        "price": 21766,
        "airline": "長榮航空",
        "stops": 0,
@@ -1243,25 +1262,6 @@
        ],
        "flight_numbers": [
         "BR205"
-       ],
-       "google_best": false,
-       "recommended": false
-      },
-      {
-       "price": 22640,
-       "airline": "中華航空",
-       "stops": 0,
-       "duration_min": 245,
-       "depart_time": "22:30",
-       "arrive_time": "01:35+1",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "CI"
-       ],
-       "flight_numbers": [
-        "CI837"
        ],
        "google_best": false,
        "recommended": false
@@ -1286,9 +1286,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 16111,
-     "samples": 46,
-     "change_pct": 24.0
+     "median": 16503,
+     "samples": 47,
+     "change_pct": 21.0
     }
    ]
   }
