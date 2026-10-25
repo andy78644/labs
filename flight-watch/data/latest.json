@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T11:33:48+00:00",
+ "generated_at": "2026-10-25T16:24:52+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -158,11 +158,11 @@
      "google_best": true,
      "recommended": true
     },
-    "median": 41910,
-    "samples": 59,
+    "median": 41927,
+    "samples": 60,
     "change_pct": 12.6
    },
-   "median_best": 41910,
+   "median_best": 41927,
    "prev_best": 47200,
    "fare_keys": [
     "2026-12-25/2026-12-27"
@@ -314,8 +314,8 @@
       "google_best": true,
       "recommended": true
      },
-     "median": 41910,
-     "samples": 59,
+     "median": 41927,
+     "samples": 60,
      "change_pct": 12.6
     }
    ]
@@ -399,11 +399,11 @@
      "recommended": true
     },
     "median": 42512,
-    "samples": 57,
+    "samples": 58,
     "change_pct": 5.7
    },
    "median_best": 42512,
-   "prev_best": 44936,
+   "prev_best": 44934,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -479,7 +479,7 @@
       "recommended": true
      },
      "median": 42512,
-     "samples": 57,
+     "samples": 58,
      "change_pct": 5.7
     }
    ]
@@ -601,7 +601,7 @@
      "recommended": true
     },
     "median": 38006,
-    "samples": 53,
+    "samples": 54,
     "change_pct": 0.0
    },
    "median_best": 38006,
@@ -719,7 +719,7 @@
       "recommended": true
      },
      "median": 38006,
-     "samples": 53,
+     "samples": 54,
      "change_pct": 0.0
     }
    ]
@@ -784,7 +784,7 @@
      "recommended": true
     },
     "median": 45772,
-    "samples": 48,
+    "samples": 49,
     "change_pct": 0.1
    },
    "median_best": 45772,
@@ -845,7 +845,7 @@
       "recommended": true
      },
      "median": 45772,
-     "samples": 48,
+     "samples": 49,
      "change_pct": 0.1
     }
    ]
@@ -928,11 +928,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 13040,
-    "samples": 48,
-    "change_pct": 20.0
+    "median": 13123,
+    "samples": 49,
+    "change_pct": 19.2
    },
-   "median_best": 13040,
+   "median_best": 13123,
    "prev_best": 15643,
    "fare_keys": [
     "2026-12-24/2026-12-27"
@@ -1008,9 +1008,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 13040,
-     "samples": 48,
-     "change_pct": 20.0
+     "median": 13123,
+     "samples": 49,
+     "change_pct": 19.2
     }
    ]
   },
@@ -1027,13 +1027,32 @@
     "fare_key": "2026-12-24/2026-12-27",
     "depart": "2026-12-24",
     "return": "2026-12-27",
-    "price": 19972,
-    "airline": "長榮航空",
+    "price": 19465,
+    "airline": "THAI",
     "stops": 0,
     "duration_min": 235,
-    "depart_time": "22:30",
+    "depart_time": "18:50",
     "url": "https://www.google.com/travel/flights/search?tfs=QgEBSAGYAQEaLhIKMjAyNi0xMi0yNCgAQBJIF2oFEgNUUEVyBRIDQktLagUSA1RTQXIFEgNETUsaLhIKMjAyNi0xMi0yNygAQA5IF2oFEgNCS0tyBRIDVFBFagUSA0RNS3IFEgNUU0E=&hl=zh-TW&curr=TWD",
     "options": [
+     {
+      "price": 19465,
+      "airline": "THAI",
+      "stops": 0,
+      "duration_min": 235,
+      "depart_time": "18:50",
+      "arrive_time": "21:45",
+      "from_airport": "TPE",
+      "to_airport": "BKK",
+      "via": [],
+      "airline_codes": [
+       "TG"
+      ],
+      "flight_numbers": [
+       "TG635"
+      ],
+      "google_best": false,
+      "recommended": true
+     },
      {
       "price": 19972,
       "airline": "長榮航空",
@@ -1052,25 +1071,6 @@
       ],
       "google_best": false,
       "recommended": false
-     },
-     {
-      "price": 20687,
-      "airline": "THAI",
-      "stops": 0,
-      "duration_min": 235,
-      "depart_time": "18:50",
-      "arrive_time": "21:45",
-      "from_airport": "TPE",
-      "to_airport": "BKK",
-      "via": [],
-      "airline_codes": [
-       "TG"
-      ],
-      "flight_numbers": [
-       "TG635"
-      ],
-      "google_best": false,
-      "recommended": true
      },
      {
       "price": 21766,
@@ -1092,7 +1092,7 @@
       "recommended": false
      },
      {
-      "price": 23756,
+      "price": 22640,
       "airline": "中華航空",
       "stops": 0,
       "duration_min": 245,
@@ -1112,7 +1112,7 @@
      }
     ],
     "recommended": {
-     "price": 20687,
+     "price": 19465,
      "airline": "THAI",
      "stops": 0,
      "duration_min": 235,
@@ -1131,8 +1131,8 @@
      "recommended": true
     },
     "median": 16503,
-    "samples": 49,
-    "change_pct": 21.0
+    "samples": 50,
+    "change_pct": 17.9
    },
    "median_best": 16503,
    "prev_best": 19972,
@@ -1145,13 +1145,32 @@
      "fare_key": "2026-12-24/2026-12-27",
      "depart": "2026-12-24",
      "return": "2026-12-27",
-     "price": 19972,
-     "airline": "長榮航空",
+     "price": 19465,
+     "airline": "THAI",
      "stops": 0,
      "duration_min": 235,
-     "depart_time": "22:30",
+     "depart_time": "18:50",
      "url": "https://www.google.com/travel/flights/search?tfs=QgEBSAGYAQEaLhIKMjAyNi0xMi0yNCgAQBJIF2oFEgNUUEVyBRIDQktLagUSA1RTQXIFEgNETUsaLhIKMjAyNi0xMi0yNygAQA5IF2oFEgNCS0tyBRIDVFBFagUSA0RNS3IFEgNUU0E=&hl=zh-TW&curr=TWD",
      "options": [
+      {
+       "price": 19465,
+       "airline": "THAI",
+       "stops": 0,
+       "duration_min": 235,
+       "depart_time": "18:50",
+       "arrive_time": "21:45",
+       "from_airport": "TPE",
+       "to_airport": "BKK",
+       "via": [],
+       "airline_codes": [
+        "TG"
+       ],
+       "flight_numbers": [
+        "TG635"
+       ],
+       "google_best": false,
+       "recommended": true
+      },
       {
        "price": 19972,
        "airline": "長榮航空",
@@ -1170,25 +1189,6 @@
        ],
        "google_best": false,
        "recommended": false
-      },
-      {
-       "price": 20687,
-       "airline": "THAI",
-       "stops": 0,
-       "duration_min": 235,
-       "depart_time": "18:50",
-       "arrive_time": "21:45",
-       "from_airport": "TPE",
-       "to_airport": "BKK",
-       "via": [],
-       "airline_codes": [
-        "TG"
-       ],
-       "flight_numbers": [
-        "TG635"
-       ],
-       "google_best": false,
-       "recommended": true
       },
       {
        "price": 21766,
@@ -1210,7 +1210,7 @@
        "recommended": false
       },
       {
-       "price": 23756,
+       "price": 22640,
        "airline": "中華航空",
        "stops": 0,
        "duration_min": 245,
@@ -1230,7 +1230,7 @@
       }
      ],
      "recommended": {
-      "price": 20687,
+      "price": 19465,
       "airline": "THAI",
       "stops": 0,
       "duration_min": 235,
@@ -1249,8 +1249,8 @@
       "recommended": true
      },
      "median": 16503,
-     "samples": 49,
-     "change_pct": 21.0
+     "samples": 50,
+     "change_pct": 17.9
     }
    ]
   }
