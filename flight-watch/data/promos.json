@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-27T05:08:50+00:00",
+ "updated_at": "2026-10-27T12:15:16+00:00",
  "items": [
   {
    "id": "23be802004a0044a",
@@ -201,45 +201,6 @@
     "BKK"
    ],
    "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "a7c4fe7425633034",
-   "title": "長榮機票買一送一今天開搶！加碼東京、首爾5888元起，美國16888元 - ELLE",
-   "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9WdGJVT3JDc05lT2tLbnZtZmExWVNvZWFVNHVlTlBSMDVpUFZ6Sjg0U01XVEN2Qk9oaVZuZmhaLV9XN242dk1Hak1oSFR4R0ZsaHczaG1ESk5menk0RFNoUzZlc1BxZDdOYmhVdE5vVlpJZ2JSel9RQQ?oc=5",
-   "source": "ELLE",
-   "published": "2026-09-29T07:00:00+00:00",
-   "routes": [
-    "NRT",
-    "ICN"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "9f7338bc3669288d",
-   "title": "雄獅攜長榮機票買一送一！曼谷、沖繩等5航點 東京首爾5,888元 - UDN",
-   "link": "https://news.google.com/rss/articles/CBMiUEFVX3lxTE5VaGp1R3h5SjFXWnBjSm9Ma1dWcEdJbzhZck1WRG5fNHZNUEhsNHlFd2t6U2FzeWt4Q2VQTFgzZ0thazQzUnZzY0gwLXgtcUQ50gFWQVVfeXFMTnVrV2dtdmw4SWo3S05DTEV2WjZ1SkNkaTZReW9YY3V1Z2Vha1NNS192SFVmWVZENmZMTGlQTjE5OERFSlBrdjc2U2s2NjB3VWNqU1g1VGc?oc=5",
-   "source": "UDN",
-   "published": "2026-09-29T07:00:00+00:00",
-   "routes": [
-    "NRT",
-    "ICN",
-    "BKK"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "7784bc491e18f7f2",
-   "title": "10月長榮航空機票優惠！必搶曼谷、沖繩買一送一，全航線最低５折起 - 食尚玩家",
-   "link": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE9salFXcF9qTjhBMkV6X1hkT25ydXhILWtEQzhXMWZjMnkxdThpYWdoVzQwM1Q4WXhQVkNzVGdfVk9raExJTDh5Mkh4cUpMZWVJQ2dmVTluRdIBXEFVX3lxTE5KQi10ZVhfcTgwaWpoU3J2MjJUWm8xREFOZUZNNko4LWRSXzRiZnJlODYxTlZoZFpOc3hGcFZtZjNfVzF2LWpGdGFNYnJIYmUzeVJrRlJVcXRfdUFC?oc=5",
-   "source": "食尚玩家",
-   "published": "2026-09-29T07:00:00+00:00",
-   "routes": [
-    "BKK/DMK"
-   ],
-   "first_seen": "2026-10-08T07:34:36+00:00",
    "notified": true
   }
  ]
