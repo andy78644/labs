@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-27T18:04:11+00:00",
+ "updated_at": "2026-10-27T22:16:39+00:00",
  "items": [
   {
    "id": "23be802004a0044a",
@@ -24,6 +24,19 @@
     "BKK/DMK"
    ],
    "first_seen": "2026-10-26T13:08:59+00:00",
+   "notified": true
+  },
+  {
+   "id": "aa7d748652223b1f",
+   "title": "大灣區航空長者機票限時65折優惠｜60歲以上即享！直飛東京/大阪/曼谷等8航點（附預訂教學） - myTV SUPER",
+   "link": "https://news.google.com/rss/articles/CBMiyARBVV95cUxPMUZ0RTR5NEtNRFFfUTRicHNNbEU0MzJkSE9nUlROYXJjaDJjaWV5c3RWMmJmRDRmQVdsMlZBUTFoVVdGQlZYdzhnODJrUmQtaUVPOVFEZG5veUNWampQcGxBX1JaZWhDV2hzYjdQM0hCbHE0a3RqdGFyUlFTallTZlNncDlLZzBXTTktX1lMN3pQUm4xRjlZR0lQRkt5Uk5PUE92cFByc1htcTNKVDJ6UmNXUVNqZzlMejA1QlEzcTNjRDF4VjRVMllyazFSVUstSUtJRmRTbl9IUjJOdzNoS21fQW1wYTJ6ejF6eVRvWGFxT2FBaTQybVRwNzBVRVNhV0R2LVY3VWZKLUpxa3RBYjJrUjkwMmsycFFQTkR2ek5YeC1DSi1BZnZrT2Jzbndvb0tVeTdValMwRS00RVQxRHVqdkJiNzhnQWNSa0NLYllIc0JHS1FSRVBSd2lIYms0Q2N3b3daQjdYLWlDMnc5N3Z0ZlN5XzlBT0xzN2ZIMG9IOC13WEFBeTVsSzdWb3hmQlg4VGZmSDFtX2dnSWM5OVVVVFBuVGcxc1dnMEZEOEEycWxVdHNQdEEtLTByVXpBLURWMEpXVEV0Qkh3SF83VlVmUVpodGl1WFp4SjczakR5NG1oaHRBSG51WjdscDBwNUtiWmhodWZmSDZkbnBBNkh5aTZvNFlIZ2FCVUJMVnA4cjJEYkgtU2NWRXpnUkhjcDBwV1JPZGdXVnRzb1U2LXVuRzh3X0RhZ2dnTG1yY1RBOFpJMExpbg?oc=5",
+   "source": "myTV SUPER",
+   "published": "2026-10-26T05:38:43+00:00",
+   "routes": [
+    "NRT/HND",
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-10-27T22:16:39+00:00",
    "notified": true
   },
   {
