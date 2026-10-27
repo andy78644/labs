@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-27T12:15:16+00:00",
+ "updated_at": "2026-10-27T18:04:11+00:00",
  "items": [
   {
    "id": "23be802004a0044a",
@@ -185,20 +185,6 @@
    "routes": [
     "NRT",
     "ICN"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "3228badaaba9f891",
-   "title": "雄獅攜手長榮推限時搶購！曼谷沖繩買一送一，東京首爾機票5888元起再加碼送eSIM與購物金 - WalkerLand 窩客島",
-   "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFBmSmU1RW90Z0hCRmRpQzZDeG1DSW9WME81VXY4a19CRC15TV9NN1doRnNnQi01OFdxa2l6NDRSZFd1Z1k5b0N4RW53RHp1UkJWandiOGhmdFBqa2MzeGc?oc=5",
-   "source": "WalkerLand 窩客島",
-   "published": "2026-09-29T17:58:00+00:00",
-   "routes": [
-    "NRT",
-    "ICN",
-    "BKK"
    ],
    "first_seen": "2026-10-08T03:48:23+00:00",
    "notified": true
