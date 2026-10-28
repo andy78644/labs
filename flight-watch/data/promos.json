@@ -1,6 +1,19 @@
 {
- "updated_at": "2026-10-28T12:58:32+00:00",
+ "updated_at": "2026-10-28T22:37:24+00:00",
  "items": [
+  {
+   "id": "7516a420dd17f8ea",
+   "title": "易遊網100元機票真的開搶！北海道首爾曼谷都能飛，饗食天堂餐券100元、雙11大阪機票1,111元 - WalkerLand 窩客島",
+   "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFBBZGhiRE1SaXFTNEwzV1ZfSTVCRHZac0RhQ3VFZlhsQjBsRUtCTXFwRHNiWmlnSDY4M3BmS3BwT2hzZFEtV0lmb1dlU3NoT19WdVpxSXlFVjFiZUx2Q1E?oc=5",
+   "source": "WalkerLand 窩客島",
+   "published": "2026-10-28T19:04:00+00:00",
+   "routes": [
+    "ICN/GMP",
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-10-28T22:37:24+00:00",
+   "notified": true
+  },
   {
    "id": "1185a1f56fcf2506",
    "title": "旅行社線上旅展開跑！北海道、首爾機票下殺100元 全球飯店訂房44折起 - 知新聞",
@@ -182,20 +195,6 @@
    "routes": [
     "NRT",
     "ICN",
-    "BKK"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "b7ba99b19cd4a9b8",
-   "title": "國慶｜大灣區航空機票低至77折！東京/大阪/台北/曼谷 - dotdotnews",
-   "link": "https://news.google.com/rss/articles/CBMiekFVX3lxTE9jRnRvcWF5MW9rb3c1U0pqWnNBdGp6ejZCaVRnQWx2RmRqRnBJMHBxV1BVYzNUUlUxV1ZCcVp1Zk5jbFhnMFNJdUx5M2JDMTNHRmpzZ1JHZm5uZWNWeEJhaE1WV1FNV0VCejdVRl9HYkllZnZDcWI4aE53?oc=5",
-   "source": "dotdotnews",
-   "published": "2026-09-30T14:19:49+00:00",
-   "routes": [
-    "NRT",
-    "KIX",
     "BKK"
    ],
    "first_seen": "2026-10-08T03:48:23+00:00",
