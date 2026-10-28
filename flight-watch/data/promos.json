@@ -1,6 +1,30 @@
 {
- "updated_at": "2026-10-27T22:16:39+00:00",
+ "updated_at": "2026-10-28T05:45:34+00:00",
  "items": [
+  {
+   "id": "1185a1f56fcf2506",
+   "title": "旅行社線上旅展開跑！北海道、首爾機票下殺100元 全球飯店訂房44折起 - 知新聞",
+   "link": "https://news.google.com/rss/articles/CBMib0FVX3lxTE0wSkltZXJXejQyOEh0UWhoV2dNX0ZHaktNQ1lGQWxZb1Z4clE2elpWa19EdWM1Y3dVejA3T2RyTnBGNlBMdXpJSGQ3d0w2Q0RFbUJqN3MtTnZIM3d2Y1lPR1d3MEZHZTVJTElKc3BuYw?oc=5",
+   "source": "知新聞",
+   "published": "2026-10-28T02:38:00+00:00",
+   "routes": [
+    "ICN/GMP"
+   ],
+   "first_seen": "2026-10-28T05:45:34+00:00",
+   "notified": true
+  },
+  {
+   "id": "57a6ea445f189cb1",
+   "title": "大灣區航空GBA長者機票優惠！65折起飛東京/大阪等8大指定航點 - U Travel",
+   "link": "https://news.google.com/rss/articles/CBMi_wJBVV95cUxPTE9zd3B2aDZHU0l2TjJfYVpuYXJJVzlpTDhhOHdJNFBGTkxZZk1MU25wb3JCRElwMUNaeDk0R2ZNZ1g4WUswcFI0SWxZNlpHZVo4ZmRjbXR3TkxqR2RXYllKUGRfQ2FjTXB6TTZ3NWVRRWF3NGlrblV3Qnp4bVA1d3U3Y2RzR0JJMGJSelNXbzZTaDlseE9NQkkyTE56WkVySHNYU2VObU5FS19Ga0pvcnd2ZnhjcEpkOHgwQ0ZrWFJiVHJWT2RnS0FRZFE0Vk4tTEdEcldEMUpwVlA1M1k5QkFVS2ZqanFrQ18zR3VPN3lWalpELTRyLVdIbkg0Mm8wbDRwdFAwZ05lOFpQOW5Mb3hYOHQwZXpQUnNtSlNHQjZJZG01MnFGZWU4WGN6YzlSOEFLeS1rSWdRQnBDRzluUkFMaVJsRVZXVWFJR0pQM1g4M1h5eEhUM1FILVFNUk81eHA1UUdpam5OSGdxR04tcnVEVjI1ZFJwYjIzbUVoRQ?oc=5",
+   "source": "U Travel",
+   "published": "2026-10-28T01:45:00+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-10-28T05:45:34+00:00",
+   "notified": true
+  },
   {
    "id": "23be802004a0044a",
    "title": "香港航空「周二激賞飛」凌晨開搶！包23kg寄艙行李 台北來回$375起、首爾$651起 - U Travel",
@@ -173,31 +197,6 @@
     "NRT",
     "KIX",
     "BKK"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "e07329806e305a00",
-   "title": "長榮機票下殺！雄獅推「買一送一」 再祭東京5,888元、美西來回1.6萬 - UDN",
-   "link": "https://news.google.com/rss/articles/CBMiU0FVX3lxTFA1V3VXRGFsOThRZjFJamppZDZQRXo4MHRnQl9VOFZGZFY0YVJ3eWFYNGNxeHJVRFUzQmdhQzh3N1MzbWJvQkIxZUo1VXkxU3hkSVRZ0gFYQVVfeXFMTnRRVmtvbk1RSjU1Mnc2NXJTWXVkcWdjTXpzdHJkbVEtUlN3S04wVWptVW9ScHNnb3JldVc4aWFQZjVacXI0TDh1dDktR0VPdTZZN2JfZ0xUSw?oc=5",
-   "source": "UDN",
-   "published": "2026-09-30T04:15:16+00:00",
-   "routes": [
-    "NRT"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
-   "notified": true
-  },
-  {
-   "id": "e696709e4050c531",
-   "title": "長榮航空機票買一送一！飛東京、首爾最低 6 千有找 虎航 2027 夏季航班 10/1 起開賣 - 上報Up Media",
-   "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE9qU0FKVHpsd1ZUaXJKMjU2V2hVMjZhN3FWajdyUWs0VVNqVlhYZDJkR1c1cHRxTVp2aTY3ckkwYlQtZEVDWnk1akpmdkc4aG5HdkVZc1IwMWo3b0o3M0E?oc=5",
-   "source": "上報Up Media",
-   "published": "2026-09-30T02:00:00+00:00",
-   "routes": [
-    "NRT",
-    "ICN"
    ],
    "first_seen": "2026-10-08T03:48:23+00:00",
    "notified": true
