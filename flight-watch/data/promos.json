@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-29T05:51:24+00:00",
+ "updated_at": "2026-10-29T13:05:20+00:00",
  "items": [
   {
    "id": "7516a420dd17f8ea",
@@ -184,20 +184,6 @@
     "ICN/GMP"
    ],
    "first_seen": "2026-10-12T06:01:27+00:00",
-   "notified": true
-  },
-  {
-   "id": "4f63010ec0e54bab",
-   "title": "雄獅長榮機票9/30開搶！曼谷、沖繩買一送一，東京首爾5888元起 - 輕旅行",
-   "link": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE9yTDZQdF9IZXZLa1JIVWswWFRpTUtuUm13THF5U1VnUUV1QXduNlJFSFpUaWFGSlV3WnFUVkZrNm1iVkc5TUNja2lfY1VGZw?oc=5",
-   "source": "輕旅行",
-   "published": "2026-10-01T11:04:59+00:00",
-   "routes": [
-    "NRT",
-    "ICN",
-    "BKK"
-   ],
-   "first_seen": "2026-10-08T03:48:23+00:00",
    "notified": true
   }
  ]
