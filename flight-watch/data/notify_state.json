@@ -1,13 +1,13 @@
 {
  "reported": {
   "TPE+TSA-NRT+HND": {
-   "price": 43886,
+   "price": 43816,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
   },
   "TPE+TSA-ICN+GMP": {
-   "price": 48336,
+   "price": 48184,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
@@ -31,20 +31,20 @@
    ]
   },
   "TPE+TSA-ICN+GMP-2": {
-   "price": 14612,
+   "price": 14536,
    "keys": [
     "2026-12-24/2026-12-27"
    ]
   }
  },
  "summary": {
-  "date": "2026-11-01",
+  "date": "2026-11-02",
   "best": {
-   "TPE+TSA-NRT+HND": 42376,
-   "TPE+TSA-ICN+GMP": 44836,
+   "TPE+TSA-NRT+HND": 43816,
+   "TPE+TSA-ICN+GMP": 48184,
    "TPE+TSA-BKK+DMK": 46132,
    "TPE+TSA-NRT+HND-2": 51838,
-   "TPE+TSA-ICN+GMP-2": 13682,
+   "TPE+TSA-ICN+GMP-2": 14536,
    "TPE+TSA-BKK+DMK-2": 16960
   }
  }
