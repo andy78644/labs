@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-04T06:26:21+00:00",
+ "updated_at": "2026-11-04T19:47:32+00:00",
  "items": [
   {
    "id": "59297b07144e2e18",
@@ -48,6 +48,18 @@
     "BKK/DMK"
    ],
    "first_seen": "2026-11-02T06:09:04+00:00",
+   "notified": true
+  },
+  {
+   "id": "578968bbc596be8e",
+   "title": "廉航機票下殺2290元起！AirAsia祭ITF旅展優惠曼谷、福岡、大阪都能飛- 旅遊新聞 - PChome Online 新聞",
+   "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQUGZvSDhqU0Ftd2swNDEzMUIyR2FNWDVPMVdUdndpVUxDek9HTU1TUDV6bkxVeUZNaFBIRVQ2TjUwS2VOd0ctbnhoa1czTTZpU00wTDBIOFktRkdlTGQ4VkdtUmdGa2JjR3FSVnB5aDJ0SUJSME1hYTd5RTFMcDFod1pHUnhJUXFm?oc=5",
+   "source": "PChome Online 新聞",
+   "published": "2026-11-02T05:18:29+00:00",
+   "routes": [
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-11-04T19:47:32+00:00",
    "notified": true
   },
   {
