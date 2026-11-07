@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-07T13:05:18+00:00",
+ "updated_at": "2026-11-07T21:53:00+00:00",
  "items": [
   {
    "id": "ae7220aef3ee0db6",
@@ -11,6 +11,18 @@
     "NRT/HND"
    ],
    "first_seen": "2026-11-06T06:50:50+00:00",
+   "notified": true
+  },
+  {
+   "id": "6543f8ec2c0fb41e",
+   "title": "Trip.com雙11優惠｜來回東京機票低至$11！Mastercard減$7527 - UHK 港生活",
+   "link": "https://news.google.com/rss/articles/CBMingJBVV95cUxQRHp1ZnZaNGt1aUVBRjZqVjlBZmpZS2FxQkMwWHhDOEMtZlVuVUtRZDVacG1RQml2SjdkOS16bVZjYUU1c2lNMGhYZ0lXZU02Y0g0cnFtWXk5Z0h2ek5OYWJaRTBUMDlxanA0NTNib2M2a3NNaWFWUFFuaGxZUjVzTUZhMW5HY05NZjN1TlRneTc3b1R3ZzAwN1BvWHY4VmNadXBzRVU4UHRPbDlQeURsR0k0Si1VU2YtOUthMjBpeU95QkEyZWh2MXpVVXFCbFRqLUt5cDU2eEswT0l6VHZ3UnYxOG5hYkJmQlJWdWUtNDJwM1RQUHJTV0N6SDlodWFvOWN2b05HaEJ3X2FZOG9JYVJ2MW53clFHV3ZLQVlR?oc=5",
+   "source": "UHK 港生活",
+   "published": "2026-11-06T04:14:09+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-07T21:53:00+00:00",
    "notified": true
   },
   {
