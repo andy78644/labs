@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-06T19:26:32+00:00",
+ "updated_at": "2026-11-07T06:00:27+00:00",
  "items": [
   {
    "id": "ae7220aef3ee0db6",
@@ -48,6 +48,19 @@
     "NRT/HND"
    ],
    "first_seen": "2026-11-05T06:50:02+00:00",
+   "notified": true
+  },
+  {
+   "id": "89ce4c5b5b3c2984",
+   "title": "機票優惠｜香港航空20周年限時優惠 機票高達8折 上海、東京、曼谷全線20多個精選航點任揀（附詳情） - 香港經濟日報HKET",
+   "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQcGpHeUJWX3dfYU45RHVFUTJHWVRXQ1czWmgweF9sLVJybFdPdGhaWEh5ZzRIcGtMaHNWMUV3aDFpOTlDY3IxX19rZlV6ZG1jb2tWU09NSGpXaWJfTmpDSVk3Z1B5aW0tbmYxUktDUUpDQVpreTZ1X19xTXkzZWNHQVBLRDN4ckc5QkpwWV94VlNtMHM?oc=5",
+   "source": "香港經濟日報HKET",
+   "published": "2026-11-04T08:51:00+00:00",
+   "routes": [
+    "NRT/HND",
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-11-07T06:00:27+00:00",
    "notified": true
   },
   {
