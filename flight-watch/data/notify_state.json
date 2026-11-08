@@ -7,7 +7,7 @@
    ]
   },
   "TPE+TSA-ICN+GMP": {
-   "price": 52738,
+   "price": 53070,
    "keys": [
     "2026-12-25/2026-12-27"
    ]
@@ -38,12 +38,13 @@
   }
  },
  "summary": {
-  "date": "2026-11-07",
+  "date": "2026-11-08",
   "best": {
    "TPE+TSA-NRT+HND": 45016,
-   "TPE+TSA-ICN+GMP": 52738,
+   "TPE+TSA-ICN+GMP": 53070,
    "TPE+TSA-BKK+DMK": 43846,
    "TPE+TSA-NRT+HND-2": 51931,
+   "TPE+TSA-ICN+GMP-2": 16701,
    "TPE+TSA-BKK+DMK-2": 17594
   }
  }
