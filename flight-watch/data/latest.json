@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-08T06:04:38+00:00",
+ "generated_at": "2026-11-08T13:27:35+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -158,11 +158,11 @@
      "google_best": true,
      "recommended": true
     },
-    "median": 42376,
-    "samples": 95,
-    "change_pct": 6.2
+    "median": 43557,
+    "samples": 94,
+    "change_pct": 3.3
    },
-   "median_best": 42376,
+   "median_best": 43557,
    "prev_best": 45016,
    "fare_keys": [
     "2026-12-25/2026-12-27"
@@ -314,9 +314,9 @@
       "google_best": true,
       "recommended": true
      },
-     "median": 42376,
-     "samples": 95,
-     "change_pct": 6.2
+     "median": 43557,
+     "samples": 94,
+     "change_pct": 3.3
     }
    ]
   },
@@ -398,11 +398,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 43031,
-    "samples": 92,
-    "change_pct": 23.3
+    "median": 43352,
+    "samples": 91,
+    "change_pct": 22.4
    },
-   "median_best": 43031,
+   "median_best": 43352,
    "prev_best": 53070,
    "fare_keys": [
     "2026-12-25/2026-12-27"
@@ -478,9 +478,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 43031,
-     "samples": 92,
-     "change_pct": 23.3
+     "median": 43352,
+     "samples": 91,
+     "change_pct": 22.4
     }
    ]
   },
@@ -784,7 +784,7 @@
      "recommended": true
     },
     "median": 45794,
-    "samples": 87,
+    "samples": 88,
     "change_pct": 13.4
    },
    "median_best": 45794,
@@ -845,7 +845,7 @@
       "recommended": true
      },
      "median": 45794,
-     "samples": 87,
+     "samples": 88,
      "change_pct": 13.4
     }
    ]
@@ -929,7 +929,7 @@
      "recommended": true
     },
     "median": 13968,
-    "samples": 86,
+    "samples": 87,
     "change_pct": 19.6
    },
    "median_best": 13968,
@@ -1009,7 +1009,7 @@
       "recommended": true
      },
      "median": 13968,
-     "samples": 86,
+     "samples": 87,
      "change_pct": 19.6
     }
    ]
@@ -1130,11 +1130,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 17271,
-    "samples": 88,
-    "change_pct": 1.9
+    "median": 17582,
+    "samples": 89,
+    "change_pct": 0.1
    },
-   "median_best": 17271,
+   "median_best": 17582,
    "prev_best": 17594,
    "fare_keys": [
     "2026-12-24/2026-12-27"
@@ -1248,9 +1248,9 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 17271,
-     "samples": 88,
-     "change_pct": 1.9
+     "median": 17582,
+     "samples": 89,
+     "change_pct": 0.1
     }
    ]
   }
