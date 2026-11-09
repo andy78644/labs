@@ -1,6 +1,18 @@
 {
- "updated_at": "2026-11-08T22:08:20+00:00",
+ "updated_at": "2026-11-09T06:35:30+00:00",
  "items": [
+  {
+   "id": "f448e39d08758950",
+   "title": "香港航空「週二激賞飛」凌晨開搶！包23kg寄艙行李 台北來回$230起、首爾$600起 - U Travel",
+   "link": "https://news.google.com/rss/articles/CBMinANBVV95cUxQS1haWUZjd3ZiMVVneUV0QnZtRDhfLVlmVUtqaHFWZ05naVpZdWYwWnUyM195RkhiMFhOOUxOd2s4SnZwa2pNeVphSThPVjJYZUZsbDVnNDd3WGtTazZ4Yjh6eXlIcVc1NmVkMi13SnFBT190UEV4R19neDcyN09SVm43dWV5bUo4NFFPS3JmbGRFNHdFRDBUN25MY3FVVW5zM3VTUUMxX1BfRDJudFJBTjEyUk9wWUpxaVRKN2IyUjhyOGpKeWpuejltaFhzNmZBb2ZqeVRIaThJbWFEa2xXaDFDR25xTHc0RnpRYUpNQW5TMmRyMnAwaFNCa3V1QVhtRmJwaDRPR3B1eGpacjB2SjNSR3hqVkJDYnFRdmh5N2R4UjdNdjJIVUZFUDFPdjNrOEFyZHA1dFQ1Ujc0aVdLUU9YWWlvUW1xNjRKZEU1R2ZQLUpWTms0RnRrN3dvRFBJR09kRzRoRzRtby11YlZnYkZLeVdCclRIUzRiWER3emxJWGxzX1VvbDg4VGwxSkJ1NHVIaDVCOGt3VjFs?oc=5",
+   "source": "U Travel",
+   "published": "2026-11-09T04:18:29+00:00",
+   "routes": [
+    "ICN/GMP"
+   ],
+   "first_seen": "2026-11-09T06:35:30+00:00",
+   "notified": true
+  },
   {
    "id": "ae7220aef3ee0db6",
    "title": "旅遊雙11優惠｜來回東京機票低至$11！Mastercard減$7527 - UHK 港生活",
@@ -307,18 +319,6 @@
     "NRT/HND"
    ],
    "first_seen": "2026-10-13T14:14:52+00:00",
-   "notified": true
-  },
-  {
-   "id": "a10da711e4351f77",
-   "title": "香港航空「週二激賞飛」機票優惠！台北來回$375起/首爾$651起 包23kg行李 - utravel.com.hk",
-   "link": "https://news.google.com/rss/articles/CBMihANBVV95cUxOcXRfQVFhVmxaY09feEFfbndtVDRHcW80M0t2NjN2OGtVTkxJZkVUQ1V4dWZOa0g0bkFLVlRuTEJpdXhjbWdmLVpyMTNrOGtJdU1IUjN6czNGNUV3eGhlSi1tRzBLeHRFc2htRGtfanN3MWxFb1NFeHRIalRGUzNma0lCYkhHNmk1ZXRQZ3JGS1dPRERHRnQ4aURsSlNsM1EzRFlHZDR1ZDMwa2hVczB5Nm9UdGY1X1dPRVdQMmJjQ3luemRWQXZmQlFMYjZ0d3oxQVQ2b0tvRFdiR2ZXeXBNOG1SVEtGUllKeENuS09JeXI3WnBTcm44dDdlMUpBTGF3MU1VNFhJTkRQQmU3ZXcyM1gtS3NuVTJGNXFOR1BpcjlIbkpud1ZhWldPSGdvSmRRTm5TeUs3WVd4LXYzT1JjNmk2NHhaZ1lYSlY1TnNXNUUwNE40NUlHOWExNHpnU3BseUUyM1A3enh2QlFVamp6Z2Z0UWJwZnE0ZHV6QXAwYUZfWjJH?oc=5",
-   "source": "utravel.com.hk",
-   "published": "2026-10-12T05:34:22+00:00",
-   "routes": [
-    "ICN/GMP"
-   ],
-   "first_seen": "2026-10-12T06:01:27+00:00",
    "notified": true
   }
  ]
