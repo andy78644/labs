@@ -1,6 +1,30 @@
 {
- "updated_at": "2026-11-10T19:45:35+00:00",
+ "updated_at": "2026-11-11T06:26:47+00:00",
  "items": [
+  {
+   "id": "86ecf02bd7d97ccf",
+   "title": "Trip.com今日12PM搶！東京來回機票$11、大阪$399、福岡$599 雙11限時優惠！ - www.5news.com.hk",
+   "link": "https://news.google.com/rss/articles/CBMid0FVX3lxTFA0T1pLZmxPRjI0bTRCNW9tQWFQZ29UZUpOLUc1SGZsaFZlZUxVRkU5anhsLXlHMWdMOGM3aU5SMEtaejRBeFV1SUVtTGtYbnlWM2M5SkpCZ3NZcEVfLTV0S19Gci1DbnpPaDBZaDBGZFRvQlJvUmtN?oc=5",
+   "source": "www.5news.com.hk",
+   "published": "2026-11-11T02:57:31+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-11T06:26:47+00:00",
+   "notified": true
+  },
+  {
+   "id": "9cb9db1ac4733f75",
+   "title": "雙11開搶！日韓機票、住宿11元起 曼谷、河內、胡志明市999元一口價 - Yahoo新聞",
+   "link": "https://news.google.com/rss/articles/CBMikgJBVV95cUxNazhuQ1FWOVVsRmRnMkIzemp6NGdFUTRNQnBEbTVrYk9WMUs5VF9IMWlwc2lOMTlLMm84cEprZjV4ZW5PSlNxSFlGWFBvVWlFZjU2UFMtbVF1WV9ZZ21RMHBiSlZ1Uld5bW1oZGhkQkwtTXpVSFlzNjlxeVlhLXg3b3JVUC0yNlNEVzhNQlN6YzVMZktlck03bXR2WjRmX1lsRlhFYnBTVTVJb3dkdFNZMGs3MnlQUEh6RHNwS0ZLREZOeFVvRnZ3OFNtUmJ6d0gtV3ZtTWVLOHpDVGE4eXhVSnVtNThvV3I1aDQ1c3B2ZWlTeDFtTEl0NW9GaWxKU3Vvc0l5VlAtclJ1aHUzcENTQ2Zn?oc=5",
+   "source": "Yahoo新聞",
+   "published": "2026-11-11T02:31:41+00:00",
+   "routes": [
+    "BKK/DMK"
+   ],
+   "first_seen": "2026-11-11T06:26:47+00:00",
+   "notified": true
+  },
   {
    "id": "f448e39d08758950",
    "title": "香港航空「週二激賞飛」凌晨開搶！包23kg寄艙行李 台北來回$230起、首爾$600起 - U Travel",
