@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-14T22:26:44+00:00",
+ "generated_at": "2026-11-15T06:36:24+00:00",
  "provider": "google",
  "origin": "TPE",
  "currency": "TWD",
@@ -86,25 +86,6 @@
       "airline": "長榮航空",
       "stops": 0,
       "duration_min": 185,
-      "depart_time": "08:50",
-      "arrive_time": "12:55",
-      "from_airport": "TPE",
-      "to_airport": "NRT",
-      "via": [],
-      "airline_codes": [
-       "BR"
-      ],
-      "flight_numbers": [
-       "BR198"
-      ],
-      "google_best": true,
-      "recommended": false
-     },
-     {
-      "price": 69892,
-      "airline": "長榮航空",
-      "stops": 0,
-      "duration_min": 185,
       "depart_time": "07:55",
       "arrive_time": "12:00",
       "from_airport": "TPE",
@@ -115,6 +96,25 @@
       ],
       "flight_numbers": [
        "BR184"
+      ],
+      "google_best": false,
+      "recommended": false
+     },
+     {
+      "price": 69892,
+      "airline": "長榮航空",
+      "stops": 0,
+      "duration_min": 185,
+      "depart_time": "08:50",
+      "arrive_time": "12:55",
+      "from_airport": "TPE",
+      "to_airport": "NRT",
+      "via": [],
+      "airline_codes": [
+       "BR"
+      ],
+      "flight_numbers": [
+       "BR198"
       ],
       "google_best": false,
       "recommended": false
@@ -223,25 +223,6 @@
        "airline": "長榮航空",
        "stops": 0,
        "duration_min": 185,
-       "depart_time": "08:50",
-       "arrive_time": "12:55",
-       "from_airport": "TPE",
-       "to_airport": "NRT",
-       "via": [],
-       "airline_codes": [
-        "BR"
-       ],
-       "flight_numbers": [
-        "BR198"
-       ],
-       "google_best": true,
-       "recommended": false
-      },
-      {
-       "price": 69892,
-       "airline": "長榮航空",
-       "stops": 0,
-       "duration_min": 185,
        "depart_time": "07:55",
        "arrive_time": "12:00",
        "from_airport": "TPE",
@@ -252,6 +233,25 @@
        ],
        "flight_numbers": [
         "BR184"
+       ],
+       "google_best": false,
+       "recommended": false
+      },
+      {
+       "price": 69892,
+       "airline": "長榮航空",
+       "stops": 0,
+       "duration_min": 185,
+       "depart_time": "08:50",
+       "arrive_time": "12:55",
+       "from_airport": "TPE",
+       "to_airport": "NRT",
+       "via": [],
+       "airline_codes": [
+        "BR"
+       ],
+       "flight_numbers": [
+        "BR198"
        ],
        "google_best": false,
        "recommended": false
@@ -360,12 +360,12 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 44904,
+    "median": 44928,
     "samples": 87,
     "change_pct": 16.3
    },
-   "median_best": 44904,
-   "prev_best": 45150,
+   "median_best": 44928,
+   "prev_best": 52238,
    "fare_keys": [
     "2026-12-25/2026-12-27"
    ],
@@ -440,7 +440,7 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 44904,
+     "median": 44928,
      "samples": 87,
      "change_pct": 16.3
     }
@@ -562,11 +562,11 @@
      "google_best": false,
      "recommended": true
     },
-    "median": 43466,
+    "median": 43474,
     "samples": 87,
     "change_pct": 4.6
    },
-   "median_best": 43466,
+   "median_best": 43474,
    "prev_best": 45484,
    "fare_keys": [
     "2026-12-25/2026-12-27"
@@ -680,7 +680,7 @@
       "google_best": false,
       "recommended": true
      },
-     "median": 43466,
+     "median": 43474,
      "samples": 87,
      "change_pct": 4.6
     }
@@ -895,7 +895,7 @@
     "change_pct": 0.2
    },
    "median_best": 15643,
-   "prev_best": 14327,
+   "prev_best": 15675,
    "fare_keys": [
     "2026-12-24/2026-12-27"
    ],
