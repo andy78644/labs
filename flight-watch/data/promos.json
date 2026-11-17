@@ -1,6 +1,18 @@
 {
- "updated_at": "2026-11-17T07:57:21+00:00",
+ "updated_at": "2026-11-17T20:57:16+00:00",
  "items": [
+  {
+   "id": "6c9377ae3b375592",
+   "title": "Uber Eats登台10周年送東京機票、iPhone 18　還有買1送1優惠 - ETtoday新聞雲",
+   "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFBNdnpwSFdpQjN0Z21OVDhkSEdTUnEyM19FcVNKQ3BQX0wta3g3alIyQm5JWWx1SlBJTFFCN1dPSHFwWHRIcDJaVm13U0dIVjZmaW92RHFvVVFlanRpYUHSAUtBVV95cUxNUWdJSW1ZNk1HTW9RVFNVQ3ZhZjhXVE1YOUp3MTNFMkZEV3pIZFlJQ3k5SDZleUo0azdIME9saVZudkdqTGpiUElMTDA?oc=5",
+   "source": "ETtoday新聞雲",
+   "published": "2026-11-17T10:17:00+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-17T20:57:16+00:00",
+   "notified": true
+  },
   {
    "id": "0d84bb5a894ef0e4",
    "title": "港航周二激賞飛｜香港航空平機票凌晨開搶！台北來回$230起、首爾/沖繩$600起包23kg寄艙行李 - U Travel",
@@ -48,6 +60,18 @@
     "NRT/HND"
    ],
    "first_seen": "2026-11-11T06:26:47+00:00",
+   "notified": true
+  },
+  {
+   "id": "7e17afccae6b46b5",
+   "title": "雙11優惠｜Trip.com今日12PM搶！東京來回機票$11、大阪$399、福岡$599 雙11限時優惠！ - www.5news.com.hk",
+   "link": "https://news.google.com/rss/articles/CBMid0FVX3lxTFA0T1pLZmxPRjI0bTRCNW9tQWFQZ29UZUpOLUc1SGZsaFZlZUxVRkU5anhsLXlHMWdMOGM3aU5SMEtaejRBeFV1SUVtTGtYbnlWM2M5SkpCZ3NZcEVfLTV0S19Gci1DbnpPaDBZaDBGZFRvQlJvUmtN?oc=5",
+   "source": "www.5news.com.hk",
+   "published": "2026-11-11T02:57:31+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-17T20:57:16+00:00",
    "notified": true
   },
   {
