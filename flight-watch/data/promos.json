@@ -1,6 +1,18 @@
 {
- "updated_at": "2026-11-19T07:28:51+00:00",
+ "updated_at": "2026-11-19T20:39:50+00:00",
  "items": [
+  {
+   "id": "e1ea00453ab4466d",
+   "title": "虎航全航線「999元機票」這天開搶！高雄首飛東京羽田，加碼香港機加酒７折 - 食尚玩家",
+   "link": "https://news.google.com/rss/articles/CBMiV0FVX3lxTFBfeDZ0Y3daSnQ3RlU2QW1hN3ZqR2E3QmNkSll4NHBXbmdWRGstbklqVEUxREh2UTdGcTZPQ1lxQ0gzUmFWTEZXSm1xcGZGTVI4Z2dobXMtaw?oc=5",
+   "source": "食尚玩家",
+   "published": "2026-11-18T11:17:00+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-19T20:39:50+00:00",
+   "notified": true
+  },
   {
    "id": "b8a20a1be436ecc9",
    "title": "台灣虎航春節加開「高雄直飛東京羽田」天天飛15天　機票999元起開搶 - 三立新聞網SETN.com",
@@ -35,6 +47,18 @@
     "NRT/HND"
    ],
    "first_seen": "2026-11-18T07:31:28+00:00",
+   "notified": true
+  },
+  {
+   "id": "7076f7eb36ad7857",
+   "title": "台灣虎航「高雄－東京羽田」春節包機！11/20全航線999元機票促銷 - NOWnews今日新聞",
+   "link": "https://news.google.com/rss/articles/CBMiTEFVX3lxTFB1czhwOXlKLWZJSkdteGZsZmdqZU5aY3VVNHVDU0xMUG1uMUVNdW1WZDF3ckJhWHp4VzZVSnlJNHVqUFZ6b3B1UUo1STHSAVJBVV95cUxPMU9MNl9VUEE1b0wtQ2JfdF8xVGNWQzVCY2pnTWllQWk5MWlPa2V5ZU9pb3lxYlBHek84R1JQMWdsckZIWEw4Sk9hZnA2RlRPbk1B?oc=5",
+   "source": "NOWnews今日新聞",
+   "published": "2026-11-18T02:31:37+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-19T20:39:50+00:00",
    "notified": true
   },
   {
