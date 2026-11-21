@@ -1,6 +1,30 @@
 {
- "updated_at": "2026-11-20T20:24:13+00:00",
+ "updated_at": "2026-11-21T19:18:12+00:00",
  "items": [
+  {
+   "id": "d8bd7c111906a04a",
+   "title": "10:00開搶！虎航「全航線999元起」TTF線上旅展　搶高雄直飛東京 - NOWnews今日新聞",
+   "link": "https://news.google.com/rss/articles/CBMiUkFVX3lxTFB0UVl0VHZoZHk0WkZfWWRVVnNiVk9rbXlGNnEwVmRIdUVZMENOX2dhak53NmR0TjI5eHBtSWlrUTBjTHpVZFl2R0dTQW1hQWtFR0HSAVJBVV95cUxQdFFZdFR2aGR5NFpGX1lkVVZzYlZPa215RjZxMFZkSHVFWTBDTl9nYWpOdzZkdE4yOXhwbUlpa1EwY0x6VWRZdkdHU0FtYUFrRUdB?oc=5",
+   "source": "NOWnews今日新聞",
+   "published": "2026-11-19T21:03:00+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-21T19:18:12+00:00",
+   "notified": true
+  },
+  {
+   "id": "119cfda85374d95d",
+   "title": "台灣虎航「高雄－東京羽田」春節包機！11/20全航線999元機票促銷 | 美食旅遊 | 生活 - NOWnews今日新聞",
+   "link": "https://news.google.com/rss/articles/CBMiTEFVX3lxTFB1czhwOXlKLWZJSkdteGZsZmdqZU5aY3VVNHVDU0xMUG1uMUVNdW1WZDF3ckJhWHp4VzZVSnlJNHVqUFZ6b3B1UUo1STE?oc=5",
+   "source": "NOWnews今日新聞",
+   "published": "2026-11-19T15:26:47+00:00",
+   "routes": [
+    "NRT/HND"
+   ],
+   "first_seen": "2026-11-21T19:18:12+00:00",
+   "notified": true
+  },
   {
    "id": "e1ea00453ab4466d",
    "title": "虎航全航線「999元機票」這天開搶！高雄首飛東京羽田，加碼香港機加酒７折 - 食尚玩家",
@@ -378,19 +402,6 @@
     "BKK/DMK"
    ],
    "first_seen": "2026-10-27T22:16:39+00:00",
-   "notified": true
-  },
-  {
-   "id": "846c815c478d640b",
-   "title": "大灣區航空「樂悠優惠」低至65折飛福岡、札幌、東京、大阪、沖繩、曼谷、台北、舟山 - etnet 經濟通",
-   "link": "https://news.google.com/rss/articles/CBMiqARBVV95cUxNNWFjbURpTHJHZUpuVWVNVi1PNlhIV3VLSXAyall4dEpldUpGRWY3OWxjSXc4MEYyUWNINk5QUF9FRXFqTFZ3LWtfb3ZwbkJlS1BEemt3YkQyeVFkc2o3SXRHVnpoZ2hfdkJpVEtPZG45aXZVUzVsTUtzRG9GN09zU0RvTDY3c0hPd0ctbVZtWE5SbE1SME92UzZTajFPSjNXakdOZ292bkpMaWNWMmFOai1xemRRRHB5SUFwOUxHTkJDYXVrRDFfNF8ySEt2SW5qS0hCMnhsdVJmLWswNHZicGNhX2VPVkRjd2x5WE9pVVVvbEFEd3ZnSm1lQWt2TTRQbGhWN1VnY2psd3VxTFh1bDFmTWRzWGp5Ym1OYnNveE9jNmJmZzM0TzZXXzltSmxjeFhpd0NSeGNJa01nN1Z4V0FjS1U4Y2ZJZW1MS19LdjBkOGZkMUFLRkdDekpUbTZWWXRGLWZEX2hVWXRIdXlOdm1YQ3lVT0xzTFN5UWpwTGJfS3F2VUhKTUpfUmVma1BrWEVHcjd6cHlrRURJVTVURnRuNG00ODNqRjNsZWRVQWhUSWRQZ3FxLVNpbzZIOHpYTXUwOWpoVENWYmpQYzZHSC00dFFZQnFkSVp4QWUyczVsR2Fsa3h0aGJFVU45Q3FaZlc0emRHQ1FrdkZkUGx0cDhVQ2o1VVBRWFFTS1M0YnpHY3E0a0JuN2x3VUlBRzRhZk5hdWtuX1Q?oc=5",
-   "source": "etnet 經濟通",
-   "published": "2026-10-24T09:00:00+00:00",
-   "routes": [
-    "NRT/HND",
-    "BKK/DMK"
-   ],
-   "first_seen": "2026-10-24T11:04:22+00:00",
    "notified": true
   }
  ]
